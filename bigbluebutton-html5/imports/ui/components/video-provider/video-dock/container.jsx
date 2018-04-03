@@ -16,29 +16,22 @@ export default withTracker(({ sharedWebcam }) => {
   const currentUser = Users.findOne({ userId });
   const currentUserIsModerator = mapUser(currentUser).isModerator;
 
-  const withActiveStreams = (users) => {
-    const activeFilter = (user) => {
-      const isLocked = lockCam && user.locked;
-      return !isLocked && (user.has_stream || (sharedWebcam && user.userId === userId));
-    };
+  const isSharingWebcam = user => user.isSharingWebcam || (sharedWebcam && user.isCurrent);
+  const isNotLocked = user => !(lockCam && user.isLocked);
 
-    return users
-      .filter(activeFilter);
+
+  const isWebcamOnlyModerator = VideoService.webcamOnlyModerator();
+  const allowedSeeViewersWebcams = !isWebcamOnlyModerator || currentUserIsModerator;
+  const webcamOnlyModerator = (user) => {
+    if (allowedSeeViewersWebcams) return true;
+    return user.isModerator || user.isCurrent;
   };
 
-
-  const webcamOnlyModerator = (users) => {
-    const webcamOnlyModeratorFilter = (user) => {
-      const mappedUser = mapUser(user);
-      const himSelf = mappedUser.id === userId;
-      if (!VideoService.webcamOnlyModerator()) return true;
-      return mappedUser.isModerator || himSelf;
-    };
-    if (currentUserIsModerator) return users;
-    return users.filter(webcamOnlyModeratorFilter);
-  };
-
-  const users = webcamOnlyModerator(withActiveStreams(VideoService.getAllUsers()));
+  const users = VideoService.getAllUsers()
+    .map(mapUser)
+    .filter(isSharingWebcam)
+    .filter(isNotLocked)
+    .filter(webcamOnlyModerator);
 
   return {
     users,
