@@ -18,13 +18,12 @@ const isDisabled = () => {
 
   const videoSettings = Settings.dataSaving;
   const enableShare = !videoSettings.viewParticipantsWebcams;
-  const LockCam = VideoService.isLocked()
-  const webcamOnlyModerator = VideoService.webcamOnlyModerator();
+  const LockCam = VideoService.isLocked();
   const user = Users.findOne({ userId: Auth.userID });
   const userLocked = mapUser(user).isLocked;
 
   const isConnecting = (!isSharingVideo && isConnected);
-  const isLocked = (LockCam && userLocked) || webcamOnlyModerator;
+  const isLocked = (LockCam && userLocked);
 
   return isLocked
       || isWaitingResponse
