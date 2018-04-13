@@ -65,33 +65,30 @@
   }
 }
 
-.name {
+.name, .logout {
   display: flex;
   min-width: 0;
   font-weight: 600;
-  color: $color-heading;
   width: 100%;
   position: relative;
+  padding: .5rem 0;
+}
 
-  > span {
-    @extend %text-elipsis;
-    padding: .5rem 0;
-    position: absolute;
-    top: -.5rem;
-    width: 100%;
-  }
+.name {
+  color: $color-heading;
 }
 
 .logout {
-  display: flex;
-  min-width: 0;
-  font-weight: 600;
   text-transform: capitalize;
   font-style: italic;
+}
 
-  > span {
-    @extend %text-elipsis;
-  }
+.nameText {
+  @extend %text-elipsis;
+  padding: .5rem 0;
+  position: absolute;
+  top: -.5rem;
+  width: 100%;
 }
 
 .offline {
@@ -109,14 +106,11 @@
   flex-shrink: 0;
   flex-grow: 0;
   flex-basis: 3.5rem;
+  font-weight: 100;
   color: $color-gray-light;
   text-transform: uppercase;
   font-size: 75%;
   margin-left: $line-height-computed / 2;
-
-  > span {
-    vertical-align: sub;
-  }
 }
 
 .messages {

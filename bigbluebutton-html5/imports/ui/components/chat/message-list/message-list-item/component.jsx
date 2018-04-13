@@ -147,12 +147,14 @@ export default class MessageListItem extends Component {
           <div className={styles.content}>
             <div className={styles.meta}>
               <div className={user.isOnline ? styles.name : styles.logout}>
-                <span>{user.name}</span>
-                {user.isOnline ? null : <span className={styles.offline}>(offline)</span>}
+                <div className={styles.nameText}>
+                  <span>{user.name}</span>
+                  {user.isOnline ? null : <span className={styles.offline}>(offline)</span>}
+                  <time className={styles.time} dateTime={dateTime}>
+                    <FormattedTime value={dateTime} />
+                  </time>
+                </div>
               </div>
-              <time className={styles.time} dateTime={dateTime}>
-                <FormattedTime value={dateTime} />
-              </time>
             </div>
             <div className={styles.messages}>
               {messages.map(message => (
