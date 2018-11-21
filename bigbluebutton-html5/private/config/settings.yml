@@ -99,6 +99,7 @@ public:
     enableVideoStats: false
     enableListenOnly: false
     autoShareWebcam: false
+<<<<<<< HEAD
   acl:
     viewer:
       subscriptions:
@@ -162,6 +163,12 @@ public:
       - publishPoll
   poll:	
     max_custom: 5
+=======
+  breakout:
+    rooms:
+      min: 2
+      max: 8
+>>>>>>> 016efcc0eb... Remove ACL from client side. close #6138
   chat:
     min_message_length: 1
     max_message_length: 5000
