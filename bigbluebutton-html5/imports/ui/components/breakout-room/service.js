@@ -65,6 +65,8 @@ const isModerator = () => {
   return mappedUser.isModerator;
 };
 
+const countUserByBreakoutId = breakoutId => Users.find({ meetingId: breakoutId, connectionStatus: 'online' }).count();
+
 export default {
   findBreakouts,
   endAllBreakouts,
@@ -76,4 +78,5 @@ export default {
   isPresenter,
   closeBreakoutPanel,
   isModerator,
+  countUserByBreakoutId,
 };

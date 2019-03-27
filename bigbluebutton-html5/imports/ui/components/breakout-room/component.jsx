@@ -187,6 +187,8 @@ class BreakoutRoom extends Component {
     const {
       breakoutRooms,
       intl,
+      countUserByBreakoutId,
+      isModerator,
     } = this.props;
 
     const {
@@ -198,11 +200,14 @@ class BreakoutRoom extends Component {
       <div className={styles.content} key={`breakoutRoomList-${breakout.breakoutId}`}>
         <span aria-hidden>
           {intl.formatMessage(intlMessages.breakoutRoom, breakout.sequence.toString())}
-          <span className={styles.usersAssignedNumberLabel}>
-            (
-            {new Set(breakout.users.map(user => user.intId)).size}
-            )
-          </span>
+          {
+            isModerator ? (
+              <span className={styles.usersAssignedNumberLabel}>
+              (
+                {countUserByBreakoutId(breakout.breakoutId)}
+              )
+              </span>) : null
+          }
         </span>
         {waiting && requestedBreakoutId === breakout.breakoutId ? (
           <span>
