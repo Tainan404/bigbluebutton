@@ -214,7 +214,7 @@ class WebcamDraggable extends Component {
 
     const overlayClassName = cx({
       [styles.overlay]: true,
-      [styles.hideOverlay]: hideOverlay,
+      // [styles.hideOverlay]: hideOverlay,
       [styles.floatingOverlay]: (singleWebcam && placement === 'floating') || dragging,
       [styles.fit]: singleWebcam && (placement === 'floating' || dragging),
       [styles.full]: (singleWebcam && (placement === 'top' || placement === 'bottom')

@@ -78,6 +78,8 @@ class VideoList extends Component {
   }
 
   componentDidMount() {
+    console.error('montei');
+    
     const { webcamDraggableDispatch } = this.props;
     webcamDraggableDispatch(
       {
@@ -95,8 +97,8 @@ class VideoList extends Component {
   }
 
   setOptimalGrid() {
-    const { users } = this.props;
-    let numItems = users.length;
+    const { users, allUsersWithoutStream } = this.props;
+    let numItems = users.length + allUsersWithoutStream.length;
     if (numItems < 1 || !this.canvas || !this.grid) {
       return;
     }
@@ -152,10 +154,11 @@ class VideoList extends Component {
       getStats,
       stopGettingStats,
       enableVideoStats,
+      allUsersWithoutStream,
     } = this.props;
     const { focusedId } = this.state;
 
-    return users.map((user) => {
+    return [...users, ...allUsersWithoutStream].map((user) => {
       const isFocused = focusedId === user.id;
       const isFocusedIntlKey = !isFocused ? 'focus' : 'unfocus';
       let actions = [];
@@ -194,7 +197,10 @@ class VideoList extends Component {
   }
 
   render() {
-    const { users } = this.props;
+    const {
+      users,
+      allUsersWithoutStream,
+    } = this.props;
     const { optimalGrid } = this.state;
 
     const canvasClassName = cx({
@@ -212,7 +218,7 @@ class VideoList extends Component {
         }}
         className={canvasClassName}
       >
-        {!users.length ? null : (
+        {!(users.length || allUsersWithoutStream.length) ? null : (
           <div
             ref={(ref) => {
               this.grid = ref;

@@ -41,18 +41,19 @@ class VideoListItem extends Component {
   }
 
   componentDidMount() {
-    const { onMount, webcamDraggableDispatch } = this.props;
-
+    const { onMount, webcamDraggableDispatch, user } = this.props;    
     webcamDraggableDispatch(
       {
         type: 'setVideoRef',
         value: this.videoTag,
       },
     );
-
-    onMount(this.videoTag);
-
-    this.videoTag.addEventListener('loadeddata', () => this.setVideoIsReady());
+      console.error(user.hasStream);
+      
+    if (this.videoTag) {
+      onMount(this.videoTag);
+      this.videoTag.addEventListener('loadeddata', () => this.setVideoIsReady());
+    }
   }
 
   componentDidUpdate() {
@@ -156,17 +157,19 @@ class VideoListItem extends Component {
       })}
       >
         {!videoIsReady && <div className={styles.connecting} />}
-        <video
-          muted
-          className={cx({
-            [styles.media]: true,
-            [styles.cursorGrab]: !webcamDraggableState.dragging,
-            [styles.cursorGrabbing]: webcamDraggableState.dragging,
-          })}
-          ref={(ref) => { this.videoTag = ref; }}
-          autoPlay
-          playsInline
-        />
+        {
+          user.hasStream && (<video
+            muted
+            className={cx({
+              [styles.media]: true,
+              [styles.cursorGrab]: !webcamDraggableState.dragging,
+              [styles.cursorGrabbing]: webcamDraggableState.dragging,
+            })}
+            ref={(ref) => { this.videoTag = ref; }}
+            autoPlay
+            playsInline
+          />)
+        }
         <div className={styles.info}>
           {enableVideoMenu && availableActions.length >= 3
             ? (

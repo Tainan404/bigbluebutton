@@ -98,6 +98,10 @@ class VideoService {
       .filter(webcamOnlyModerator);
   }
 
+  getAllUsersWithoutStream() {
+    return Users.find({ hasStream: false }).fetch();
+  }
+
   webcamOnlyModerator() {
     const m = Meetings.findOne({ meetingId: Auth.meetingID }) || {};
     return m.usersProp ? m.usersProp.webcamsOnlyForModerator : false;
@@ -162,4 +166,5 @@ export default {
   getAllUsersVideo: () => videoService.getAllUsersVideo(),
   sessionToken: () => videoService.sessionToken(),
   voiceBridge: () => videoService.voiceBridge(),
+  getAllUsersWithoutStream: () => videoService.getAllUsersWithoutStream(),
 };

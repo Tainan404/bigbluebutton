@@ -137,6 +137,22 @@
   }
 }
 
+.WithoutWebcam {
+  @extend %media-area;
+  position: absolute;
+  background-color: var(--color-gray);
+  color: var(--color-white-with-transparency);
+  font-size: 2.5rem;
+  text-align: center;
+  white-space: nowrap;
+  &::before {
+    content: "\e949";
+    /* ascii code for the ellipsis character */
+    font-family: 'bbb-icons' !important;
+    display: inline-block;
+  }
+}
+
 .media {
   @extend %media-area;
   background-color: var(--color-gray);

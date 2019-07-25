@@ -211,8 +211,9 @@ class VideoProvider extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { users } = this.props;
-    if (users.length !== prevProps.users.length) window.dispatchEvent(new Event('videoListUsersChange'));
+    const { users,  allUsersWithoutStream} = this.props;
+    if ((users.length !== prevProps.users.length)
+    || (allUsersWithoutStream.length !== prevProps.allUsersWithoutStream.length)) window.dispatchEvent(new Event('videoListUsersChange'));
   }
 
   componentWillUnmount() {
@@ -1146,6 +1147,7 @@ class VideoProvider extends Component {
       users,
       enableVideoStats,
       mediaHeight,
+      allUsersWithoutStream,
     } = this.props;
     return (
       <VideoList
@@ -1155,6 +1157,7 @@ class VideoProvider extends Component {
         getStats={this.getStats}
         stopGettingStats={this.stopGettingStats}
         enableVideoStats={enableVideoStats}
+        allUsersWithoutStream={allUsersWithoutStream}
       />
     );
   }

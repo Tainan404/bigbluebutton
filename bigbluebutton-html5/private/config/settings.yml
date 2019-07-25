@@ -3,7 +3,7 @@ public:
     mobileFontSize: 16px
     desktopFontSize: 14px
     audioChatNotification: false
-    showParticipantsOnLogin: true
+    showParticipantsOnLogin: false
     autoJoin: true
     listenOnlyMode: true
     forceListenOnly: false
@@ -89,7 +89,7 @@ public:
     enableNetworkMonitoring: false
     packetLostThreshold: 10
   kurento:
-    wsUrl: HOST
+    wsUrl: wss://8059748bd273.bbbvm.imdt.com.br/bbb-webrtc-sfu
     chromeDefaultExtensionKey: akgoaoikmbmhcopjgakkcepdgdgkjfbc
     chromeDefaultExtensionLink: https://chrome.google.com/webstore/detail/bigbluebutton-screenshare/akgoaoikmbmhcopjgakkcepdgdgkjfbc
     chromeExtensionKey: KEY

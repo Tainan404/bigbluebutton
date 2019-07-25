@@ -62,6 +62,7 @@ export default function addUser(meetingId, user) {
         inactivityCheck: false,
         responseDelay: 0,
         loggedOut: false,
+        hasStream: false,
       },
       flat(user),
     ),

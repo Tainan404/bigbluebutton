@@ -5,8 +5,8 @@ import VideoProvider from './component';
 import VideoService from './service';
 
 const VideoProviderContainer = ({ children, ...props }) => {
-  const { users } = props;
-  return (!users.length ? null : <VideoProvider {...props}>{children}</VideoProvider>);
+  const { users, allUsersWithoutStream } = props;
+  return (!(users.length || allUsersWithoutStream.length) ? null : <VideoProvider {...props}>{children}</VideoProvider>);
 };
 
 export default withTracker(props => ({
@@ -18,6 +18,7 @@ export default withTracker(props => ({
   userId: VideoService.userId(),
   sessionToken: VideoService.sessionToken(),
   userName: VideoService.userName(),
+  allUsersWithoutStream: VideoService.getAllUsersWithoutStream(),
   enableVideoStats: getFromUserSettings('enableVideoStats', Meteor.settings.public.kurento.enableVideoStats),
   voiceBridge: VideoService.voiceBridge(),
 }))(VideoProviderContainer);
