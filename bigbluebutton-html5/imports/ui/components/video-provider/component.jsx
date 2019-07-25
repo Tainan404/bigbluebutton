@@ -211,7 +211,7 @@ class VideoProvider extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { users,  allUsersWithoutStream} = this.props;
+    const { users, allUsersWithoutStream } = this.props;
     if ((users.length !== prevProps.users.length)
     || (allUsersWithoutStream.length !== prevProps.allUsersWithoutStream.length)) window.dispatchEvent(new Event('videoListUsersChange'));
   }
@@ -433,7 +433,7 @@ class VideoProvider extends Component {
     }
   }
 
-  addCandidateToPeer (peer, candidate, cameraId) {
+  addCandidateToPeer(peer, candidate, cameraId) {
     peer.addIceCandidate(candidate, (error) => {
       if (error) {
         // Just log the error. We can't be sure if a candidate failure on add is
@@ -538,7 +538,7 @@ class VideoProvider extends Component {
     }
   }
 
-  getCameraProfile () {
+  getCameraProfile() {
     const profileId = Session.get('WebcamProfileId') || '';
     const cameraProfile = CAMERA_PROFILES.find(profile => profile.id === profileId)
       || CAMERA_PROFILES.find(profile => profile.default)
@@ -567,8 +567,8 @@ class VideoProvider extends Component {
       logger.error({
         logCode: 'video_provider_fetchstunturninfo_error',
         extraInfo: {
-          error
-        }
+          error,
+        },
       }, 'video-provider failed to fetch STUN/TURN info, using default');
     } finally {
       const { constraints, bitrate, id: profileId } = this.getCameraProfile();
@@ -624,7 +624,7 @@ class VideoProvider extends Component {
           };
 
           logger.info({
-            logCode: 'video_provider_sfu_request_start_camera' ,
+            logCode: 'video_provider_sfu_request_start_camera',
             extraInfo: {
               sfuRequest: message,
               cameraProfile: profileId,
@@ -656,7 +656,7 @@ class VideoProvider extends Component {
           logCode: 'video_provider_camera_share_timeout',
           extraInfo: {
             cameraId: id,
-          }
+          },
         }, `Camera SHARER has not succeeded in ${CAMERA_SHARE_FAILED_WAIT_TIME} for ${id}`);
         VideoProvider.notifyError(intl.formatMessage(intlClientErrors.mediaFlowTimeout));
         this.stopWebRTCPeer(id, false);
@@ -665,7 +665,7 @@ class VideoProvider extends Component {
         const oldReconnectTimer = this.restartTimer[id];
         const newReconnectTimer = Math.min(
           2 * oldReconnectTimer[id],
-          MAX_CAMERA_SHARE_FAILED_WAIT_TIME
+          MAX_CAMERA_SHARE_FAILED_WAIT_TIME,
         );
         this.restartTimer[id] = newReconnectTimer;
 
@@ -677,7 +677,7 @@ class VideoProvider extends Component {
           logCode: 'video_provider_camera_view_timeout',
           extraInfo: {
             cameraId: id,
-          }
+          },
         }, `Camera VIEWER has not succeeded in ${oldReconnectTimer} for ${id}. Reconnecting.`);
         this.stopWebRTCPeer(id, true);
         this.createWebRTCPeer(id, shareWebcam);
@@ -694,7 +694,7 @@ class VideoProvider extends Component {
     }
   }
 
-  _onWebRTCError (error, cameraId) {
+  _onWebRTCError(error, cameraId) {
     const { intl, userId } = this.props;
 
     // 2001 means MEDIA_SERVER_OFFLINE. It's a server-wide error.
@@ -719,8 +719,6 @@ class VideoProvider extends Component {
         cameraId,
       },
     }, `Camera peer creation failed for ${cameraId} due to ${error.message}`);
-
-
   }
 
   _getOnIceCandidateCallback(id, shareWebcam) {
@@ -742,7 +740,7 @@ class VideoProvider extends Component {
           extraInfo: {
             cameraId: id,
             reconnectTimer: newReconnectTimer,
-          }
+          },
         }, `Camera has a new reconnect timer of ${newReconnectTimer} ms for ${id}`);
         this.restartTimeout[id] = setTimeout(this._getWebRTCStartTimeout(id, shareWebcam),
           this.restartTimer[id]);
@@ -1149,15 +1147,20 @@ class VideoProvider extends Component {
       mediaHeight,
       allUsersWithoutStream,
     } = this.props;
+
+    const mappedUsers = users.map(user => ({ ...user, hasVideoStream: true }));
+
+    const usersId = mappedUsers.map(u => u.userId);
+    const mappedUsersWithoutWebcam = allUsersWithoutStream.filter(u => !usersId.includes(u.userId));
     return (
       <VideoList
         mediaHeight={mediaHeight}
-        users={users}
+        users={mappedUsers}
         onMount={this.createVideoTag}
         getStats={this.getStats}
         stopGettingStats={this.stopGettingStats}
         enableVideoStats={enableVideoStats}
-        allUsersWithoutStream={allUsersWithoutStream}
+        allUsersWithoutStream={mappedUsersWithoutWebcam}
       />
     );
   }

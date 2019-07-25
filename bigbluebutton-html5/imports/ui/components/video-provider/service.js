@@ -99,7 +99,8 @@ class VideoService {
   }
 
   getAllUsersWithoutStream() {
-    return Users.find({ hasStream: false }).fetch();
+    return Users.find({ hasStream: false,
+      connectionStatus: 'online' }).fetch();
   }
 
   webcamOnlyModerator() {

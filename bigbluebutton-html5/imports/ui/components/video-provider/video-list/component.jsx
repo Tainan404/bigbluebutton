@@ -79,7 +79,7 @@ class VideoList extends Component {
 
   componentDidMount() {
     console.error('montei');
-    
+
     const { webcamDraggableDispatch } = this.props;
     webcamDraggableDispatch(
       {

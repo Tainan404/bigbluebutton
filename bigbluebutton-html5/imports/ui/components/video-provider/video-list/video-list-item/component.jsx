@@ -41,17 +41,16 @@ class VideoListItem extends Component {
   }
 
   componentDidMount() {
-    const { onMount, webcamDraggableDispatch, user } = this.props;    
+    const { onMount, webcamDraggableDispatch } = this.props;
     webcamDraggableDispatch(
       {
         type: 'setVideoRef',
         value: this.videoTag,
       },
     );
-      console.error(user.hasStream);
-      
+
+    onMount(this.videoTag);
     if (this.videoTag) {
-      onMount(this.videoTag);
       this.videoTag.addEventListener('loadeddata', () => this.setVideoIsReady());
     }
   }
@@ -145,8 +144,7 @@ class VideoListItem extends Component {
       webcamDraggableState,
     } = this.props;
     const availableActions = this.getAvailableActions();
-    const enableVideoMenu = Meteor.settings.public.kurento.enableVideoMenu || false;
-
+    const enableVideoMenu = Meteor.settings.public.kurento.enableVideoMenu || false;    
     const result = browser();
     const isFirefox = (result && result.name) ? result.name.includes('firefox') : false;
 
@@ -156,9 +154,11 @@ class VideoListItem extends Component {
         [styles.talking]: user.isTalking,
       })}
       >
-        {!videoIsReady && <div className={styles.connecting} />}
+        {(!videoIsReady && user.hasVideoStream) && <div className={styles.connecting} />}
+        {!user.hasVideoStream && <div className={styles.userIcon} />}
         {
-          user.hasStream && (<video
+          user.hasVideoStream && (
+          <video
             muted
             className={cx({
               [styles.media]: true,
@@ -168,7 +168,8 @@ class VideoListItem extends Component {
             ref={(ref) => { this.videoTag = ref; }}
             autoPlay
             playsInline
-          />)
+          />
+          )
         }
         <div className={styles.info}>
           {enableVideoMenu && availableActions.length >= 3
