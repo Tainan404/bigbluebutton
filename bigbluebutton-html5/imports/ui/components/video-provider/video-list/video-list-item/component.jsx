@@ -144,7 +144,7 @@ class VideoListItem extends Component {
       webcamDraggableState,
     } = this.props;
     const availableActions = this.getAvailableActions();
-    const enableVideoMenu = Meteor.settings.public.kurento.enableVideoMenu || false;    
+    const enableVideoMenu = Meteor.settings.public.kurento.enableVideoMenu || false;
     const result = browser();
     const isFirefox = (result && result.name) ? result.name.includes('firefox') : false;
 
