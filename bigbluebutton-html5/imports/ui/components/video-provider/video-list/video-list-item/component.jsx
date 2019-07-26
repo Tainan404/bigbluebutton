@@ -155,7 +155,11 @@ class VideoListItem extends Component {
       })}
       >
         {(!videoIsReady && user.hasVideoStream) && <div className={styles.connecting} />}
-        {!user.hasVideoStream && <div className={styles.userIcon} />}
+        {!user.hasVideoStream && (
+        <div className={styles.userIcon}>
+          <img src={user.avatar} className={styles.image} alt="avatar icon" />
+        </div>
+        )}
         {
           user.hasVideoStream && (
           <video

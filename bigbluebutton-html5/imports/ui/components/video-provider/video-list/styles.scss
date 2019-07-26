@@ -167,6 +167,12 @@
   }
 }
 
+.image {
+  position: absolute;
+  height: 100%;
+  margin-left: -50%;
+}
+
 .WithoutWebcam {
   @extend %media-area;
   position: absolute;
