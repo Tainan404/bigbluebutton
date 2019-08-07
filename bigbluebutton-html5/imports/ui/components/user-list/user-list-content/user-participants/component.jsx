@@ -68,21 +68,18 @@ class UserParticipants extends Component {
     this.selectedIndex = -1;
 
     this.getScrollContainerRef = this.getScrollContainerRef.bind(this);
+    this.rove = this.rove.bind(this);
     this.focusUserItem = this.focusUserItem.bind(this);
     this.changeState = this.changeState.bind(this);
     this.getUsers = this.getUsers.bind(this);
   }
 
   componentDidMount() {
-    const { compact, roving, users } = this.props;
+    const { compact } = this.props;
     if (!compact) {
       this.refScrollContainer.addEventListener(
         'keydown',
-        event => roving(
-          event,
-          users.length,
-          this.changeState,
-        ),
+        this.rove,
       );
     }
   }
@@ -90,6 +87,7 @@ class UserParticipants extends Component {
   shouldComponentUpdate(nextProps, nextState) {
     const isPropsEqual = _.isEqual(this.props, nextProps);
     const isStateEqual = _.isEqual(this.state, nextState);
+
     return !isPropsEqual || !isStateEqual;
   }
 
@@ -176,6 +174,12 @@ class UserParticipants extends Component {
     ));
   }
 
+  rove(event) {
+    const { roving, users } = this.props;
+    const { index } = this.state;
+    roving(event, users.length, index, this.changeState);
+  }
+
   focusUserItem(index) {
     if (!this.userRefs[index]) return;
 
@@ -230,7 +234,6 @@ class UserParticipants extends Component {
         }
         <div
           className={styles.scrollableList}
-          role="list"
           tabIndex={0}
           ref={(ref) => { this.refScrollContainer = ref; }}
         >

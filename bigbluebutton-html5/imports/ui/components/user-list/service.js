@@ -400,8 +400,11 @@ const muteAllExceptPresenter = (userId) => { makeCall('muteAllExceptPresenter', 
 
 const changeRole = (userId, role) => { makeCall('changeRole', userId, role); };
 
-const roving = (event, itemCount, changeState) => {
-  if (document.activeElement.getAttribute('data-isopen') === 'true') {
+const roving = (event, itemCount, index, changeState) => {
+  this.selectedIndex = index;
+  const menuOpen = Session.get('dropdownOpen') || false;
+
+  if (menuOpen) {
     const menuChildren = document.activeElement.getElementsByTagName('li');
 
     if ([KEY_CODES.ESCAPE, KEY_CODES.ARROW_LEFT].includes(event.keyCode)) {
@@ -422,10 +425,6 @@ const roving = (event, itemCount, changeState) => {
     }
 
     return;
-  }
-
-  if (this.selectedIndex === undefined) {
-    this.selectedIndex = -1;
   }
 
   if ([KEY_CODES.ESCAPE, KEY_CODES.TAB].includes(event.keyCode)) {

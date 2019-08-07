@@ -113,6 +113,7 @@ const propTypes = {
 };
 
 const CHAT_ENABLED = Meteor.settings.public.chat.enabled;
+const noop = () => {};
 
 class UserDropdown extends PureComponent {
   /**
@@ -156,6 +157,7 @@ class UserDropdown extends PureComponent {
   }
 
   onActionsShow() {
+    Session.set('dropdownOpen', true);
     const { getScrollContainerRef } = this.props;
     const dropdown = this.getDropdownMenuParent();
     const scrollContainer = getScrollContainerRef();
@@ -178,6 +180,7 @@ class UserDropdown extends PureComponent {
   }
 
   onActionsHide(callback) {
+    Session.set('dropdownOpen', false);
     const { getScrollContainerRef } = this.props;
 
     this.setState({
@@ -192,6 +195,7 @@ class UserDropdown extends PureComponent {
     if (callback) {
       return callback;
     }
+    return noop;
   }
 
   getUsersActions() {
@@ -439,7 +443,8 @@ class UserDropdown extends PureComponent {
       );
 
       if (!isDropdownVisible) {
-        const offsetPageTop = (dropdownTrigger.offsetTop + dropdownTrigger.offsetHeight) - scrollContainer.scrollTop;
+        const { offsetTop, offsetHeight } = dropdownTrigger;
+        const offsetPageTop = (offsetTop + offsetHeight) - scrollContainer.scrollTop;
 
         nextState.dropdownOffset = window.innerHeight - offsetPageTop;
         nextState.dropdownDirection = 'bottom';
