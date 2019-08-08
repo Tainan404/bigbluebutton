@@ -400,7 +400,7 @@ const muteAllExceptPresenter = (userId) => { makeCall('muteAllExceptPresenter', 
 
 const changeRole = (userId, role) => { makeCall('changeRole', userId, role); };
 
-const roving = (event, itemCount, index, changeState) => {
+const roving = (event, itemCount, index = -1, changeState) => {
   this.selectedIndex = index;
   const menuOpen = Session.get('dropdownOpen') || false;
 
