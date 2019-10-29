@@ -6,22 +6,25 @@ import update from 'immutability-helper';
 import cx from 'classnames';
 import _ from 'lodash';
 import logger from '/imports/startup/client/logger';
+import browser from 'browser-detect';
 
 import { notify } from '/imports/ui/services/notification';
 import ModalFullscreen from '/imports/ui/components/modal/fullscreen/component';
 import { withModalMounter } from '/imports/ui/components/modal/service';
 import Icon from '/imports/ui/components/icon/component';
-import ButtonBase from '/imports/ui/components/button/base/component';
+import Button from '/imports/ui/components/button/component';
 import Checkbox from '/imports/ui/components/checkbox/component';
 import { styles } from './styles.scss';
 
 const propTypes = {
   intl: intlShape.isRequired,
+  mountModal: PropTypes.func.isRequired,
   defaultFileName: PropTypes.string.isRequired,
   fileSizeMin: PropTypes.number.isRequired,
   fileSizeMax: PropTypes.number.isRequired,
   handleSave: PropTypes.func.isRequired,
-  fileValidMimeTypes: PropTypes.arrayOf(PropTypes.string).isRequired,
+  dispatchTogglePresentationDownloadable: PropTypes.func.isRequired,
+  fileValidMimeTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
   presentations: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
     filename: PropTypes.string.isRequired,
@@ -46,9 +49,13 @@ const intlMessages = defineMessages({
     id: 'app.presentationUploder.message',
     description: 'message warning the types of files accepted',
   },
+  uploadLabel: {
+    id: 'app.presentationUploder.uploadLabel',
+    description: 'confirm label when presentations are to be uploaded',
+  },
   confirmLabel: {
     id: 'app.presentationUploder.confirmLabel',
-    description: 'used in the button that start the upload of the new presentation',
+    description: 'confirm label when no presentations are to be uploaded',
   },
   confirmDesc: {
     id: 'app.presentationUploder.confirmDesc',
@@ -66,9 +73,17 @@ const intlMessages = defineMessages({
     id: 'app.presentationUploder.dropzoneLabel',
     description: 'message warning where drop files for upload',
   },
+  dropzoneImagesLabel: {
+    id: 'app.presentationUploder.dropzoneImagesLabel',
+    description: 'message warning where drop images for upload',
+  },
   browseFilesLabel: {
     id: 'app.presentationUploder.browseFilesLabel',
     description: 'message use on the file browser',
+  },
+  browseImagesLabel: {
+    id: 'app.presentationUploder.browseImagesLabel',
+    description: 'message use on the image browser',
   },
   fileToUpload: {
     id: 'app.presentationUploder.fileToUpload',
@@ -77,6 +92,10 @@ const intlMessages = defineMessages({
   genericError: {
     id: 'app.presentationUploder.genericError',
     description: 'generic error while uploading/converting',
+  },
+  rejectedError: {
+    id: 'app.presentationUploder.rejectedError',
+    description: 'some files rejected, please check the file mime types',
   },
   uploadProcess: {
     id: 'app.presentationUploder.upload.progress',
@@ -113,7 +132,41 @@ const intlMessages = defineMessages({
     id: 'app.presentationUploder.conversion.pageCountExceeded',
     description: 'warns the user that the conversion failed because of the page count',
   },
+  isDownloadable: {
+    id: 'app.presentationUploder.isDownloadableLabel',
+    description: 'presentation is available for downloading by all viewers',
+  },
+  isNotDownloadable: {
+    id: 'app.presentationUploder.isNotDownloadableLabel',
+    description: 'presentation is not available for downloading the viewers',
+  },
+  removePresentation: {
+    id: 'app.presentationUploder.removePresentationLabel',
+    description: 'select to delete this presentation',
+  },
+  setAsCurrentPresentation: {
+    id: 'app.presentationUploder.setAsCurrentPresentation',
+    description: 'set this presentation to be the current one',
+  },
+  status: {
+    id: 'app.presentationUploder.tableHeading.status',
+    description: 'aria label status table heading',
+  },
+  options: {
+    id: 'app.presentationUploder.tableHeading.options',
+    description: 'aria label for options table heading',
+  },
+  filename: {
+    id: 'app.presentationUploder.tableHeading.filename',
+    description: 'aria label for file name table heading',
+  },
 });
+
+const BROWSER_RESULTS = browser();
+const isMobileBrowser = (BROWSER_RESULTS ? BROWSER_RESULTS.mobile : false)
+  || (BROWSER_RESULTS && BROWSER_RESULTS.os
+    ? BROWSER_RESULTS.os.includes('Android') // mobile flag doesn't always work
+    : false);
 
 class PresentationUploader extends Component {
   constructor(props) {
@@ -133,9 +186,33 @@ class PresentationUploader extends Component {
     this.handleFiledrop = this.handleFiledrop.bind(this);
     this.handleCurrentChange = this.handleCurrentChange.bind(this);
     this.handleRemove = this.handleRemove.bind(this);
+    this.toggleDownloadable = this.toggleDownloadable.bind(this);
 
     this.updateFileKey = this.updateFileKey.bind(this);
     this.deepMergeUpdateFileKey = this.deepMergeUpdateFileKey.bind(this);
+
+    this.releaseActionsOnPresentationError = this.releaseActionsOnPresentationError.bind(this);
+  }
+
+  componentDidUpdate() {
+    this.releaseActionsOnPresentationError();
+  }
+
+  releaseActionsOnPresentationError() {
+    const {
+      presentations,
+      disableActions,
+    } = this.state;
+
+    presentations.forEach((presentation) => {
+      if (!presentation.conversion.done && presentation.conversion.error) {
+        if (disableActions) {
+          this.setState({
+            disableActions: false,
+          });
+        }
+      }
+    });
   }
 
   updateFileKey(id, key, value, operation = '$set') {
@@ -145,12 +222,11 @@ class PresentationUploader extends Component {
       return fileIndex === -1 ? false : {
         presentations: update(presentations, {
           [fileIndex]: {
-            $apply: file =>
-              update(file, {
-                [key]: {
-                  [operation]: value,
-                },
-              }),
+            $apply: file => update(file, {
+              [key]: {
+                [operation]: value,
+              },
+            }),
           },
         }),
       };
@@ -169,8 +245,9 @@ class PresentationUploader extends Component {
   }
 
   handleConfirm() {
-    const { mountModal } = this.props;
-    const presentationsToSave = this.state.presentations
+    const { mountModal, intl, handleSave } = this.props;
+    const { disableActions, presentations, oldCurrentId } = this.state;
+    const presentationsToSave = presentations
       .filter(p => !p.upload.error && !p.conversion.error);
 
     this.setState({
@@ -179,40 +256,46 @@ class PresentationUploader extends Component {
       presentations: presentationsToSave,
     });
 
-    return this.props.handleSave(presentationsToSave)
-      .then(() => {
-        const hasError = this.state.presentations.some(p => p.upload.error || p.conversion.error);
-        if (!hasError) {
+    if (!disableActions) {
+      return handleSave(presentationsToSave)
+        .then(() => {
+          const hasError = presentations.some(p => p.upload.error || p.conversion.error);
+          if (!hasError) {
+            this.setState({
+              disableActions: false,
+              preventClosing: false,
+            });
+
+            mountModal(null);
+            return;
+          }
+
+          // if there's error we don't want to close the modal
           this.setState({
             disableActions: false,
-            preventClosing: false,
+            preventClosing: true,
+          }, () => {
+            // if the selected current has error we revert back to the old one
+            const newCurrent = presentations.find(p => p.isCurrent);
+            if (newCurrent.upload.error || newCurrent.conversion.error) {
+              this.handleCurrentChange(oldCurrentId);
+            }
           });
+        })
+        .catch((error) => {
+          notify(intl.formatMessage(intlMessages.genericError), 'error');
+          logger.error({
+            logCode: 'presentationuploader_component_save_error',
+            extraInfo: { error },
+          }, 'Presentation uploader catch error on confirm');
 
-          return mountModal(null);
-        }
-
-        // if theres error we dont want to close the modal
-        this.setState({
-          disableActions: false,
-          preventClosing: true,
-        }, () => {
-          // if the selected current has error we revert back to the old one
-          const newCurrent = this.state.presentations.find(p => p.isCurrent);
-          if (newCurrent.upload.error || newCurrent.conversion.error) {
-            this.handleCurrentChange(this.state.oldCurrentId);
-          }
+          this.setState({
+            disableActions: false,
+            preventClosing: true,
+          });
         });
-      })
-      .catch((error) => {
-        notify(this.props.intl.formatMessage(intlMessages.genericError), 'error');
-
-        logger.error(error);
-
-        this.setState({
-          disableActions: false,
-          preventClosing: true,
-        });
-      });
+    }
+    return null;
   }
 
   handleDismiss() {
@@ -228,12 +311,21 @@ class PresentationUploader extends Component {
     });
   }
 
-  handleFiledrop(files) {
-    const presentationsToUpload = files.map((file) => {
+  handleFiledrop(files, files2) {
+    const { fileValidMimeTypes, intl } = this.props;
+    const validMimes = fileValidMimeTypes.map(fileValid => fileValid.mime);
+    const validExtentions = fileValidMimeTypes.map(fileValid => fileValid.extension);
+    const [accepted, rejected] = _.partition(files
+      .concat(files2), f => (
+      validMimes.includes(f.type) || validExtentions.includes(`.${f.name.split('.').pop()}`)
+    ));
+
+    const presentationsToUpload = accepted.map((file) => {
       const id = _.uniqueId(file.name);
 
       return {
         file,
+        isDownloadable: false, // by default new presentations are set not to be downloadable
         id,
         filename: file.name,
         isCurrent: false,
@@ -275,6 +367,11 @@ class PresentationUploader extends Component {
         this.handleCurrentChange(presentationsToUpload[0].id);
       }
     });
+
+
+    if (rejected.length > 0) {
+      notify(intl.formatMessage(intlMessages.rejectedError), 'error');
+    }
   }
 
   handleCurrentChange(id) {
@@ -325,27 +422,55 @@ class PresentationUploader extends Component {
     });
   }
 
-  renderPresentationList() {
+  toggleDownloadable(item) {
+    const { dispatchTogglePresentationDownloadable } = this.props;
     const { presentations } = this.state;
 
+    const oldDownloadableState = item.isDownloadable;
+
+    const outOfDatePresentationIndex = presentations.findIndex(p => p.id === item.id);
+    const commands = {};
+    commands[outOfDatePresentationIndex] = {
+      $apply: (presentation) => {
+        const p = presentation;
+        p.isDownloadable = !oldDownloadableState;
+        return p;
+      },
+    };
+    const presentationsUpdated = update(presentations, commands);
+
+    this.setState({
+      presentations: presentationsUpdated,
+    });
+
+    // If the presentation has not be uploaded yet, adjusting the state suffices
+    // otherwise set previously uploaded presentation to [not] be downloadable
+    if (item.upload.done) {
+      dispatchTogglePresentationDownloadable(item, !oldDownloadableState);
+    }
+  }
+
+  renderPresentationList() {
+    const { presentations } = this.state;
+    const { intl } = this.props;
+
     const presentationsSorted = presentations
-      .sort((a, b) => {
-        // Sort by ID first so files with the same name have the same order
-        if (a.id > b.id) {
-          return 1;
-        }
-        if (a.id < b.id) {
-          return -1;
-        }
-        return 0;
-      })
-      .sort((a, b) => this.isDefault(b));
+      .sort((a, b) => a.uploadTimestamp - b.uploadTimestamp);
 
     return (
       <div className={styles.fileList}>
         <table className={styles.table}>
+          <thead>
+            <tr>
+              <th className={styles.visuallyHidden} colSpan={3}>
+                {intl.formatMessage(intlMessages.filename)}
+              </th>
+              <th className={styles.visuallyHidden}>{intl.formatMessage(intlMessages.status)}</th>
+              <th className={styles.visuallyHidden}>{intl.formatMessage(intlMessages.options)}</th>
+            </tr>
+          </thead>
           <tbody>
-            { presentationsSorted.map(item => this.renderPresentationItem(item))}
+            {presentationsSorted.map(item => this.renderPresentationItem(item))}
           </tbody>
         </table>
       </div>
@@ -354,7 +479,6 @@ class PresentationUploader extends Component {
 
   renderPresentationItemStatus(item) {
     const { intl } = this.props;
-
     if (!item.upload.done && item.upload.progress === 0) {
       return intl.formatMessage(intlMessages.fileToUpload);
     }
@@ -370,7 +494,7 @@ class PresentationUploader extends Component {
       return intl.formatMessage(errorMessage);
     }
 
-    if (item.conversion.done && item.conversion.error) {
+    if (!item.conversion.done && item.conversion.error) {
       const errorMessage = intlMessages[item.conversion.status] || intlMessages.genericError;
       return intl.formatMessage(errorMessage);
     }
@@ -383,8 +507,8 @@ class PresentationUploader extends Component {
         });
       }
 
-      const conversionStatusMessage =
-        intlMessages[item.conversion.status] || intlMessages.genericConversionStatus;
+      const conversionStatusMessage = intlMessages[item.conversion.status]
+        || intlMessages.genericConversionStatus;
       return intl.formatMessage(conversionStatusMessage);
     }
 
@@ -393,6 +517,7 @@ class PresentationUploader extends Component {
 
   renderPresentationItem(item) {
     const { disableActions, oldCurrentId } = this.state;
+    const { intl } = this.props;
 
     const isActualCurrent = item.id === oldCurrentId;
     const isUploading = !item.upload.done && item.upload.progress > 0;
@@ -409,7 +534,15 @@ class PresentationUploader extends Component {
     };
 
     const hideRemove = this.isDefault(item);
+    const formattedDownloadableLabel = item.isDownloadable
+      ? intl.formatMessage(intlMessages.isDownloadable)
+      : intl.formatMessage(intlMessages.isNotDownloadable);
 
+    const formattedDownloadableAriaLabel = `${formattedDownloadableLabel} ${item.filename}`;
+
+    const isDownloadableStyle = item.isDownloadable
+      ? cx(styles.itemAction, styles.itemActionRemove, styles.checked)
+      : cx(styles.itemAction, styles.itemActionRemove);
     return (
       <tr
         key={item.id}
@@ -419,13 +552,15 @@ class PresentationUploader extends Component {
           <Icon iconName="file" />
         </td>
         {
-          isActualCurrent ?
-            <th className={styles.tableItemCurrent}>
-              <span className={styles.currentLabel}>
-                {this.props.intl.formatMessage(intlMessages.current)}
-              </span>
-            </th>
-          : null
+          isActualCurrent
+            ? (
+              <th className={styles.tableItemCurrent}>
+                <span className={styles.currentLabel}>
+                  {intl.formatMessage(intlMessages.current)}
+                </span>
+              </th>
+            )
+            : null
         }
         <th className={styles.tableItemName} colSpan={!isActualCurrent ? 2 : 0}>
           <span>{item.filename}</span>
@@ -433,28 +568,75 @@ class PresentationUploader extends Component {
         <td className={styles.tableItemStatus} colSpan={hasError ? 2 : 0}>
           {this.renderPresentationItemStatus(item)}
         </td>
-        { hasError ? null : (
+        {hasError ? null : (
           <td className={styles.tableItemActions}>
-            <Checkbox
-              disabled={disableActions}
-              ariaLabel="Set as current presentation"
-              className={styles.itemAction}
-              checked={item.isCurrent}
-              onChange={() => this.handleCurrentChange(item.id)}
+            <Button
+              className={isDownloadableStyle}
+              label={formattedDownloadableLabel}
+              aria-label={formattedDownloadableAriaLabel}
+              hideLabel
+              size="sm"
+              icon={item.isDownloadable ? 'download' : 'download-off'}
+              onClick={() => this.toggleDownloadable(item)}
             />
-            { hideRemove ? null : (
-              <ButtonBase
+            <Checkbox
+              ariaLabel={`${intl.formatMessage(intlMessages.setAsCurrentPresentation)} ${item.filename}`}
+              checked={item.isCurrent}
+              className={styles.itemAction}
+              disabled={disableActions}
+              keyValue={item.id}
+              onChange={this.handleCurrentChange}
+            />
+            {hideRemove ? null : (
+              <Button
                 disabled={disableActions}
                 className={cx(styles.itemAction, styles.itemActionRemove)}
-                label="Remove presentation"
+                label={intl.formatMessage(intlMessages.removePresentation)}
+                aria-label={`${intl.formatMessage(intlMessages.removePresentation)} ${item.filename}`}
+                size="sm"
+                icon="delete"
+                hideLabel
                 onClick={() => this.handleRemove(item)}
-              >
-                <Icon iconName="delete" />
-              </ButtonBase>
+              />
             )}
           </td>
         )}
       </tr>
+    );
+  }
+
+  renderPicDropzone() {
+    const {
+      intl,
+      fileSizeMin,
+      fileSizeMax,
+    } = this.props;
+
+    const { disableActions } = this.state;
+
+    if (disableActions) return null;
+
+    return (
+      <Dropzone
+        multiple
+        className={styles.dropzone}
+        activeClassName={styles.dropzoneActive}
+        rejectClassName={styles.dropzoneReject}
+        accept="image/*"
+        minSize={fileSizeMin}
+        maxSize={fileSizeMax}
+        disablePreview
+        onDrop={this.handleFiledrop}
+      >
+        <Icon className={styles.dropzoneIcon} iconName="upload" />
+        <p className={styles.dropzoneMessage}>
+          {intl.formatMessage(intlMessages.dropzoneImagesLabel)}
+          &nbsp;
+          <span className={styles.dropzoneLink}>
+            {intl.formatMessage(intlMessages.browseImagesLabel)}
+          </span>
+        </p>
+      </Dropzone>
     );
   }
 
@@ -471,20 +653,23 @@ class PresentationUploader extends Component {
     if (disableActions) return null;
 
     return (
+      // Until the Dropzone package has fixed the mime type hover validation, the rejectClassName
+      // prop is being remove to prevent the error styles from being applied to valid file types.
+      // Error handling is being done in the onDrop prop.
       <Dropzone
         multiple
         className={styles.dropzone}
         activeClassName={styles.dropzoneActive}
-        rejectClassName={styles.dropzoneReject}
-        accept={fileValidMimeTypes.join()}
+        accept={isMobileBrowser ? '' : fileValidMimeTypes.map(fileValid => fileValid.extension)}
         minSize={fileSizeMin}
         maxSize={fileSizeMax}
-        disablePreview
+        disablepreview="true"
         onDrop={this.handleFiledrop}
       >
         <Icon className={styles.dropzoneIcon} iconName="upload" />
         <p className={styles.dropzoneMessage}>
-          {intl.formatMessage(intlMessages.dropzoneLabel)}&nbsp;
+          {intl.formatMessage(intlMessages.dropzoneLabel)}
+          &nbsp;
           <span className={styles.dropzoneLink}>
             {intl.formatMessage(intlMessages.browseFilesLabel)}
           </span>
@@ -495,7 +680,19 @@ class PresentationUploader extends Component {
 
   render() {
     const { intl } = this.props;
-    const { preventClosing, disableActions } = this.state;
+    const {
+      preventClosing, disableActions, presentations,
+    } = this.state;
+
+    let awaitingConversion = false;
+    presentations.map((presentation) => {
+      if (!presentation.conversion.done) awaitingConversion = true;
+      return null;
+    });
+
+    const confirmLabel = awaitingConversion
+      ? intl.formatMessage(intlMessages.uploadLabel)
+      : intl.formatMessage(intlMessages.confirmLabel);
 
     return (
       <ModalFullscreen
@@ -503,7 +700,7 @@ class PresentationUploader extends Component {
         preventClosing={preventClosing}
         confirm={{
           callback: this.handleConfirm,
-          label: intl.formatMessage(intlMessages.confirmLabel),
+          label: confirmLabel,
           description: intl.formatMessage(intlMessages.confirmDesc),
           disabled: disableActions,
         }}
@@ -516,7 +713,10 @@ class PresentationUploader extends Component {
       >
         <p>{intl.formatMessage(intlMessages.message)}</p>
         {this.renderPresentationList()}
-        {this.renderDropzone()}
+        <div className={styles.dropzoneWrapper}>
+          {isMobileBrowser ? this.renderPicDropzone() : null}
+          {this.renderDropzone()}
+        </div>
       </ModalFullscreen>
     );
   }

@@ -1,20 +1,16 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
-import _ from 'lodash';
+import { Session } from 'meteor/session';
 import cx from 'classnames';
-import Icon from '/imports/ui/components/icon/component';
-import BreakoutJoinConfirmation from '/imports/ui/components/breakout-join-confirmation/container';
-import Dropdown from '/imports/ui/components/dropdown/component';
-import DropdownTrigger from '/imports/ui/components/dropdown/trigger/component';
-import DropdownContent from '/imports/ui/components/dropdown/content/component';
-import DropdownList from '/imports/ui/components/dropdown/list/component';
-import DropdownListItem from '/imports/ui/components/dropdown/list/item/component';
 import { withModalMounter } from '/imports/ui/components/modal/service';
+import withShortcutHelper from '/imports/ui/components/shortcut-help/service';
+import getFromUserSettings from '/imports/ui/services/users-settings';
 import { defineMessages, injectIntl } from 'react-intl';
 import { styles } from './styles.scss';
 import Button from '../button/component';
-import RecordingIndicator from './recording-indicator/component';
+import RecordingIndicator from './recording-indicator/container';
 import SettingsDropdownContainer from './settings-dropdown/container';
+
 
 const intlMessages = defineMessages({
   toggleUserListLabel: {
@@ -29,193 +25,94 @@ const intlMessages = defineMessages({
     id: 'app.navBar.toggleUserList.newMessages',
     description: 'label for toggleUserList btn when showing red notification',
   },
-  recordingSession: {
-    id: 'app.navBar.recording',
-    description: 'label for when the session is being recorded',
-  },
-  recordingIndicatorOn: {
-    id: 'app.navBar.recording.on',
-    description: 'label for indicator when the session is being recorded',
-  },
-  recordingIndicatorOff: {
-    id: 'app.navBar.recording.off',
-    description: 'label for indicator when the session is not being recorded',
-  },
 });
 
 const propTypes = {
-  presentationTitle: PropTypes.string.isRequired,
-  hasUnreadMessages: PropTypes.bool.isRequired,
-  beingRecorded: PropTypes.object.isRequired,
+  presentationTitle: PropTypes.string,
+  hasUnreadMessages: PropTypes.bool,
+  shortcuts: PropTypes.string,
 };
 
 const defaultProps = {
   presentationTitle: 'Default Room Title',
   hasUnreadMessages: false,
-  beingRecorded: false,
+  shortcuts: '',
 };
 
-const SHORTCUTS_CONFIG = Meteor.settings.public.app.shortcuts;
-const TOGGLE_USERLIST_AK = SHORTCUTS_CONFIG.toggleUserList.accesskey;
-
-const openBreakoutJoinConfirmation = (breakout, breakoutName, mountModal) =>
-  mountModal(<BreakoutJoinConfirmation
-    breakout={breakout}
-    breakoutName={breakoutName}
-  />);
-
-const closeBreakoutJoinConfirmation = mountModal =>
-  mountModal(null);
-
-class NavBar extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      isActionsOpen: false,
-      didSendBreakoutInvite: false,
-    };
-
-    this.handleToggleUserList = this.handleToggleUserList.bind(this);
-  }
-
-  handleToggleUserList() {
-    this.props.toggleUserList();
-  }
-
-  componentDidUpdate(oldProps) {
-    const {
-      breakouts,
-      getBreakoutJoinURL,
-      isBreakoutRoom,
-    } = this.props;
-
-    const hadBreakouts = oldProps.breakouts.length;
-    const hasBreakouts = breakouts.length;
-
-    if (!hasBreakouts && hadBreakouts) {
-      closeBreakoutJoinConfirmation(this.props.mountModal);
-    }
-
-    breakouts.forEach((breakout) => {
-      if (!breakout.users) {
-        return;
-      }
-
-      if (!this.state.didSendBreakoutInvite && !isBreakoutRoom) {
-        this.inviteUserToBreakout(breakout);
-      }
-    });
-
-    if (!breakouts.length && this.state.didSendBreakoutInvite) {
-      this.setState({ didSendBreakoutInvite: false });
-    }
-  }
-
-  inviteUserToBreakout(breakout) {
-    const {
-      mountModal,
-    } = this.props;
-
-    this.setState({ didSendBreakoutInvite: true }, () => {
-      openBreakoutJoinConfirmation.call(this, breakout, breakout.name, mountModal);
-    });
-  }
-
-  renderPresentationTitle() {
-    const {
-      breakouts,
-      isBreakoutRoom,
-      presentationTitle,
-    } = this.props;
-
-    if (isBreakoutRoom || !breakouts.length) {
-      return (
-        <h1 className={styles.presentationTitle}>{presentationTitle}</h1>
-      );
-    }
-    const breakoutItems = breakouts.map(breakout => this.renderBreakoutItem(breakout));
-
-    return (
-      <Dropdown isOpen={this.state.isActionsOpen}>
-        <DropdownTrigger>
-          <h1 className={cx(styles.presentationTitle, styles.dropdownBreakout)}>
-            {presentationTitle} <Icon iconName="down-arrow" />
-          </h1>
-        </DropdownTrigger>
-        <DropdownContent
-          placement="bottom"
-        >
-          <DropdownList>
-            {breakoutItems}
-          </DropdownList>
-        </DropdownContent>
-      </Dropdown>
+class NavBar extends PureComponent {
+  static handleToggleUserList() {
+    Session.set(
+      'openPanel',
+      Session.get('openPanel') !== ''
+        ? ''
+        : 'userlist',
     );
+    Session.set('idChatOpen', '');
   }
 
-  renderBreakoutItem(breakout) {
+  componentDidMount() {
     const {
-      mountModal,
+      processOutsideToggleRecording,
+      connectRecordingObserver,
     } = this.props;
 
-    const breakoutName = breakout.name;
+    if (Meteor.settings.public.allowOutsideCommands.toggleRecording
+      || getFromUserSettings('outsideToggleRecording', false)) {
+      connectRecordingObserver();
+      window.addEventListener('message', processOutsideToggleRecording);
+    }
+  }
 
-    return (
-      <DropdownListItem
-        className={styles.actionsHeader}
-        key={_.uniqueId('action-header')}
-        label={breakoutName}
-        onClick={openBreakoutJoinConfirmation.bind(this, breakout, breakoutName, mountModal)}
-      />
-    );
+  componentWillUnmount() {
+    clearInterval(this.interval);
   }
 
   render() {
     const {
-      hasUnreadMessages, beingRecorded, isExpanded, intl,
+      hasUnreadMessages,
+      isExpanded,
+      intl,
+      shortcuts: TOGGLE_USERLIST_AK,
+      mountModal,
+      presentationTitle,
+      amIModerator,
     } = this.props;
 
-    const recordingMessage = beingRecorded.recording ? 'recordingIndicatorOn' : 'recordingIndicatorOff';
 
     const toggleBtnClasses = {};
     toggleBtnClasses[styles.btn] = true;
     toggleBtnClasses[styles.btnWithNotificationDot] = hasUnreadMessages;
+
+    let ariaLabel = intl.formatMessage(intlMessages.toggleUserListAria);
+    ariaLabel += hasUnreadMessages ? (` ${intl.formatMessage(intlMessages.newMessages)}`) : '';
 
     return (
       <div className={styles.navbar}>
         <div className={styles.left}>
           <Button
             data-test="userListToggleButton"
-            onClick={this.handleToggleUserList}
+            onClick={NavBar.handleToggleUserList}
             ghost
             circle
             hideLabel
             label={intl.formatMessage(intlMessages.toggleUserListLabel)}
-            aria-label={intl.formatMessage(intlMessages.toggleUserListAria)}
+            aria-label={ariaLabel}
             icon="user"
             className={cx(toggleBtnClasses)}
             aria-expanded={isExpanded}
-            aria-describedby="newMessage"
             accessKey={TOGGLE_USERLIST_AK}
-          />
-          <div
-            id="newMessage"
-            aria-label={hasUnreadMessages ? intl.formatMessage(intlMessages.newMessages) : null}
           />
         </div>
         <div className={styles.center}>
-          {this.renderPresentationTitle()}
-          {beingRecorded.record ?
-            <span className={styles.presentationTitleSeparator}>|</span>
-          : null}
+          <h1 className={styles.presentationTitle}>{presentationTitle}</h1>
+
           <RecordingIndicator
-            {...beingRecorded}
-            title={intl.formatMessage(intlMessages[recordingMessage])}
+            mountModal={mountModal}
+            amIModerator={amIModerator}
           />
         </div>
         <div className={styles.right}>
-          <SettingsDropdownContainer />
+          <SettingsDropdownContainer amIModerator={amIModerator} />
         </div>
       </div>
     );
@@ -224,4 +121,4 @@ class NavBar extends Component {
 
 NavBar.propTypes = propTypes;
 NavBar.defaultProps = defaultProps;
-export default withModalMounter(injectIntl(NavBar));
+export default withShortcutHelper(withModalMounter(injectIntl(NavBar)), 'toggleUserList');

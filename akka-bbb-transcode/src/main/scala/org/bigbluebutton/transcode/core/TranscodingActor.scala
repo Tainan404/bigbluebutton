@@ -2,18 +2,18 @@ package org.bigbluebutton.transcode.core
 
 import akka.actor._
 import akka.actor.ActorLogging
-import org.bigbluebutton.endpoint.redis.RedisPublisher
 import org.bigbluebutton.transcode.api._
 import org.bigbluebutton.SystemConfiguration
 import org.bigbluebutton.transcode.core.apps.TranscodingObserverApp
+import org.bigbluebutton.common2.redis.MessageSender
 
 object TranscodingActor extends SystemConfiguration {
-  def props(system: ActorSystem, messageSender: RedisPublisher): Props =
+  def props(system: ActorSystem, messageSender: MessageSender): Props =
     Props(classOf[TranscodingActor], system, messageSender)
 }
 
-class TranscodingActor(val system: ActorSystem, messageSender: RedisPublisher)
-    extends Actor with ActorLogging with TranscodingObserverApp {
+class TranscodingActor(val system: ActorSystem, messageSender: MessageSender)
+  extends Actor with ActorLogging with TranscodingObserverApp {
   val transcodersModel = new TranscodersModel()
 
   val messageSenderActor = context.actorOf(MessageSenderActor.props(messageSender), "bbb-sender-actor")

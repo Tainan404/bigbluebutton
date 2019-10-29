@@ -12,7 +12,8 @@ public interface RecordingServiceGW {
 
   String getRecordings2x(ArrayList<RecordingMetadata> recs);
   Option<RecordingMetadata> getRecordingMetadata(File xml);
-  void saveRecordingMetadata(File xml, RecordingMetadata metadata);
-  String getRecordingTextTracks(String recordId, String captionsDir);
+  boolean saveRecordingMetadata(File xml, RecordingMetadata metadata);
+  boolean validateTextTrackSingleUseToken(String recordId, String caption, String token);
+  String getRecordingTextTracks(String recordId, String captionsDir, String captionBasUrl);
   String putRecordingTextTrack(UploadedTrack track);
 }

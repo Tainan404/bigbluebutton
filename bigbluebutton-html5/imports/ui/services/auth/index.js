@@ -4,6 +4,7 @@ import { Tracker } from 'meteor/tracker';
 import Storage from '/imports/ui/services/storage/session';
 
 import Users from '/imports/api/users';
+import logger from '/imports/startup/client/logger';
 import { makeCall } from '/imports/ui/services/api';
 
 const CONNECTION_TIMEOUT = Meteor.settings.public.app.connectionTimeout;
@@ -134,10 +135,20 @@ class Auth {
       fullname: this.fullname,
       confname: this.confname,
       externUserID: this.externUserID,
+      uniqueClientSession: this.uniqueClientSession,
     };
   }
 
-  set(meetingId, requesterUserId, requesterToken, logoutURL, sessionToken, fullname, externUserID, confname) {
+  set(
+    meetingId,
+    requesterUserId,
+    requesterToken,
+    logoutURL,
+    sessionToken,
+    fullname,
+    externUserID,
+    confname,
+  ) {
     this.meetingID = meetingId;
     this.userID = requesterUserId;
     this.token = requesterToken;
@@ -158,6 +169,7 @@ class Auth {
     this.fullname = null;
     this.externUserID = null;
     this.confname = null;
+    this.uniqueClientSession = null;
     return Promise.resolve(...args);
   }
 
@@ -183,7 +195,10 @@ class Auth {
 
     this.loggedIn = false;
     return this.validateAuthToken()
-      .then(() => { this.loggedIn = true; });
+      .then(() => {
+        this.loggedIn = true;
+        this.uniqueClientSession = `${this.sessionToken}-${Math.random().toString(36).substring(6)}`;
+      });
   }
 
   validateAuthToken() {
@@ -204,10 +219,16 @@ class Auth {
         Meteor.subscribe('current-user', this.credentials);
 
         const selector = { meetingId: this.meetingID, userId: this.userID };
-        const User = Users.findOne(selector);
-
+        const fields = {
+          intId: 1, ejected: 1, validated: 1, connectionStatus: 1,
+        };
+        const User = Users.findOne(selector, { fields });
         // Skip in case the user is not in the collection yet or is a dummy user
-        if (!User || !('intId' in User)) return;
+        if (!User || !('intId' in User)) {
+          logger.info({ logCode: 'auth_service_resend_validateauthtoken' }, 're-send validateAuthToken for delayed authentication');
+          makeCall('validateAuthToken');
+          return;
+        }
 
         if (User.ejected) {
           reject({
@@ -221,12 +242,23 @@ class Auth {
           computation.stop();
           clearTimeout(validationTimeout);
           // setTimeout to prevent race-conditions with subscription
-          setTimeout(resolve, 100);
+          setTimeout(() => resolve(true), 100);
         }
       });
-
       makeCall('validateAuthToken');
     });
+  }
+
+  authenticateURL(url) {
+    let authURL = url;
+    if (authURL.indexOf('sessionToken=') === -1) {
+      if (authURL.indexOf('?') !== -1) {
+        authURL = `${authURL}&sessionToken=${this.sessionToken}`;
+      } else {
+        authURL = `${authURL}?sessionToken=${this.sessionToken}`;
+      }
+    }
+    return authURL;
   }
 }
 

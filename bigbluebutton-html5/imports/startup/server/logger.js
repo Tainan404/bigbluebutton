@@ -1,33 +1,26 @@
 import { Meteor } from 'meteor/meteor';
-import Winston from 'winston';
+import { createLogger, format, transports } from 'winston';
 
-const Logger = new Winston.Logger();
+const LOG_CONFIG = Meteor.settings.private.serverLog || {};
+const { level } = LOG_CONFIG;
 
-Logger.configure({
-  levels: {
-    error: 0, warn: 1, info: 2, verbose: 3, debug: 4,
-  },
-  colors: {
-    error: 'red',
-    warn: 'yellow',
-    info: 'green',
-    verbose: 'cyan',
-    debug: 'magenta',
-  },
-});
-
-Meteor.startup(() => {
-  const LOG_CONFIG = Meteor.settings.private.serverLog || {};
-  const { level } = LOG_CONFIG;
-
-  // console logging
-  Logger.add(Winston.transports.Console, {
-    prettyPrint: false,
-    humanReadableUnhandledException: true,
-    colorize: true,
-    handleExceptions: true,
-    level,
-  });
+const Logger = createLogger({
+  level,
+  format: format.combine(
+    format.colorize({ level: true }),
+    format.splat(),
+    format.simple(),
+  ),
+  transports: [
+    // console logging
+    new transports.Console({
+      prettyPrint: false,
+      humanReadableUnhandledException: true,
+      colorize: true,
+      handleExceptions: true,
+      level,
+    }),
+  ],
 });
 
 export default Logger;

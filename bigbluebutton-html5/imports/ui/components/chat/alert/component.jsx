@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Fragment, PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, injectIntl } from 'react-intl';
 import _ from 'lodash';
@@ -9,9 +9,11 @@ import Service from '../service';
 import { styles } from '../styles';
 
 const propTypes = {
-  disableNotify: PropTypes.bool.isRequired,
-  openChats: PropTypes.arrayOf(PropTypes.object).isRequired,
-  disableAudio: PropTypes.bool.isRequired,
+  pushAlertDisabled: PropTypes.bool.isRequired,
+  activeChats: PropTypes.arrayOf(PropTypes.object).isRequired,
+  audioAlertDisabled: PropTypes.bool.isRequired,
+  joinTimestamp: PropTypes.number.isRequired,
+  idChatOpen: PropTypes.string.isRequired,
 };
 
 const intlMessages = defineMessages({
@@ -33,50 +35,110 @@ const intlMessages = defineMessages({
   },
 });
 
-const PUBLIC_KEY = 'public';
-const PRIVATE_KEY = 'private';
+const ALERT_INTERVAL = 5000; // 5 seconds
+const ALERT_DURATION = 4000; // 4 seconds
 
-class ChatAlert extends Component {
+class ChatAlert extends PureComponent {
   constructor(props) {
     super(props);
+
+    const { joinTimestamp } = props;
+
     this.state = {
-      notified: Service.getNotified(PRIVATE_KEY),
-      publicNotified: Service.getNotified(PUBLIC_KEY),
+      alertEnabledTimestamp: joinTimestamp,
+      lastAlertTimestampByChat: {},
+      pendingNotificationsByChat: {},
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentDidUpdate(prevProps) {
     const {
-      openChats,
-      disableNotify,
+      activeChats,
+      idChatOpen,
+      joinTimestamp,
+      pushAlertDisabled,
     } = this.props;
 
-    if (nextProps.disableNotify === false && disableNotify === true) {
-      const loadMessages = {};
-      openChats
-        .forEach((c) => {
-          loadMessages[c.id] = c.unreadCounter;
-        });
-      this.setState({ notified: loadMessages });
+    const {
+      alertEnabledTimestamp,
+      lastAlertTimestampByChat,
+      pendingNotificationsByChat,
+    } = this.state;
+
+    // Avoid alerting messages received before enabling alerts
+    if (prevProps.pushAlertDisabled && !pushAlertDisabled) {
+      const newAlertEnabledTimestamp = Service.getLastMessageTimestampFromChatList(activeChats);
+      this.setAlertEnabledTimestamp(newAlertEnabledTimestamp);
       return;
     }
 
-    const notifiedToClear = {};
-    openChats
-      .filter(c => c.unreadCounter === 0)
-      .forEach((c) => {
-        notifiedToClear[c.id] = 0;
+    // Keep track of messages that was not alerted yet
+    const unalertedMessagesByChatId = {};
+
+    activeChats
+      .filter(chat => chat.userId !== idChatOpen)
+      .filter(chat => chat.unreadCounter > 0)
+      .forEach((chat) => {
+        const chatId = (chat.userId === 'public') ? 'MAIN-PUBLIC-GROUP-CHAT' : chat.userId;
+        const thisChatUnreadMessages = UnreadMessages.getUnreadMessages(chatId);
+
+        unalertedMessagesByChatId[chatId] = thisChatUnreadMessages.filter((msg) => {
+          const messageChatId = (msg.chatId === 'MAIN-PUBLIC-GROUP-CHAT') ? msg.chatId : msg.sender;
+          const retorno = (msg
+            && msg.timestamp > alertEnabledTimestamp
+            && msg.timestamp > joinTimestamp
+            && msg.timestamp > (lastAlertTimestampByChat[messageChatId] || 0)
+          );
+          return retorno;
+        });
+
+        if (!unalertedMessagesByChatId[chatId].length) delete unalertedMessagesByChatId[chatId];
       });
 
-    this.setState(({ notified }) => ({
-      notified: {
-        ...notified,
-        ...notifiedToClear,
-      },
-    }), () => {
-      Service.setNotified(PRIVATE_KEY, this.state.notified);
+    const lastUnalertedMessageTimestampByChat = {};
+    Object.keys(unalertedMessagesByChatId).forEach((chatId) => {
+      lastUnalertedMessageTimestampByChat[chatId] = unalertedMessagesByChatId[chatId]
+        .reduce(Service.maxTimestampReducer, 0);
     });
+
+    // Keep track of chats that need to be alerted now (considering alert interval)
+    const chatsWithPendingAlerts = Object.keys(lastUnalertedMessageTimestampByChat)
+      .filter(chatId => lastUnalertedMessageTimestampByChat[chatId]
+        > ((lastAlertTimestampByChat[chatId] || 0) + ALERT_INTERVAL)
+        && !(chatId in pendingNotificationsByChat));
+
+    if (idChatOpen !== prevProps.idChatOpen) {
+      this.setChatMessagesState({}, { ...lastAlertTimestampByChat });
+    }
+
+    if (!chatsWithPendingAlerts.length) return;
+
+    const newPendingNotificationsByChat = Object.assign({},
+      ...chatsWithPendingAlerts.map(chatId => ({ [chatId]: unalertedMessagesByChatId[chatId] })));
+
+    // Mark messages as alerted
+    const newLastAlertTimestampByChat = { ...lastAlertTimestampByChat };
+
+    chatsWithPendingAlerts.forEach(
+      (chatId) => {
+        newLastAlertTimestampByChat[chatId] = lastUnalertedMessageTimestampByChat[chatId];
+      },
+    );
+
+    this.setChatMessagesState(newPendingNotificationsByChat, newLastAlertTimestampByChat);
   }
+
+  setAlertEnabledTimestamp(newAlertEnabledTimestamp) {
+    const { alertEnabledTimestamp } = this.state;
+    if (newAlertEnabledTimestamp > 0 && alertEnabledTimestamp !== newAlertEnabledTimestamp) {
+      this.setState({ alertEnabledTimestamp: newAlertEnabledTimestamp });
+    }
+  }
+
+  setChatMessagesState(pendingNotificationsByChat, lastAlertTimestampByChat) {
+    this.setState({ pendingNotificationsByChat, lastAlertTimestampByChat });
+  }
+
 
   mapContentText(message) {
     const {
@@ -85,12 +147,13 @@ class ChatAlert extends Component {
     const contentMessage = message
       .map((content) => {
         if (content.text === 'PUBLIC_CHAT_CLEAR') return intl.formatMessage(intlMessages.publicChatClear);
-        /* this code is to remove html tags that come in the server's messangens */
+        /* this code is to remove html tags that come in the server's messages */
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = content.text;
         const textWithoutTag = tempDiv.innerText;
         return textWithoutTag;
       });
+
     return contentMessage;
   }
 
@@ -101,158 +164,75 @@ class ChatAlert extends Component {
         <div className={styles.contentMessage}>
           {
             this.mapContentText(message)
-            .reduce((acc, text) => [...acc, (<br />), text], []).splice(1)
+              .reduce((acc, text) => [...acc, (<br key={_.uniqueId('br_')} />), text], [])
           }
         </div>
       </div>
     );
   }
 
-  notifyPrivateChat() {
-    const {
-      disableNotify,
-      openChats,
-      intl,
-      currentChatID,
-    } = this.props;
-
-    if (disableNotify) return;
-
-    const hasUnread = ({ unreadCounter }) => unreadCounter > 0;
-    const isNotNotified = ({ id, unreadCounter }) => unreadCounter !== this.state.notified[id];
-    const isPrivate = ({ id }) => id !== PUBLIC_KEY;
-    const thisChatClosed = ({ id }) => id !== currentChatID;
-
-    const chatsNotify = openChats
-      .filter(hasUnread)
-      .filter(isNotNotified)
-      .filter(isPrivate)
-      .filter(thisChatClosed)
-      .map(({
-        id,
-        name,
-        unreadCounter,
-        ...rest
-      }) => ({
-        ...rest,
-        name,
-        unreadCounter,
-        id,
-        message: intl.formatMessage(intlMessages.appToastChatPrivate),
-      }));
-
-    return (
-      <span>
-        {
-        chatsNotify.map(({ id, message, name }) => {
-          const getChatmessages = UnreadMessages.getUnreadMessages(id)
-          .filter(({ fromTime, fromUserId }) => fromTime > (this.state.notified[fromUserId] || 0));
-
-          const reduceMessages = Service
-            .reduceAndMapGroupMessages(getChatmessages);
-
-          if (!reduceMessages.length) return null;
-
-          const flatMessages = _.flatten(reduceMessages
-            .map(msg => this.createMessage(name, msg.content)));
-          const limitingMessages = flatMessages;
-
-          return (<ChatPushAlert
-            key={id}
-            chatId={id}
-            content={limitingMessages}
-            message={<span >{message}</span>}
-            onOpen={() => {
-              this.setState(({ notified }) => ({
-                notified: {
-                  ...notified,
-                  [id]: new Date().getTime(),
-                },
-              }), () => {
-                Service.setNotified(PRIVATE_KEY, this.state.notified);
-              });
-            }}
-          />);
-        })
-        }
-      </span>
-    );
-  }
-
-  notifyPublicChat() {
-    const {
-      publicUserId,
-      intl,
-      disableNotify,
-      currentChatID,
-    } = this.props;
-
-    const publicUnread = UnreadMessages.getUnreadMessages(publicUserId);
-    const publicUnreadReduced = Service.reduceAndMapGroupMessages(publicUnread);
-
-    if (disableNotify) return;
-    if (!Service.hasUnreadMessages(publicUserId)) return;
-    if (currentChatID === PUBLIC_KEY) return;
-
-    const checkIfBeenNotified = ({ sender, time }) =>
-      time > (this.state.publicNotified[sender.id] || 0);
-
-    const chatsNotify = publicUnreadReduced
-      .map(msg => ({
-        ...msg,
-        sender: {
-          name: msg.sender ? msg.sender.name : intl.formatMessage(intlMessages.appToastChatSystem),
-          ...msg.sender,
-        },
-      }))
-      .filter(checkIfBeenNotified);
-    return (
-      <span>
-        {
-        chatsNotify.map(({ sender, time, content }) =>
-            (<ChatPushAlert
-              key={time}
-              chatId={PUBLIC_KEY}
-              name={sender.name}
-              message={
-                <span >
-                  { intl.formatMessage(intlMessages.appToastChatPublic) }
-                </span>
-              }
-              content={this.createMessage(sender.name, content)}
-              onOpen={() => {
-                this.setState(({ notified, publicNotified }) => ({
-                  ...notified,
-                  publicNotified: {
-                    ...publicNotified,
-                    [sender.id]: time,
-                  },
-                }), () => {
-                  Service.setNotified(PUBLIC_KEY, this.state.publicNotified);
-                });
-              }}
-            />))
-        }
-      </span>
-    );
-  }
-
   render() {
     const {
-      openChats,
-      disableAudio,
+      audioAlertDisabled,
+      idChatOpen,
+      pushAlertDisabled,
+      intl,
     } = this.props;
-    const unreadMessagesCount = openChats
-      .map(chat => chat.unreadCounter)
-      .reduce((a, b) => a + b, 0);
-    const shouldPlayAudio = !disableAudio && unreadMessagesCount > 0;
+
+    const {
+      pendingNotificationsByChat,
+    } = this.state;
+
+    const notCurrentTabOrMinimized = document.hidden;
+    const hasPendingNotifications = Object.keys(pendingNotificationsByChat).length > 0;
+
+    const shouldPlayChatAlert = notCurrentTabOrMinimized
+      || (hasPendingNotifications && !idChatOpen);
 
     return (
-      <span>
-        <ChatAudioAlert play={shouldPlayAudio} count={unreadMessagesCount} />
-        { this.notifyPublicChat() }
-        { this.notifyPrivateChat() }
-      </span>
+      <Fragment>
+        {
+          !audioAlertDisabled || (!audioAlertDisabled && notCurrentTabOrMinimized)
+            ? <ChatAudioAlert play={shouldPlayChatAlert} />
+            : null
+        }
+        {
+          !pushAlertDisabled
+            ? Object.keys(pendingNotificationsByChat)
+              .map((chatId) => {
+                // Only display the latest group of messages (up to 5 messages)
+                const reducedMessage = Service
+                  .reduceAndMapGroupMessages(pendingNotificationsByChat[chatId].slice(-5)).pop();
+
+                if (!reducedMessage || !reducedMessage.sender) return null;
+
+                const content = this
+                  .createMessage(reducedMessage.sender.name, reducedMessage.content);
+
+                return (
+                  <ChatPushAlert
+                    key={chatId}
+                    chatId={chatId}
+                    content={content}
+                    title={
+                      (chatId === 'MAIN-PUBLIC-GROUP-CHAT')
+                        ? <span>{intl.formatMessage(intlMessages.appToastChatPublic)}</span>
+                        : <span>{intl.formatMessage(intlMessages.appToastChatPrivate)}</span>
+                    }
+                    onOpen={
+                      () => {
+                        let pendingNotifications = pendingNotificationsByChat;
+                        delete pendingNotifications[chatId];
+                        pendingNotifications = { ...pendingNotifications };
+                        this.setState({ pendingNotificationsByChat: pendingNotifications });
+                      }}
+                    alertDuration={ALERT_DURATION}
+                  />
+                );
+              })
+            : null
+        }
+      </Fragment>
     );
   }
 }

@@ -10,7 +10,7 @@
     }
 
     body {
-      position: absolute;
+      position: fixed;
       height: 100%;
       font-family: 'Source Sans Pro', Arial, sans-serif;
       font-size: 1rem; /* 16px */
@@ -42,6 +42,16 @@
       display: none !important;
     }
   </style>
+  <script>
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
+  </script>
+  <script src="compatibility/adapter.js?v=VERSION" language="javascript"></script>
+  <script src="compatibility/bowser.js?v=VERSION" language="javascript"></script>
+  <script src="compatibility/sip.js?v=VERSION" language="javascript"></script>
+  <script src="compatibility/kurento-extension.js?v=VERSION" language="javascript"></script>
+  <script src="compatibility/kurento-utils.js?v=VERSION" language="javascript"></script>
 </head>
 <body style="background-color: #06172A">
   <div id="app" role="document"></div>

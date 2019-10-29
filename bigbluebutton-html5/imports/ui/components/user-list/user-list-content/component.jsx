@@ -1,64 +1,50 @@
-import React from 'react';
+import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import { styles } from './styles';
-import UserParticipants from './user-participants/component';
+import UserParticipantsContainer from './user-participants/container';
 import UserMessages from './user-messages/component';
+import UserNotesContainer from './user-notes/container';
+import UserCaptionsContainer from './user-captions/container';
+import WaitingUsers from './waiting-users/component';
+import UserPolls from './user-polls/component';
+import BreakoutRoomItem from './breakout-room/component';
 
 const propTypes = {
-  openChats: PropTypes.arrayOf(String).isRequired,
-  users: PropTypes.arrayOf(Object).isRequired,
+  activeChats: PropTypes.arrayOf(String).isRequired,
   compact: PropTypes.bool,
   intl: PropTypes.shape({
     formatMessage: PropTypes.func.isRequired,
   }).isRequired,
   currentUser: PropTypes.shape({}).isRequired,
-  meeting: PropTypes.shape({}),
-  isBreakoutRoom: PropTypes.bool,
-  getAvailableActions: PropTypes.func.isRequired,
-  normalizeEmojiName: PropTypes.func.isRequired,
-  isMeetingLocked: PropTypes.func.isRequired,
   isPublicChat: PropTypes.func.isRequired,
   setEmojiStatus: PropTypes.func.isRequired,
-  assignPresenter: PropTypes.func.isRequired,
-  removeUser: PropTypes.func.isRequired,
-  toggleVoice: PropTypes.func.isRequired,
-  changeRole: PropTypes.func.isRequired,
   roving: PropTypes.func.isRequired,
-  getGroupChatPrivate: PropTypes.func.isRequired,
+  pollIsOpen: PropTypes.bool.isRequired,
+  forcePollOpen: PropTypes.bool.isRequired,
+  requestUserInformation: PropTypes.func.isRequired,
 };
 
 const defaultProps = {
   compact: false,
-  isBreakoutRoom: false,
-  // This one is kinda tricky, meteor takes sometime to fetch the data and passing down
-  // So the first time its create, the meeting comes as null, sending an error to the client.
-  meeting: {},
 };
+const CHAT_ENABLED = Meteor.settings.public.chat.enabled;
+const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
 
-class UserContent extends React.PureComponent {
+class UserContent extends PureComponent {
   render() {
     const {
-      users,
       compact,
       intl,
       currentUser,
-      meeting,
-      isBreakoutRoom,
       setEmojiStatus,
-      assignPresenter,
-      removeUser,
-      toggleVoice,
-      changeRole,
-      getAvailableActions,
-      normalizeEmojiName,
-      isMeetingLocked,
       roving,
-      handleEmojiChange,
-      getEmojiList,
-      getEmoji,
       isPublicChat,
-      openChats,
-      getGroupChatPrivate,
+      activeChats,
+      pollIsOpen,
+      forcePollOpen,
+      hasBreakoutRoom,
+      pendingUsers,
+      requestUserInformation,
     } = this.props;
 
     return (
@@ -67,36 +53,58 @@ class UserContent extends React.PureComponent {
         className={styles.content}
         role="complementary"
       >
-        <UserMessages
+        {CHAT_ENABLED
+          ? (<UserMessages
+            {...{
+              isPublicChat,
+              activeChats,
+              compact,
+              intl,
+              roving,
+            }}
+          />
+          ) : null
+        }
+        {currentUser.role === ROLE_MODERATOR
+          ? (
+            <UserCaptionsContainer
+              {...{
+                intl,
+              }}
+            />
+          ) : null
+        }
+        <UserNotesContainer
           {...{
-            isPublicChat,
-            openChats,
-            compact,
             intl,
-            roving,
           }}
         />
-        <UserParticipants
+        {pendingUsers.length > 0 && currentUser.role === ROLE_MODERATOR
+          ? (
+            <WaitingUsers
+              {...{
+                intl,
+                pendingUsers,
+              }}
+            />
+          ) : null
+        }
+        <UserPolls
+          isPresenter={currentUser.presenter}
           {...{
-            users,
+            pollIsOpen,
+            forcePollOpen,
+          }}
+        />
+        <BreakoutRoomItem isPresenter={currentUser.presenter} hasBreakoutRoom={hasBreakoutRoom} />
+        <UserParticipantsContainer
+          {...{
             compact,
             intl,
             currentUser,
-            meeting,
-            isBreakoutRoom,
             setEmojiStatus,
-            assignPresenter,
-            removeUser,
-            toggleVoice,
-            changeRole,
-            getAvailableActions,
-            normalizeEmojiName,
-            isMeetingLocked,
             roving,
-            handleEmojiChange,
-            getEmojiList,
-            getEmoji,
-            getGroupChatPrivate,
+            requestUserInformation,
           }}
         />
       </div>

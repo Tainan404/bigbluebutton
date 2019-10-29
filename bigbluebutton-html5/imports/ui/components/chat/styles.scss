@@ -1,94 +1,86 @@
 @import "/imports/ui/stylesheets/mixins/focus";
 @import "/imports/ui/stylesheets/variables/_all";
 
-$icon-offset: -.4em;
-$background-active: darken($color-white, 5%);
+:root {
+  --toast-content-width: 98%; 
+  --toast-font-size: 80%;
+  --toast-content-margin-sm: .4rem; 
+  --toast-content-margin-md: 1.4rem;
+}
 
-@mixin lineClamp($lineHeight: 1em, $lineCount: 1, $bgColor: $color-white) {
-  display: block;
-  box-orient: vertical;
+@mixin lineClamp($lineHeight: 1em, $lineCount: 1) {
   position: relative;
-  word-break: break-word;
-
+  white-space: nowrap; 
   overflow: hidden;
+  text-overflow: ellipsis;
   line-height: $lineHeight;
-  max-height: $lineHeight * $lineCount;
-
-  &:before {
-      content: '...';
-      width: 10%;
-      height: $lineHeight;
-      text-align: right;
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(to right, rgba(255, 255, 255, 0), $bgColor 75%);
-  }
-
-  &:after {
-    content: '';
-    position: absolute;
-    right: 0;
-    width: 1em;
-    height: $lineHeight;
-    margin-top: 0.2em;
-    background-color: $bgColor;
-  }
+  max-height: calc(#{"$lineHeight * $lineCount"});
 }
 
 .chat {
-  background-color: #fff;
-  padding: $md-padding-x;
+  background-color: var(--color-white);
+  padding:
+    var(--md-padding-x)
+    var(--md-padding-y)
+    var(--md-padding-x)
+    var(--md-padding-x);
+
   display: flex;
   flex-grow: 1;
   flex-direction: column;
   justify-content: space-around;
   overflow: hidden;
   height: 100vh;
+  transform: translateZ(0);
 }
 
 .header {
+  position: relative;
+  top: var(--poll-header-offset);
   display: flex;
   flex-direction: row;
-  align-items: left;
-  flex-shrink: 0;
-
-  a {
-    @include elementFocus($color-primary);
-    padding-bottom: $sm-padding-y;
-    padding-left: $sm-padding-y;
-    text-decoration: none;
-    display: block;
-  }
-
-  [class^="icon-bbb-"],
-  [class*=" icon-bbb-"] {
-    font-size: 85%;
-  }
+  align-items: center;
+  justify-content: space-between;
 }
 
 .title {
   @extend %text-elipsis;
   flex: 1;
+
+  & > button, button:hover {
+    max-width: var(--toast-content-width);
+  }
 }
 
-.closeBtn {
-  background-color: $color-white;
-  flex: 0 0;
-  padding: 0 0.25rem !important;
+.hideBtn {
+  position: relative;
+  background-color: var(--color-white);
+  display: block;
+  margin: var(--border-size-large);
+  margin-bottom: var(--border-size);
+  padding-left: 0;
+  padding-right: inherit;
 
-  i {
-    font-size: 0.85em;
-    color: $color-gray-dark !important;
-    top: $icon-offset;
+  [dir="rtl"] & {
+    padding-left: inherit;
+    padding-right: 0;
   }
 
-  &:focus,
-  &:hover{
-    background-color: $color-white !important;
-    i{
-      color: $color-gray;
-    }
+  > i {
+      color: var(--color-gray-dark);
+      font-size: smaller;
+
+      [dir="rtl"] & {
+        -webkit-transform: scale(-1, 1);
+        -moz-transform: scale(-1, 1);
+        -ms-transform: scale(-1, 1);
+        -o-transform: scale(-1, 1);
+        transform: scale(-1, 1);
+      }
+  }
+
+  &:hover {
+      background-color: var(--color-white);
   }
 }
 
@@ -98,25 +90,26 @@ $background-active: darken($color-white, 5%);
 }
 
 .pushMessageContent {
-  margin-left: 2rem;
-  margin-right: 2rem;
-  margin-top: 1.4rem;
-  margin-bottom: .4rem;
+  margin-top: var(--toast-content-margin-md);
+  margin-bottom: var(--toast-content-margin-sm);
+  margin-left: var(--toast-content-margin-sm);
+  margin-right: var(--toast-content-margin-sm);
   background-color: inherit;
+  width: var(--toast-content-width);
 }
 
 .userNameMessage {
   margin: 0;
-  font-size: 80%;
-  color: $color-gray-dark;
+  font-size: var(--toast-font-size);
+  color: var(--color-gray-dark);
   font-weight: bold;
   background-color: inherit;
-  @include lineClamp($lineHeight: 1em, $lineCount: 1, $bgColor: inherit);
+  @include lineClamp(1em, 1);
 }
 
 .contentMessage {
-  margin-top: .2rem;
-  font-size: 80%;
+  margin-top: var(--border-radius);
+  font-size: var(--toast-font-size);
   background-color: inherit;
-  @include lineClamp($lineHeight: $font-size-small, $lineCount: 10, $bgColor: inherit);
+  @include lineClamp(var(--font-size-small), 10);
 }

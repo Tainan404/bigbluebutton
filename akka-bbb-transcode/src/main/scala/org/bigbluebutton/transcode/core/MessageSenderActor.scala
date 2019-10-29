@@ -4,17 +4,17 @@ import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.Props
 import org.bigbluebutton.transcode.api._
-import org.bigbluebutton.endpoint.redis.RedisPublisher
 import org.bigbluebutton.common2.msgs._
 import org.bigbluebutton.common2.util.JsonUtil
+import org.bigbluebutton.common2.redis.MessageSender
 
 object MessageSenderActor {
-  def props(msgSender: RedisPublisher): Props =
+  def props(msgSender: MessageSender): Props =
     Props(classOf[MessageSenderActor], msgSender)
 }
 
-class MessageSenderActor(val msgSender: RedisPublisher)
-    extends Actor with ActorLogging {
+class MessageSenderActor(val msgSender: MessageSender)
+  extends Actor with ActorLogging {
 
   val fromBbbTranscodeRedisChannel = "bigbluebutton:from-bbb-transcode:system"
   val routing = collection.immutable.HashMap("sender" -> "bbb-transcode")
@@ -39,7 +39,7 @@ class MessageSenderActor(val msgSender: RedisPublisher)
     val evt = new StartTranscoderSysRespMsg(header, body)
     val msgEvent = BbbCommonEnvCoreMsg(envelope, evt)
     val json = JsonUtil.toJson(msgEvent)
-    msgSender.publish(fromBbbTranscodeRedisChannel, json)
+    msgSender.send(fromBbbTranscodeRedisChannel, json)
   }
 
   private def handleStopTranscoderReply(msg: StopTranscoderReply) {
@@ -52,7 +52,7 @@ class MessageSenderActor(val msgSender: RedisPublisher)
     val evt = new StopTranscoderSysRespMsg(header, body)
     val msgEvent = BbbCommonEnvCoreMsg(envelope, evt)
     val json = JsonUtil.toJson(msgEvent)
-    msgSender.publish(fromBbbTranscodeRedisChannel, json)
+    msgSender.send(fromBbbTranscodeRedisChannel, json)
   }
 
   private def handleUpdateTranscoderReply(msg: UpdateTranscoderReply) {
@@ -66,7 +66,7 @@ class MessageSenderActor(val msgSender: RedisPublisher)
     val evt = new UpdateTranscoderSysRespMsg(header, body)
     val msgEvent = BbbCommonEnvCoreMsg(envelope, evt)
     val json = JsonUtil.toJson(msgEvent)
-    msgSender.publish(fromBbbTranscodeRedisChannel, json)
+    msgSender.send(fromBbbTranscodeRedisChannel, json)
   }
 
   private def handleStartProbingReply(msg: StartProbingReply) {
@@ -80,7 +80,7 @@ class MessageSenderActor(val msgSender: RedisPublisher)
     val evt = new StartProbingSysRespMsg(header, body)
     val msgEvent = BbbCommonEnvCoreMsg(envelope, evt)
     val json = JsonUtil.toJson(msgEvent)
-    msgSender.publish(fromBbbTranscodeRedisChannel, json)
+    msgSender.send(fromBbbTranscodeRedisChannel, json)
   }
 
   private def handleTranscoderStatusUpdate(msg: TranscoderStatusUpdate) {

@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { findDOMNode } from 'react-dom';
 import cx from 'classnames';
-import { defineMessages, injectIntl } from 'react-intl';
+import { defineMessages, injectIntl, intlShape } from 'react-intl';
 import Button from '/imports/ui/components/button/component';
 import screenreaderTrap from 'makeup-screenreader-trap';
 import { styles } from './styles';
@@ -26,37 +26,40 @@ const propTypes = {
     const children = props[propName];
 
     if (!children || children.length < 2) {
-      return new Error(`Invalid prop \`${propName}\` supplied to` +
-        ` \`${componentName}\`. Validation failed.`);
+      return new Error(`Invalid prop \`${propName}\` supplied to`
+        + ` \`${componentName}\`. Validation failed.`);
     }
 
     const trigger = children.find(x => x.type === DropdownTrigger);
     const content = children.find(x => x.type === DropdownContent);
 
     if (!trigger) {
-      return new Error(`Invalid prop \`${propName}\` supplied to` +
-        ` \`${componentName}\`. Missing \`DropdownTrigger\`. Validation failed.`);
+      return new Error(`Invalid prop \`${propName}\` supplied to`
+        + ` \`${componentName}\`. Missing \`DropdownTrigger\`. Validation failed.`);
     }
 
     if (!content) {
-      return new Error(`Invalid prop \`${propName}\` supplied to` +
-        ` \`${componentName}\`. Missing \`DropdownContent\`. Validation failed.`);
+      return new Error(`Invalid prop \`${propName}\` supplied to`
+        + ` \`${componentName}\`. Missing \`DropdownContent\`. Validation failed.`);
     }
 
     return null;
   },
   isOpen: PropTypes.bool,
+  keepOpen: PropTypes.bool,
   onHide: PropTypes.func,
   onShow: PropTypes.func,
   autoFocus: PropTypes.bool,
+  intl: intlShape.isRequired,
 };
 
 const defaultProps = {
   children: null,
-  isOpen: false,
   onShow: noop,
   onHide: noop,
   autoFocus: false,
+  isOpen: false,
+  keepOpen: null,
 };
 
 class Dropdown extends Component {
@@ -77,63 +80,99 @@ class Dropdown extends Component {
     const {
       onShow,
       onHide,
+      keepOpen,
     } = this.props;
 
-    if (this.state.isOpen && !prevState.isOpen) { onShow(); }
+    const { isOpen } = this.state;
 
-    if (!this.state.isOpen && prevState.isOpen) { onHide(); }
+
+    if (isOpen && !prevState.isOpen) { onShow(); }
+
+    if (!isOpen && prevState.isOpen) { onHide(); }
+
+    if (prevProps.keepOpen && !keepOpen) onHide();
   }
 
   handleShow() {
+    Session.set('dropdownOpen', true);
+    const {
+      onShow,
+    } = this.props;
     this.setState({ isOpen: true }, () => {
       const { addEventListener } = window;
+      onShow();
       addEventListener('click', this.handleWindowClick, true);
     });
   }
 
   handleHide() {
+    Session.set('dropdownOpen', false);
+    const { onHide } = this.props;
     this.setState({ isOpen: false }, () => {
       const { removeEventListener } = window;
+      onHide();
       removeEventListener('click', this.handleWindowClick, true);
     });
   }
 
-  handleWindowClick() {
+  handleWindowClick(event) {
+    const { keepOpen, onHide } = this.props;
+    const { isOpen } = this.state;
     const triggerElement = findDOMNode(this.trigger);
     const contentElement = findDOMNode(this.content);
-    const closeDropdown = this.props.isOpen && this.state.isOpen && triggerElement.contains(event.target);
-    const preventHide = this.props.isOpen && contentElement.contains(event.target) || !triggerElement;
-
-    if (closeDropdown) {
-      return this.props.onHide();
+    if (!(triggerElement && contentElement)) return;
+    if (triggerElement && triggerElement.contains(event.target)) {
+      if (keepOpen) {
+        onHide();
+        return;
+      }
+      if (isOpen) {
+        this.handleHide();
+        return;
+      }
     }
 
-    if (contentElement && preventHide) {
+    if (keepOpen && isOpen && !contentElement.contains(event.target)) {
+      if (triggerElement) {
+        const { parentElement } = triggerElement;
+        if (parentElement) parentElement.focus();
+      }
+      onHide();
+      this.handleHide();
       return;
     }
 
+    if (keepOpen && triggerElement) {
+      const { parentElement } = triggerElement;
+      if (parentElement) parentElement.focus();
+    }
+
+    if (keepOpen !== null) return;
     this.handleHide();
   }
 
   handleToggle() {
-    return this.state.isOpen ? this.handleHide() : this.handleShow();
+    const { isOpen } = this.state;
+    return isOpen ? this.handleHide() : this.handleShow();
   }
 
   render() {
     const {
       children,
       className,
-      style,
       intl,
+      keepOpen,
       ...otherProps
     } = this.props;
+
+    const { isOpen } = this.state;
 
     let trigger = children.find(x => x.type === DropdownTrigger);
     let content = children.find(x => x.type === DropdownContent);
 
     trigger = React.cloneElement(trigger, {
       ref: (ref) => { this.trigger = ref; },
-      dropdownIsOpen: this.state.isOpen,
+      dropdownIsOpen: isOpen,
       dropdownToggle: this.handleToggle,
       dropdownShow: this.handleShow,
       dropdownHide: this.handleHide,
@@ -141,35 +180,37 @@ class Dropdown extends Component {
 
     content = React.cloneElement(content, {
       ref: (ref) => { this.content = ref; },
-      'aria-expanded': this.state.isOpen,
-      dropdownIsOpen: this.state.isOpen,
+      'aria-expanded': isOpen,
+      dropdownIsOpen: isOpen,
       dropdownToggle: this.handleToggle,
       dropdownShow: this.handleShow,
       dropdownHide: this.handleHide,
     });
 
+    const showCloseBtn = (isOpen && keepOpen) || (isOpen && keepOpen === null);
+
     return (
       <div
-        style={style}
         className={cx(styles.dropdown, className)}
         aria-live={otherProps['aria-live']}
         aria-relevant={otherProps['aria-relevant']}
         aria-haspopup={otherProps['aria-haspopup']}
         aria-label={otherProps['aria-label']}
-        data-isopen={this.state.isOpen}
         ref={(node) => { this.dropdown = node; }}
         tabIndex={-1}
       >
         {trigger}
         {content}
-        {this.state.isOpen ?
-          <Button
-            className={styles.close}
-            label={intl.formatMessage(intlMessages.close)}
-            size="lg"
-            color="default"
-            onClick={this.handleHide}
-          /> : null}
+        {showCloseBtn
+          ? (
+            <Button
+              className={styles.close}
+              label={intl.formatMessage(intlMessages.close)}
+              size="lg"
+              color="default"
+              onClick={this.handleHide}
+            />
+          ) : null}
       </div>
     );
   }

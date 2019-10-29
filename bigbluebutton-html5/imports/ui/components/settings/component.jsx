@@ -1,10 +1,11 @@
 import React, { Component } from 'react';
 import Modal from '/imports/ui/components/modal/fullscreen/component';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import {
+  Tab, Tabs, TabList, TabPanel,
+} from 'react-tabs';
 import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import ClosedCaptions from '/imports/ui/components/settings/submenus/closed-captions/component';
 import DataSaving from '/imports/ui/components/settings/submenus/data-saving/component';
-import Application from '/imports/ui/components/settings/submenus/application/container';
+import Application from '/imports/ui/components/settings/submenus/application/component';
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 
@@ -24,10 +25,6 @@ const intlMessages = defineMessages({
   videoTabLabel: {
     id: 'app.settings.videoTab.label',
     description: 'label for video tab',
-  },
-  closecaptionTabLabel: {
-    id: 'app.settings.closedcaptionTab.label',
-    description: 'label for closed-captions tab',
   },
   usersTabLabel: {
     id: 'app.settings.usersTab.label',
@@ -57,43 +54,50 @@ const intlMessages = defineMessages({
     id: 'app.settings.dataSavingTab.label',
     description: 'label for data savings tab',
   },
+  savedAlertLabel: {
+    id: 'app.settings.save-notification.label',
+    description: 'label shown in toast when settings are saved',
+  },
 });
 
 const propTypes = {
   intl: intlShape.isRequired,
-  dataSaving: PropTypes.object.isRequired,
-  application: PropTypes.object.isRequired,
-  cc: PropTypes.object.isRequired,
-  participants: PropTypes.object.isRequired,
+  dataSaving: PropTypes.shape({
+    viewParticipantsWebcams: PropTypes.bool,
+    viewScreenshare: PropTypes.bool,
+  }).isRequired,
+  application: PropTypes.shape({
+    chatAudioAlerts: PropTypes.bool,
+    chatPushAlerts: PropTypes.bool,
+    fallbackLocale: PropTypes.string,
+    fontSize: PropTypes.string,
+    locale: PropTypes.string,
+  }).isRequired,
   updateSettings: PropTypes.func.isRequired,
-  availableLocales: PropTypes.object.isRequired,
+  availableLocales: PropTypes.objectOf(PropTypes.array).isRequired,
   mountModal: PropTypes.func.isRequired,
-  locales: PropTypes.array.isRequired,
 };
 
 class Settings extends Component {
   static setHtmlFontSize(size) {
     document.getElementsByTagName('html')[0].style.fontSize = size;
   }
+
   constructor(props) {
     super(props);
 
     const {
-      dataSaving, participants, cc, application,
+      dataSaving, application,
     } = props;
 
     this.state = {
       current: {
         dataSaving: _.clone(dataSaving),
         application: _.clone(application),
-        cc: _.clone(cc),
-        participants: _.clone(participants),
       },
       saved: {
         dataSaving: _.clone(dataSaving),
         application: _.clone(application),
-        cc: _.clone(cc),
-        participants: _.clone(participants),
       },
       selectedTab: 0,
     };
@@ -104,7 +108,8 @@ class Settings extends Component {
   }
 
   componentWillMount() {
-    this.props.availableLocales.then((locales) => {
+    const { availableLocales } = this.props;
+    availableLocales.then((locales) => {
       this.setState({ availableLocales: locales });
     });
   }
@@ -122,13 +127,21 @@ class Settings extends Component {
   }
 
   renderModalContent() {
-    const { intl } = this.props;
+    const {
+      intl,
+    } = this.props;
+
+    const {
+      selectedTab,
+      availableLocales,
+      current,
+    } = this.state;
 
     return (
       <Tabs
         className={styles.tabs}
         onSelect={this.handleSelectTab}
-        selectedIndex={this.state.selectedTab}
+        selectedIndex={selectedTab}
         role="presentation"
         selectedTabPanelClassName={styles.selectedTab}
       >
@@ -147,14 +160,6 @@ class Settings extends Component {
           {/* </Tab> */}
           <Tab
             className={styles.tabSelector}
-            aria-labelledby="ccTab"
-            selectedClassName={styles.selected}
-          >
-            <Icon iconName="user" className={styles.icon} />
-            <span id="ccTab">{intl.formatMessage(intlMessages.closecaptionTabLabel)}</span>
-          </Tab>
-          <Tab
-            className={styles.tabSelector}
             aria-labelledby="dataSavingTab"
             selectedClassName={styles.selected}
           >
@@ -170,9 +175,9 @@ class Settings extends Component {
         </TabList>
         <TabPanel className={styles.tabPanel}>
           <Application
-            availableLocales={this.state.availableLocales}
+            availableLocales={availableLocales}
             handleUpdateSettings={this.handleUpdateSettings}
-            settings={this.state.current.application}
+            settings={current.application}
           />
         </TabPanel>
         {/* <TabPanel className={styles.tabPanel}> */}
@@ -182,44 +187,30 @@ class Settings extends Component {
         {/* /> */}
         {/* </TabPanel> */}
         <TabPanel className={styles.tabPanel}>
-          <ClosedCaptions
-            settings={this.state.current.cc}
-            handleUpdateSettings={this.handleUpdateSettings}
-            locales={this.props.locales}
-          />
-        </TabPanel>
-        <TabPanel className={styles.tabPanel}>
           <DataSaving
-            settings={this.state.current.dataSaving}
+            settings={current.dataSaving}
             handleUpdateSettings={this.handleUpdateSettings}
           />
         </TabPanel>
-        {/* { isModerator ? */}
-        {/* <TabPanel className={styles.tabPanel}> */}
-        {/* <Participants */}
-        {/* settings={this.state.current.participants} */}
-        {/* handleUpdateSettings={this.handleUpdateSettings} */}
-        {/* /> */}
-        {/* </TabPanel> */}
-        {/* : null } */}
       </Tabs>
     );
   }
+
   render() {
     const {
       intl,
-      router,
-      location,
       mountModal,
     } = this.props;
-
+    const {
+      current,
+      saved,
+    } = this.state;
     return (
       <Modal
         title={intl.formatMessage(intlMessages.SettingsLabel)}
         confirm={{
           callback: () => {
-            this.updateSettings(this.state.current);
-            router.push(location.pathname);
+            this.updateSettings(current, intl.formatMessage(intlMessages.savedAlertLabel));
             /* We need to use mountModal(null) here to prevent submenu state updates,
             *  from re-opening the modal.
             */
@@ -230,7 +221,7 @@ class Settings extends Component {
         }}
         dismiss={{
           callback: () => {
-            Settings.setHtmlFontSize(this.state.saved.application.fontSize);
+            Settings.setHtmlFontSize(saved.application.fontSize);
             mountModal(null);
           },
           label: intl.formatMessage(intlMessages.CancelLabel),

@@ -1,15 +1,27 @@
 import React, { Component } from 'react';
 import { withTracker } from 'meteor/react-meteor-data';
-import SessionStorage from '/imports/ui/services/storage/session';
 import Settings from '/imports/ui/services/settings';
-import { defineMessages, injectIntl } from 'react-intl';
+import { defineMessages, injectIntl, intlShape } from 'react-intl';
+import PropTypes from 'prop-types';
+import { Session } from 'meteor/session';
 import { notify } from '/imports/ui/services/notification';
 import VideoService from '/imports/ui/components/video-provider/service';
+import getFromUserSettings from '/imports/ui/services/users-settings';
+import { withModalMounter } from '/imports/ui/components/modal/service';
 import Media from './component';
-import MediaService, { getSwapLayout } from './service';
+import MediaService, { getSwapLayout, shouldEnableSwapLayout } from './service';
 import PresentationPodsContainer from '../presentation-pod/container';
 import ScreenshareContainer from '../screenshare/container';
 import DefaultContent from '../presentation/default-content/component';
+import ExternalVideoContainer from '../external-video-player/container';
+
+const LAYOUT_CONFIG = Meteor.settings.public.layout;
+const KURENTO_CONFIG = Meteor.settings.public.kurento;
+
+const propTypes = {
+  isScreensharing: PropTypes.bool.isRequired,
+  intl: intlShape.isRequired,
+};
 
 const intlMessages = defineMessages({
   screenshareStarted: {
@@ -36,15 +48,8 @@ const intlMessages = defineMessages({
 
 class MediaContainer extends Component {
   componentWillMount() {
-    const { willMount } = this.props;
-    willMount && willMount();
     document.addEventListener('installChromeExtension', this.installChromeExtension.bind(this));
     document.addEventListener('safariScreenshareNotSupported', this.safariScreenshareNotSupported.bind(this));
-  }
-
-  componentWillUnmount() {
-    document.removeEventListener('installChromeExtension', this.installChromeExtension.bind(this));
-    document.removeEventListener('safariScreenshareNotSupported', this.safariScreenshareNotSupported.bind(this));
   }
 
   componentWillReceiveProps(nextProps) {
@@ -62,19 +67,28 @@ class MediaContainer extends Component {
     }
   }
 
+  componentWillUnmount() {
+    document.removeEventListener('installChromeExtension', this.installChromeExtension.bind(this));
+    document.removeEventListener('safariScreenshareNotSupported', this.safariScreenshareNotSupported.bind(this));
+  }
+
   installChromeExtension() {
     const { intl } = this.props;
 
-    const CHROME_DEFAULT_EXTENSION_LINK = Meteor.settings.public.kurento.chromeDefaultExtensionLink;
-    const CHROME_CUSTOM_EXTENSION_LINK = Meteor.settings.public.kurento.chromeExtensionLink;
+    const CHROME_DEFAULT_EXTENSION_LINK = KURENTO_CONFIG.chromeDefaultExtensionLink;
+    const CHROME_CUSTOM_EXTENSION_LINK = KURENTO_CONFIG.chromeExtensionLink;
     const CHROME_EXTENSION_LINK = CHROME_CUSTOM_EXTENSION_LINK === 'LINK' ? CHROME_DEFAULT_EXTENSION_LINK : CHROME_CUSTOM_EXTENSION_LINK;
 
-    notify(<div>
-      {intl.formatMessage(intlMessages.chromeExtensionError)}{' '}
-      <a href={CHROME_EXTENSION_LINK} target="_blank">
-        {intl.formatMessage(intlMessages.chromeExtensionErrorLink)}
-      </a>
-    </div>, 'error', 'desktop');
+    const chromeErrorElement = (
+      <div>
+        {intl.formatMessage(intlMessages.chromeExtensionError)}
+        {' '}
+        <a href={CHROME_EXTENSION_LINK} target="_blank" rel="noopener noreferrer">
+          {intl.formatMessage(intlMessages.chromeExtensionErrorLink)}
+        </a>
+      </div>
+    );
+    notify(chromeErrorElement, 'error', 'desktop');
   }
 
   safariScreenshareNotSupported() {
@@ -87,13 +101,16 @@ class MediaContainer extends Component {
   }
 }
 
-export default withTracker(() => {
+export default withModalMounter(withTracker(() => {
   const { dataSaving } = Settings;
   const { viewParticipantsWebcams, viewScreenshare } = dataSaving;
-
-  const hidePresentation = SessionStorage.getItem('metadata').html5hidepresentation || false;
+  const hidePresentation = getFromUserSettings('hidePresentation', LAYOUT_CONFIG.hidePresentation);
+  const { current_presentation: hasPresentation } = MediaService.getPresentationInfo();
   const data = {
     children: <DefaultContent />,
+    audioModalIsOpen: Session.get('audioModalIsOpen'),
+    userWasInWebcam: Session.get('userWasInWebcam'),
+    joinVideo: VideoService.joinVideo,
   };
 
   if (MediaService.shouldShowWhiteboard() && !hidePresentation) {
@@ -105,27 +122,31 @@ export default withTracker(() => {
     data.children = <ScreenshareContainer />;
   }
 
-  const usersVideo = VideoService.getAllUsersVideo();
-  if (MediaService.shouldShowOverlay() && usersVideo.length) {
+  const usersVideo = VideoService.getAllWebcamUsers();
+  data.usersVideo = usersVideo;
+
+  if (MediaService.shouldShowOverlay() && usersVideo.length && viewParticipantsWebcams) {
     data.floatingOverlay = usersVideo.length < 2;
     data.hideOverlay = usersVideo.length === 0;
   }
 
   data.isScreensharing = MediaService.isVideoBroadcasting();
-  data.swapLayout = getSwapLayout();
+  data.swapLayout = (getSwapLayout() || !hasPresentation) && shouldEnableSwapLayout();
   data.disableVideo = !viewParticipantsWebcams;
 
   if (data.swapLayout) {
     data.floatingOverlay = true;
-    data.hideOverlay = hidePresentation;
+    data.hideOverlay = true;
   }
 
-  const { enableVideo } = Meteor.settings.public.kurento;
-  const autoShareWebcam = SessionStorage.getItem('metadata').html5autosharewebcam || false;
-
-  if (enableVideo && autoShareWebcam) {
-    data.willMount = VideoService.joinVideo;
+  if (MediaService.shouldShowExternalVideo()) {
+    data.children = (
+      <ExternalVideoContainer
+        isPresenter={MediaService.isUserPresenter()}
+      />
+    );
   }
 
+  MediaContainer.propTypes = propTypes;
   return data;
-})(injectIntl(MediaContainer));
+})(injectIntl(MediaContainer)));

@@ -2,7 +2,7 @@ const _ = require("lodash");
 const async = require("async");
 const redis = require("redis");
 
-const config = require("./config.js");
+const config = require("config");
 const Logger = require("./logger.js");
 
 // The database of mappings. Uses the internal ID as key because it is unique
@@ -32,25 +32,27 @@ module.exports = class UserMapping {
     this.externalUserID = null;
     this.internalUserID = null;
     this.meetingId = null;
-    this.redisClient = config.redis.client;
+    this.user = null;
+    this.redisClient = Application.redisClient();
   }
 
   save(callback) {
-    this.redisClient.hmset(config.redis.keys.userMap(this.id), this.toRedis(), (error, reply) => {
+    db[this.internalUserID] = this;
+
+    this.redisClient.hmset(config.get("redis.keys.userMapPrefix") + ":" + this.id, this.toRedis(), (error, reply) => {
       if (error != null) { Logger.error("[UserMapping] error saving mapping to redis:", error, reply); }
-      this.redisClient.sadd(config.redis.keys.userMaps, this.id, (error, reply) => {
+      this.redisClient.sadd(config.get("redis.keys.userMaps"), this.id, (error, reply) => {
         if (error != null) { Logger.error("[UserMapping] error saving mapping ID to the list of mappings:", error, reply); }
 
-        db[this.internalUserID] = this;
         (typeof callback === 'function' ? callback(error, db[this.internalUserID]) : undefined);
       });
     });
   }
 
   destroy(callback) {
-    this.redisClient.srem(config.redis.keys.userMaps, this.id, (error, reply) => {
+    this.redisClient.srem(config.get("redis.keys.userMaps"), this.id, (error, reply) => {
       if (error != null) { Logger.error("[UserMapping] error removing mapping ID from the list of mappings:", error, reply); }
-      this.redisClient.del(config.redis.keys.userMap(this.id), error => {
+      this.redisClient.del(config.get("redis.keys.userMapPrefix") + ":" + this.id, error => {
         if (error != null) { Logger.error("[UserMapping] error removing mapping from redis:", error); }
 
         if (db[this.internalUserID]) {
@@ -68,7 +70,8 @@ module.exports = class UserMapping {
       "id": this.id,
       "internalUserID": this.internalUserID,
       "externalUserID": this.externalUserID,
-      "meetingId": this.meetingId
+      "meetingId": this.meetingId,
+      "user": this.user
     };
     return r;
   }
@@ -78,18 +81,20 @@ module.exports = class UserMapping {
     this.externalUserID = redisData.externalUserID;
     this.internalUserID = redisData.internalUserID;
     this.meetingId = redisData.meetingId;
+    this.user = redisData.user;
   }
 
   print() {
     return JSON.stringify(this.toRedis());
   }
 
-  static addMapping(internalUserID, externalUserID, meetingId, callback) {
+  static addOrUpdateMapping(internalUserID, externalUserID, meetingId, user, callback) {
     let mapping = new UserMapping();
     mapping.id = nextID++;
     mapping.internalUserID = internalUserID;
     mapping.externalUserID = externalUserID;
     mapping.meetingId = meetingId;
+    mapping.user = user;
     mapping.save(function(error, result) {
       Logger.info(`[UserMapping] added user mapping to the list ${internalUserID}:`, mapping.print());
       (typeof callback === 'function' ? callback(error, result) : undefined);
@@ -131,6 +136,12 @@ module.exports = class UserMapping {
     })();
   }
 
+  static getUser(internalUserID) {
+    if (db[internalUserID]){
+      return db[internalUserID].user;
+    }
+  }
+
   static getExternalUserID(internalUserID) {
     if (db[internalUserID]){
       return db[internalUserID].externalUserID;
@@ -154,15 +165,15 @@ module.exports = class UserMapping {
   // Gets all mappings from redis to populate the local database.
   // Calls `callback()` when done.
   static resync(callback) {
-    let client = config.redis.client;
+    let client = Application.redisClient();
     let tasks = [];
 
-    return client.smembers(config.redis.keys.userMaps, (error, mappings) => {
+    return client.smembers(config.get("redis.keys.userMaps"), (error, mappings) => {
       if (error != null) { Logger.error("[UserMapping] error getting list of mappings from redis:", error); }
 
       mappings.forEach(id => {
         tasks.push(done => {
-          client.hgetall(config.redis.keys.userMap(id), function(error, mappingData) {
+          client.hgetall(config.get("redis.keys.userMapPrefix") + ":" + id, function(error, mappingData) {
             if (error != null) { Logger.error("[UserMapping] error getting information for a mapping from redis:", error); }
 
             if (mappingData != null) {

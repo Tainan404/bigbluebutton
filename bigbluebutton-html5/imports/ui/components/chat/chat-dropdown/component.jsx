@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import { defineMessages, injectIntl } from 'react-intl';
 import { withModalMounter } from '/imports/ui/components/modal/service';
 import Clipboard from 'clipboard';
@@ -8,12 +8,9 @@ import DropdownTrigger from '/imports/ui/components/dropdown/trigger/component';
 import DropdownContent from '/imports/ui/components/dropdown/content/component';
 import DropdownList from '/imports/ui/components/dropdown/list/component';
 import DropdownListItem from '/imports/ui/components/dropdown/list/item/component';
-import Auth from '/imports/ui/services/auth';
-import Acl from '/imports/startup/acl';
 import Button from '/imports/ui/components/button/component';
 
-import ChatService from './../service';
-import { styles } from './styles';
+import ChatService from '../service';
 
 const intlMessages = defineMessages({
   clear: {
@@ -34,7 +31,7 @@ const intlMessages = defineMessages({
   },
 });
 
-class ChatDropdown extends Component {
+class ChatDropdown extends PureComponent {
   constructor(props) {
     super(props);
 
@@ -74,14 +71,15 @@ class ChatDropdown extends Component {
   }
 
   getAvailableActions() {
-    const { intl } = this.props;
+    const { intl, isMeteorConnected, amIModerator } = this.props;
 
     const clearIcon = 'delete';
-    const saveIcon = 'save_notes';
+    const saveIcon = 'download';
     const copyIcon = 'copy';
 
     return _.compact([
       <DropdownListItem
+        data-test="chatSave"
         icon={saveIcon}
         label={intl.formatMessage(intlMessages.save)}
         key={this.actionsKey[0]}
@@ -95,17 +93,19 @@ class ChatDropdown extends Component {
             `data: ${mimeType} ;charset=utf-8,
             ${encodeURIComponent(ChatService.exportChat(ChatService.getPublicGroupMessages()))}`,
           );
-          link.click();
+          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
         }}
       />,
       <DropdownListItem
+        data-test="chatCopy"
         icon={copyIcon}
         id="clipboardButton"
         label={intl.formatMessage(intlMessages.copy)}
         key={this.actionsKey[1]}
       />,
-      Acl.can('methods.clearPublicChatHistory', Auth.credentials) ? (
+      amIModerator && isMeteorConnected ? (
         <DropdownListItem
+          data-test="chatClear"
           icon={clearIcon}
           label={intl.formatMessage(intlMessages.clear)}
           key={this.actionsKey[2]}
@@ -117,24 +117,25 @@ class ChatDropdown extends Component {
 
   render() {
     const { intl } = this.props;
+    const { isSettingOpen } = this.state;
 
     const availableActions = this.getAvailableActions();
 
     return (
       <Dropdown
-        isOpen={this.state.isSettingOpen}
+        isOpen={isSettingOpen}
         onShow={this.onActionsShow}
         onHide={this.onActionsHide}
       >
         <DropdownTrigger tabIndex={0}>
           <Button
             data-test="chatDropdownTrigger"
-            className={styles.btn}
             icon="more"
+            size="sm"
             ghost
             circle
             hideLabel
-            color="primary"
+            color="dark"
             label={intl.formatMessage(intlMessages.options)}
             aria-label={intl.formatMessage(intlMessages.options)}
             onClick={() => null}

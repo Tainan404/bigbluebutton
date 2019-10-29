@@ -1,31 +1,54 @@
 @import "/imports/ui/stylesheets/variables/_all";
 
 .actionsbar,
-.left,
-.center {
+.center,
+.right {
   display: flex;
   flex-direction: row;
 }
 
-.left,
-.center {
+.center,
+.right {
   flex: 1;
   justify-content: center;
+}
 
+.left,
+.center,
+.right {
   > * {
-    margin: 0 $sm-padding-x;
+    margin: 0 var(--sm-padding-x);
 
     @include mq($small-only) {
-      margin: 0 $sm-padding-y;
+      margin: 0 var(--sm-padding-y);
     }
   }
 }
 
 .left {
-  position: absolute;
+  display: inherit;
+  flex: 0;
   @include mq($small-only) {
-    bottom: $sm-padding-x;
-    left: $sm-padding-x;
+    bottom: var(--sm-padding-x);
+    left: var(--sm-padding-x);
+    right: auto;
+
+    [dir="rtl"] & {
+      left: auto;
+      right: var(--sm-padding-x);
+    }
+  }
+}
+
+.right {
+  position: absolute;
+  bottom: var(--sm-padding-x);
+  right: var(--sm-padding-x);
+  left: auto;
+
+  [dir="rtl"] & {
+    right: auto;
+    left: var(--sm-padding-x);
   }
 }
 
@@ -36,11 +59,15 @@
 }
 
 .button {
-  &:focus {
-    outline: none !important;
-  }
-
   span:first-child {
     box-shadow: 0 2px 5px 0 rgb(0, 0, 0);
+  }
+}
+
+.btn {
+  span {
+    box-shadow: none;
+    background-color: transparent !important;
+    border-color: var(--color-white) !important;
   }
 }

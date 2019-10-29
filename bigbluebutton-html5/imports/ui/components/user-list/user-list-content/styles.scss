@@ -1,6 +1,7 @@
 @import "/imports/ui/components/user-list/styles.scss";
 @import "/imports/ui/stylesheets/mixins/_scrollable";
 @import "/imports/ui/stylesheets/mixins/focus";
+@import "/imports/ui/stylesheets/mixins/_indicators";
 @import "/imports/ui/stylesheets/variables/_all";
 
 .content {
@@ -9,40 +10,56 @@
   overflow: hidden;
 }
 
+.container{
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--lg-padding-y);
+  margin-top: var(--sm-padding-x);
+}
+
 .scrollableList {
-  @include elementFocus($list-item-bg-hover);
-  @include scrollbox-vertical($user-list-bg);
+  @include elementFocus(var(--list-item-bg-hover));
+  @include scrollbox-vertical(var(--user-list-bg));
+  @include highContrastOutline();
+
+  &:focus-within,
+  &:focus {
+    outline-style: solid;
+  }
 
   &:active {
     box-shadow: none;
     border-radius: none;
   }
+
+  outline-width: 1px !important;
+  outline-color: transparent !important;
 }
 
 .list {
-  margin-left: $md-padding-y;
-  margin-bottom: 1px;
+  margin: 0 0 1px var(--md-padding-y);
+
+  [dir="rtl"] & {
+    margin: 0 var(--md-padding-y) 1px 0;
+  }
 }
 
 .smallTitle {
   @extend .smallTitle;
+  flex: 1;
+  margin: 0;
 }
 
 .separator {
   margin: 1rem auto;
   width: 2.2rem;
   border: 0;
-  border-top: 1px solid $color-gray-lighter;
+  border-top: 1px solid var(--color-gray-lighter);
 }
 
+.captionsList,
 .chatsList {
   @extend .lists;
   overflow: hidden;
   flex-shrink: 1;
-}
-
-.footer{
-  @include mq($small-only) {
-		margin: 4rem;
-  }
 }

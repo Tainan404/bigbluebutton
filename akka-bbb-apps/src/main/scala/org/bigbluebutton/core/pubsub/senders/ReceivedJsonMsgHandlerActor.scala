@@ -7,6 +7,8 @@ import org.bigbluebutton.common2.msgs._
 import org.bigbluebutton.core.bus._
 import org.bigbluebutton.core2.ReceivedMessageRouter
 import scala.reflect.runtime.universe._
+import org.bigbluebutton.common2.bus.ReceivedJsonMessage
+import org.bigbluebutton.common2.bus.IncomingJsonMessageBus
 
 object ReceivedJsonMsgHandlerActor {
   def props(eventBus: BbbMsgRouterEventBus, incomingJsonMessageBus: IncomingJsonMessageBus): Props =
@@ -14,12 +16,13 @@ object ReceivedJsonMsgHandlerActor {
 }
 
 class ReceivedJsonMsgHandlerActor(
-  val eventBus:               BbbMsgRouterEventBus,
-  val incomingJsonMessageBus: IncomingJsonMessageBus)
-    extends Actor with ActorLogging
-    with SystemConfiguration
-    with ReceivedJsonMsgDeserializer
-    with ReceivedMessageRouter {
+    val eventBus:               BbbMsgRouterEventBus,
+    val incomingJsonMessageBus: IncomingJsonMessageBus
+)
+  extends Actor with ActorLogging
+  with SystemConfiguration
+  with ReceivedJsonMsgDeserializer
+  with ReceivedMessageRouter {
 
   def receive = {
     case msg: ReceivedJsonMessage =>
@@ -145,6 +148,10 @@ class ReceivedJsonMsgHandlerActor(
         routeGenericMsg[MuteMeetingCmdMsg](envelope, jsonNode)
       case IsMeetingMutedReqMsg.NAME =>
         routeGenericMsg[IsMeetingMutedReqMsg](envelope, jsonNode)
+      case CheckRunningAndRecordingVoiceConfEvtMsg.NAME =>
+        routeVoiceMsg[CheckRunningAndRecordingVoiceConfEvtMsg](envelope, jsonNode)
+      case UserStatusVoiceConfEvtMsg.NAME =>
+        routeVoiceMsg[UserStatusVoiceConfEvtMsg](envelope, jsonNode)
 
       // Breakout rooms
       case BreakoutRoomsListMsg.NAME =>

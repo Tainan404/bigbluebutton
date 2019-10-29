@@ -1,9 +1,8 @@
 import { Meteor } from 'meteor/meteor';
-import mapToAcl from '/imports/startup/mapToAcl';
 import requestPresentationUploadToken from './methods/requestPresentationUploadToken';
+import setUsedToken from './methods/setUsedToken';
 
-Meteor.methods(mapToAcl([
-  'methods.requestPresentationUploadToken',
-], {
+Meteor.methods({
   requestPresentationUploadToken,
-}));
+  setUsedToken,
+});

@@ -4,34 +4,25 @@ import { defineMessages } from 'react-intl';
 import PropTypes from 'prop-types';
 import cx from 'classnames';
 import { styles } from '/imports/ui/components/user-list/user-list-content/styles';
-import UserListItem from './user-list-item/component';
+import _ from 'lodash';
+import { findDOMNode } from 'react-dom';
+import UserListItemContainer from './user-list-item/container';
+import UserOptionsContainer from './user-options/container';
 
 const propTypes = {
-  users: PropTypes.arrayOf(Object).isRequired,
   compact: PropTypes.bool,
   intl: PropTypes.shape({
     formatMessage: PropTypes.func.isRequired,
   }).isRequired,
   currentUser: PropTypes.shape({}).isRequired,
-  meeting: PropTypes.shape({}),
-  isBreakoutRoom: PropTypes.bool,
+  users: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
   setEmojiStatus: PropTypes.func.isRequired,
-  assignPresenter: PropTypes.func.isRequired,
-  removeUser: PropTypes.func.isRequired,
-  toggleVoice: PropTypes.func.isRequired,
-  changeRole: PropTypes.func.isRequired,
-  getAvailableActions: PropTypes.func.isRequired,
-  normalizeEmojiName: PropTypes.func.isRequired,
-  isMeetingLocked: PropTypes.func.isRequired,
   roving: PropTypes.func.isRequired,
+  requestUserInformation: PropTypes.func.isRequired,
 };
 
 const defaultProps = {
   compact: false,
-  isBreakoutRoom: false,
-  // This one is kinda tricky, meteor takes sometime to fetch the data and passing down
-  // So the first time its create, the meeting comes as null, sending an error to the client.
-  meeting: {},
 };
 
 const listTransition = {
@@ -50,44 +41,53 @@ const intlMessages = defineMessages({
   },
 });
 
+const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
+
 class UserParticipants extends Component {
   constructor() {
     super();
 
     this.state = {
-      index: -1,
+      selectedUser: null,
     };
 
     this.userRefs = [];
-    this.selectedIndex = -1;
 
     this.getScrollContainerRef = this.getScrollContainerRef.bind(this);
-    this.focusUserItem = this.focusUserItem.bind(this);
+    this.rove = this.rove.bind(this);
     this.changeState = this.changeState.bind(this);
     this.getUsers = this.getUsers.bind(this);
   }
 
   componentDidMount() {
-    if (!this.props.compact) {
+    const { compact } = this.props;
+    if (!compact) {
       this.refScrollContainer.addEventListener(
         'keydown',
-        event => this.props.roving(
-          event,
-          this.props.users.length,
-          this.changeState,
-        ),
+        this.rove,
       );
     }
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.index === -1) {
-      return;
-    }
+  shouldComponentUpdate(nextProps, nextState) {
+    const isPropsEqual = _.isEqual(this.props, nextProps);
+    const isStateEqual = _.isEqual(this.state, nextState);
+    return !isPropsEqual || !isStateEqual;
+  }
 
-    if (this.state.index !== prevState.index) {
-      this.focusUserItem(this.state.index);
+  componentDidUpdate(prevProps, prevState) {
+    const { selectedUser } = this.state;
+
+    if (selectedUser === prevState.selectedUser) return;
+
+    if (selectedUser) {
+      const { firstChild } = selectedUser;
+      if (firstChild) firstChild.focus();
     }
+  }
+
+  componentWillUnmount() {
+    this.refScrollContainer.removeEventListener('keydown', this.rove);
   }
 
   getScrollContainerRef() {
@@ -97,27 +97,16 @@ class UserParticipants extends Component {
   getUsers() {
     const {
       compact,
-      isBreakoutRoom,
-      currentUser,
-      meeting,
-      getAvailableActions,
-      normalizeEmojiName,
-      isMeetingLocked,
-      users,
-      changeRole,
-      assignPresenter,
       setEmojiStatus,
-      removeUser,
-      toggleVoice,
-      getGroupChatPrivate, //// TODO check if this is used
-      handleEmojiChange, //// TODO add to props validation
-      getEmojiList,
-      getEmoji,
+      users,
+      requestUserInformation,
+      currentUser,
+      meetingIsBreakout,
     } = this.props;
 
     let index = -1;
 
-    return users.map(user => (
+    return users.map(u => (
       <CSSTransition
         classNames={listTransition}
         appear
@@ -126,28 +115,18 @@ class UserParticipants extends Component {
         timeout={0}
         component="div"
         className={cx(styles.participantsList)}
-        key={user.id}
+        key={u.userId}
       >
         <div ref={(node) => { this.userRefs[index += 1] = node; }}>
-          <UserListItem
+          <UserListItemContainer
             {...{
-              user,
-              currentUser,
               compact,
-              isBreakoutRoom,
-              meeting,
-              getAvailableActions,
-              normalizeEmojiName,
-              isMeetingLocked,
-              handleEmojiChange,
-              getEmojiList,
-              getEmoji,
               setEmojiStatus,
-              assignPresenter,
-              removeUser,
-              toggleVoice,
-              changeRole,
+              requestUserInformation,
+              currentUser,
+              meetingIsBreakout,
             }}
+            user={u}
             getScrollContainerRef={this.getScrollContainerRef}
           />
         </div>
@@ -155,43 +134,63 @@ class UserParticipants extends Component {
     ));
   }
 
-  focusUserItem(index) {
-    if (!this.userRefs[index]) return;
-
-    this.userRefs[index].firstChild.focus();
+  rove(event) {
+    const { roving } = this.props;
+    const { selectedUser } = this.state;
+    const usersItemsRef = findDOMNode(this.refScrollItems);
+    roving(event, this.changeState, usersItemsRef, selectedUser);
   }
 
-  changeState(newIndex) {
-    this.setState({ index: newIndex });
+  changeState(ref) {
+    this.setState({ selectedUser: ref });
   }
 
   render() {
     const {
-      users,
       intl,
+      users,
       compact,
+      setEmojiStatus,
+      currentUser,
+      meetingIsBreakout,
     } = this.props;
 
     return (
-      <div className={styles.participants}>
+      <div className={styles.userListColumn}>
         {
-          !compact ?
-            <h2 className={styles.smallTitle}>
-              {intl.formatMessage(intlMessages.usersTitle)}
-              &nbsp;({users.length})
-            </h2> : <hr className={styles.separator} />
+          !compact
+            ? (
+              <div className={styles.container}>
+                <h2 className={styles.smallTitle}>
+                  {intl.formatMessage(intlMessages.usersTitle)}
+                  &nbsp;(
+                  {users.length}
+                  )
+                </h2>
+                {currentUser.role === ROLE_MODERATOR
+                  ? (
+                    <UserOptionsContainer {...{
+                      users,
+                      setEmojiStatus,
+                      meetingIsBreakout,
+                    }}
+                    />
+                  ) : null
+                }
+
+              </div>
+            )
+            : <hr className={styles.separator} />
         }
         <div
           className={styles.scrollableList}
-          role="list"
           tabIndex={0}
           ref={(ref) => { this.refScrollContainer = ref; }}
         >
           <div className={styles.list}>
             <TransitionGroup ref={(ref) => { this.refScrollItems = ref; }}>
-              { this.getUsers() }
+              {this.getUsers()}
             </TransitionGroup>
-            <div className={styles.footer} />
           </div>
         </div>
       </div>

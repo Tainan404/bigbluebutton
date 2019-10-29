@@ -1,31 +1,20 @@
-import PresentationPods from '/imports/api/presentation-pods';
 import Auth from '/imports/ui/services/auth';
-import Slides from '/imports/api/slides';
+import Presentations from '/imports/api/presentations';
 import { makeCall } from '/imports/ui/services/api';
+import { throttle } from 'lodash';
 
-const getSlideData = (podId, presentationId) => {
-  // Get  meetingId and userId
+const PAN_ZOOM_INTERVAL = Meteor.settings.public.presentation.panZoomInterval || 200;
+
+const getNumberOfSlides = (podId, presentationId) => {
   const meetingId = Auth.meetingID;
-  const userId = Auth.userID;
 
-  // fetching the presentation pod in order to see who owns it
-  const selector = {
+  const presentation = Presentations.findOne({
     meetingId,
     podId,
-  };
-  const pod = PresentationPods.findOne(selector);
-  const userIsPresenter = pod.currentPresenterId === userId;
+    id: presentationId,
+  });
 
-  // Get total number of slides in this presentation
-  const numberOfSlides = Slides.find({
-    meetingId,
-    podId,
-    presentationId,
-  }).fetch().length;
-
-  return {
-    numberOfSlides,
-  };
+  return presentation ? presentation.pages.length : 0;
 };
 
 const previousSlide = (currentSlideNum, podId) => {
@@ -40,13 +29,18 @@ const nextSlide = (currentSlideNum, numberOfSlides, podId) => {
   }
 };
 
+const zoomSlide = throttle((currentSlideNum, podId, widthRatio, heightRatio, xOffset, yOffset) => {
+  makeCall('zoomSlide', currentSlideNum, podId, widthRatio, heightRatio, xOffset, yOffset);
+}, PAN_ZOOM_INTERVAL);
+
 const skipToSlide = (requestedSlideNum, podId) => {
   makeCall('switchSlide', requestedSlideNum, podId);
 };
 
 export default {
-  getSlideData,
+  getNumberOfSlides,
   nextSlide,
   previousSlide,
   skipToSlide,
+  zoomSlide,
 };

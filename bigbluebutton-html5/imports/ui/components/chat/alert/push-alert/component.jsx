@@ -1,30 +1,47 @@
-import React from 'react';
+import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import _ from 'lodash';
 import injectNotify from '/imports/ui/components/toast/inject-notify/component';
-import { Link } from 'react-router';
-import { styles } from '../../styles.scss';
+import { Session } from 'meteor/session';
 
-const ALERT_INTERVAL = 2000; // 2 seconds
-const ALERT_LIFETIME = 4000; // 4 seconds
 
 const propTypes = {
   notify: PropTypes.func.isRequired,
   onOpen: PropTypes.func.isRequired,
+  chatId: PropTypes.string.isRequired,
+  title: PropTypes.node.isRequired,
+  content: PropTypes.node.isRequired,
+  alertDuration: PropTypes.number.isRequired,
 };
 
-class ChatPushAlert extends React.Component {
-  static link(message, chatId) {
+class ChatPushAlert extends PureComponent {
+  static link(title, chatId) {
+    let chat = chatId;
+
+    if (chat === 'MAIN-PUBLIC-GROUP-CHAT') {
+      chat = 'public';
+    }
+
     return (
-      <Link className={styles.link} to={`/users/chat/${chatId}`}>
-        {message}
-      </Link>
+      <div
+        key={chatId}
+        role="button"
+        aria-label={title}
+        tabIndex={0}
+        onClick={() => {
+          Session.set('openPanel', 'chat');
+          Session.set('idChatOpen', chat);
+        }}
+        onKeyPress={() => null}
+      >
+        {title}
+      </div>
     );
   }
 
   constructor(props) {
     super(props);
-    this.showNotify = _.debounce(this.showNotify.bind(this), ALERT_INTERVAL);
+    this.showNotify = this.showNotify.bind(this);
 
     this.componentDidMount = this.showNotify;
     this.componentDidUpdate = this.showNotify;
@@ -35,15 +52,16 @@ class ChatPushAlert extends React.Component {
       notify,
       onOpen,
       chatId,
-      message,
+      title,
       content,
+      alertDuration,
     } = this.props;
 
     return notify(
-      ChatPushAlert.link(message, chatId),
+      ChatPushAlert.link(title, chatId),
       'info',
       'chat',
-      { onOpen, autoClose: ALERT_LIFETIME },
+      { onOpen, autoClose: alertDuration },
       ChatPushAlert.link(content, chatId),
       true,
     );

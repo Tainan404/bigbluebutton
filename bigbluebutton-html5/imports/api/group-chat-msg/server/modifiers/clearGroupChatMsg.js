@@ -1,4 +1,4 @@
-import GroupChatMsg from '/imports/api/group-chat-msg';
+import { GroupChatMsg } from '/imports/api/group-chat-msg';
 import Logger from '/imports/startup/server/logger';
 import addGroupChatMsg from '/imports/api/group-chat-msg/server/modifiers/addGroupChatMsg';
 
@@ -9,25 +9,30 @@ export default function clearGroupChatMsg(meetingId, chatId) {
   const CHAT_CLEAR_MESSAGE = CHAT_CONFIG.system_messages_keys.chat_clear;
 
   if (chatId) {
-    GroupChatMsg.remove({ meetingId, chatId }, Logger.info(`Cleared GroupChat (${meetingId}, ${chatId})`));
-
-    const clearMsg = {
-      color: '0',
-      timestamp: Date.now(),
-      correlationId: `${PUBLIC_CHAT_SYSTEM_ID}-${Date.now()}`,
-      sender: {
-        id: PUBLIC_CHAT_SYSTEM_ID,
-        name: '',
-      },
-      message: CHAT_CLEAR_MESSAGE,
-    };
-
-    return addGroupChatMsg(meetingId, PUBLIC_GROUP_CHAT_ID, clearMsg);
+    GroupChatMsg.remove({ meetingId, chatId }, () => {
+      Logger.info(`Cleared GroupChatMsg (${meetingId}, ${chatId})`);
+      const clearMsg = {
+        color: '0',
+        timestamp: Date.now(),
+        correlationId: `${PUBLIC_CHAT_SYSTEM_ID}-${Date.now()}`,
+        sender: {
+          id: PUBLIC_CHAT_SYSTEM_ID,
+          name: '',
+        },
+        message: CHAT_CLEAR_MESSAGE,
+      };
+      addGroupChatMsg(meetingId, PUBLIC_GROUP_CHAT_ID, clearMsg);
+    });
+    return true;
   }
 
   if (meetingId) {
-    return GroupChatMsg.remove({ meetingId }, Logger.info(`Cleared GroupChat (${meetingId})`));
+    return GroupChatMsg.remove({ meetingId, chatId: { $eq: PUBLIC_GROUP_CHAT_ID } }, () => {
+      Logger.info(`Cleared GroupChatMsg (${meetingId})`);
+    });
   }
 
-  return GroupChatMsg.remove({}, Logger.info('Cleared GroupChat (all)'));
+  return GroupChatMsg.remove({ chatId: { $eq: PUBLIC_GROUP_CHAT_ID } }, () => {
+    Logger.info('Cleared GroupChatMsg (all)');
+  });
 }
