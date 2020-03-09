@@ -70,7 +70,7 @@
     "react-tabs": "^2.3.1",
     "react-toastify": "^4.5.2",
     "react-toggle": "~4.0.2",
-    "react-transition-group": "^2.9.0",
+    "react-transition-group": "^4.3.0",
     "reconnecting-websocket": "~v4.1.10",
     "redis": "~2.8.0",
     "sdp-transform": "2.7.0",
