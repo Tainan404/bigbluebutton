@@ -28,6 +28,7 @@ public:
     allowFullscreen: true
     remainingTimeThreshold: 30
     remainingTimeAlertThreshold: 1
+    allowBreakoutRecording: true
     defaultSettings:
       application:
         animations: true

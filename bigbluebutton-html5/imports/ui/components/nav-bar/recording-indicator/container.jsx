@@ -6,6 +6,9 @@ import { notify } from '/imports/ui/services/notification';
 import VoiceUsers from '/imports/api/voice-users';
 import RecordIndicator from './component';
 
+const APP_CONFIG = Meteor.settings.public.app;
+const ALLOW_BREAKOUT_RECORDING = APP_CONFIG.allowBreakoutRecording;
+
 const RecordIndicatorContainer = props => (
   <RecordIndicator {...props} />
 );
@@ -31,11 +34,11 @@ export default withTracker(() => {
       joined: 1,
     },
   });
-
   return {
     allowStartStopRecording: !!(recordObeject && recordObeject.allowStartStopRecording),
     autoStartRecording: recordObeject && recordObeject.autoStartRecording,
-    record: recordObeject && recordObeject.record,
+    record: (recordObeject && recordObeject.record)
+     || (recordObeject?.allowStartStopRecording && ALLOW_BREAKOUT_RECORDING),
     recording: recordObeject && recordObeject.recording,
     time: recordObeject && recordObeject.time,
     notify,
