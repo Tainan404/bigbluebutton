@@ -3,8 +3,13 @@ import { check } from 'meteor/check';
 import userLeftFlag from '../modifiers/userLeftFlagUpdated';
 
 export default function handleUserLeftFlag({ body }, meetingId) {
-  const user = body;
-  check(user, Object);
+  const {
+    intId,
+    userLeftFlag: left,
+  } = body;
 
-  userLeftFlag(meetingId, user.intId, user.userLeftFlag);
+  check(intId, String);
+  check(left, Boolean);
+
+  userLeftFlag(meetingId, intId, left);
 }
