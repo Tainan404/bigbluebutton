@@ -173,10 +173,12 @@ const ChatListItem = (props) => {
         <Styled.ChatName aria-live="off">
           {!compact
             ? (
-              <Styled.ChatNameMain>
-                {isPublicChat(chat)
-                  ? intl.formatMessage(intlMessages.titlePublic) : chat.name}
-              </Styled.ChatNameMain>
+              <Styled.ChatNameMain
+                dangerouslySetInnerHTML={{
+                  __html: isPublicChat(chat)
+                    ? intl.formatMessage(intlMessages.titlePublic) : chat.name,
+                }}
+              />
             ) : null}
         </Styled.ChatName>
         {(stateUreadCount > 0)

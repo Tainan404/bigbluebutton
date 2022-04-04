@@ -67,7 +67,7 @@ object UsersApp {
       newPresenter <- Users2x.makePresenter(liveMeeting.users2x, moderator.intId)
     } yield {
       // println(s"automaticallyAssignPresenter: moderator=${moderator} newPresenter=${newPresenter.intId}");
-      sendPresenterAssigned(outGW, meetingId, newPresenter.intId, newPresenter.name, newPresenter.intId)
+      sendPresenterAssigned(outGW, meetingId, newPresenter.intId, newPresenter.htmlName, newPresenter.intId)
     }
   }
 

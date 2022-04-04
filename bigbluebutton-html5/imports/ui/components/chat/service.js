@@ -66,14 +66,14 @@ const mapGroupMessage = (message) => {
     time: message.timestamp || message.time,
     sender: null,
     key: message.key,
-    chatId: message.chatId
+    chatId: message.chatId,
   };
 
   if (message.sender && message.sender !== SYSTEM_CHAT_TYPE) {
     const sender = Users.findOne(
       { userId: message.sender },
       {
-        fields: { avatar: 1, role: 1, name: 1 },
+        fields: { avatar: 1, role: 1, htmlName: 1 },
       },
     );
 
@@ -81,7 +81,7 @@ const mapGroupMessage = (message) => {
       avatar: sender?.avatar,
       color: message.color,
       isModerator: sender?.role === ROLE_MODERATOR,
-      name: sender.name,
+      name: sender.htmlName,
       isOnline: !!sender,
     };
 
@@ -270,7 +270,7 @@ const exportChat = (timeWindowList, users, intl) => {
 
       let userName = message.id.startsWith(SYSTEM_CHAT_TYPE)
         ? ''
-        : `${users[timeWindow.sender].name}: `;
+        : `${users[timeWindow.sender].plainName}: `;
       let messageText = '';
       if (message.text === PUBLIC_CHAT_CLEAR) {
         message.text = intl.formatMessage(intlMessages.publicChatClear);

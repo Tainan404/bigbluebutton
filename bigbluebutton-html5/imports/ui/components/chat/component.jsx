@@ -53,6 +53,7 @@ const Chat = (props) => {
     syncing,
     syncedPercent,
     lastTimeWindowValuesBuild,
+    plainTitle,
   } = props;
 
   const userSentMessage = UserSentMessageCollection.findOne({ userId: Auth.userID, sent: true });
@@ -86,6 +87,7 @@ const Chat = (props) => {
             }}
             aria-label={intl.formatMessage(intlMessages.hideChatLabel, { 0: title })}
             accessKey={chatID !== 'public' ? HIDE_CHAT_AK : null}
+            shouldUseInnerHTML
             data-test={isPublicChat ? 'hidePublicChat' : 'hidePrivateChat'}
             label={title}
             icon="left_arrow"
@@ -151,6 +153,7 @@ const Chat = (props) => {
       />
       <MessageFormContainer
         {...{
+          plainTitle,
           title,
         }}
         chatId={chatID}

@@ -235,7 +235,7 @@ class BbbWebApiGWApp(
 
   }
 
-  def registerUser(meetingId: String, intUserId: String, name: String,
+  def registerUser(meetingId: String, intUserId: String, plainFullname: String, htmlFullname: String,
                    role: String, extUserId: String, authToken: String, avatarURL: String,
                    guest: java.lang.Boolean, authed: java.lang.Boolean,
                    guestStatus: String, excludeFromDashboard: java.lang.Boolean): Unit = {
@@ -244,7 +244,7 @@ class BbbWebApiGWApp(
     //      role = role, extUserId = extUserId, authToken = authToken, avatarURL = avatarURL,
     //     guest = guest, authed = authed)
 
-    val regUser = new RegisterUser(meetingId = meetingId, intUserId = intUserId, name = name,
+    val regUser = new RegisterUser(meetingId = meetingId, intUserId = intUserId, plainFullname, htmlFullname,
       role = role, extUserId = extUserId, authToken = authToken, avatarURL = avatarURL,
       guest = guest.booleanValue(), authed = authed.booleanValue(), guestStatus = guestStatus,
       excludeFromDashboard = excludeFromDashboard)

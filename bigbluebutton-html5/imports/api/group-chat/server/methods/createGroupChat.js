@@ -22,7 +22,7 @@ export default function createGroupChat(receiver) {
       msg: [],
       users: [receiver.userId],
       access: CHAT_ACCESS_PRIVATE,
-      name: receiver.name,
+      name: receiver.htmlName,
     };
 
     RedisPubSub.publishUserMessage(CHANNEL, EVENT_NAME, meetingId, requesterUserId, payload);

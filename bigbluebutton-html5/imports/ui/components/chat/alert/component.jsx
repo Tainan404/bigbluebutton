@@ -189,7 +189,10 @@ const ChatAlert = (props) => {
 
   const createMessage = (name, message) => (
     <Styled.PushMessageContent>
-      <Styled.UserNameMessage>{name}</Styled.UserNameMessage>
+      <Styled.UserNameMessage dangerouslySetInnerHTML={{
+        __html: name,
+      }}
+      />
       <Styled.ContentMessage>
         {
           mapContentText(message)
@@ -202,6 +205,7 @@ const ChatAlert = (props) => {
   return pushAlertEnabled
     ? unreadMessages.map((timeWindow) => {
       const mappedMessage = Service.mapGroupMessage(timeWindow);
+
       const content = mappedMessage
         ? createMessage(mappedMessage.sender.name, mappedMessage.content.slice(-5))
         : null;

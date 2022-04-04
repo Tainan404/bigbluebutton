@@ -234,7 +234,7 @@ object Polls {
 
     for {
       user <- Users2x.findWithIntId(lm.users2x, requesterId)
-      responder = new Responder(user.intId, user.name)
+      responder = new Responder(user.intId, user.htmlName)
       updatedPoll <- storePollResult(responder)
     } yield {
       updatedPoll

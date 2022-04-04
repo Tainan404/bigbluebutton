@@ -238,7 +238,12 @@ export default class Button extends BaseButton {
   }
 
   renderLabel() {
-    const { label, hideLabel } = this.props;
+    const { label, hideLabel, shouldUseInnerHTML } = this.props;
+    if (shouldUseInnerHTML) {
+      return (
+        <Styled.ButtonLabel hideLabel={hideLabel} dangerouslySetInnerHTML={{ __html: label }}/>
+      );
+    }
 
     return (
       <Styled.ButtonLabel hideLabel={hideLabel}>

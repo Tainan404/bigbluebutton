@@ -42,7 +42,8 @@ trait HandlerHelpers extends SystemConfiguration {
       UserState(
         intId = regUser.id,
         extId = regUser.externId,
-        name = regUser.name,
+        plainName = regUser.plainFullname,
+        htmlName = regUser.htmlFullname,
         role = regUser.role,
         guest = regUser.guest,
         authed = regUser.authed,

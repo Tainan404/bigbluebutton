@@ -32,8 +32,8 @@ trait SyncGetWebcamInfoRespMsgHdlr {
         u <- Users2x.findWithIntId(liveMeeting.users2x, userId)
       } yield {
         VoiceUsers.findWIthIntId(liveMeeting.voiceUsers, userId) match {
-          case Some(vu) => WebcamStreamInfo(streamId, userId, u.name, pin, vu.floor, vu.lastFloorTime)
-          case _        => WebcamStreamInfo(streamId, userId, u.name, pin, false, "0")
+          case Some(vu) => WebcamStreamInfo(streamId, userId, u.htmlName, pin, vu.floor, vu.lastFloorTime)
+          case _        => WebcamStreamInfo(streamId, userId, u.htmlName, pin, false, "0")
         }
       }
     }

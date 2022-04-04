@@ -30,7 +30,7 @@ trait EjectUserFromBreakoutInternalMsgHdlr {
       // send a system message to force disconnection
       Sender.sendDisconnectClientSysMsg(msg.breakoutId, registeredUser.id, msg.ejectedBy, msg.reasonCode, outGW)
 
-      log.info("Eject user {} id={} in breakoutId {}", registeredUser.name, registeredUser.id, msg.breakoutId)
+      log.info("Eject user {} id={} in breakoutId {}", registeredUser.plainFullname, registeredUser.id, msg.breakoutId)
     }
 
   }

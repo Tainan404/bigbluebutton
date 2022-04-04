@@ -68,7 +68,7 @@ trait EjectUserFromMeetingCmdMsgHdlr extends RightsManagementTrait {
               ban
             )
 
-            log.info("Eject user {} userId={} by {} and ban=" + banUser + " in meeting {}", registeredUser.name, userId, ejectedBy, meetingId)
+            log.info("Eject user {} userId={} by {} and ban=" + banUser + " in meeting {}", registeredUser.plainFullname, userId, ejectedBy, meetingId)
 
             // send a system message to force disconnection
             Sender.sendDisconnectClientSysMsg(meetingId, ru.id, ejectedBy, EjectReasonCode.EJECT_USER, outGW)

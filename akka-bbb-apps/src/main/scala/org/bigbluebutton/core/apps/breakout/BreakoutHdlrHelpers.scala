@@ -41,7 +41,7 @@ object BreakoutHdlrHelpers extends SystemConfiguration {
     for {
       user <- Users2x.findWithIntId(liveMeeting.users2x, userId)
       apiCall = "join"
-      (redirectParams, redirectToHtml5Params) = BreakoutRoomsUtil.joinParams(user.name, userId + "-" + roomSequence, true,
+      (redirectParams, redirectToHtml5Params) = BreakoutRoomsUtil.joinParams(user.plainName, userId + "-" + roomSequence, true,
         externalMeetingId, liveMeeting.props.password.moderatorPass)
       // We generate a first url with redirect -> true
       redirectBaseString = BreakoutRoomsUtil.createBaseString(redirectParams)
@@ -88,7 +88,7 @@ object BreakoutHdlrHelpers extends SystemConfiguration {
   ): Unit = {
 
     val users = Users2x.findAll(liveMeeting.users2x)
-    val breakoutUsers = users map { u => new BreakoutUser(u.extId, u.name) }
+    val breakoutUsers = users map { u => new BreakoutUser(u.extId, u.htmlName) }
 
     val voiceUsers = VoiceUsers.findAll(liveMeeting.voiceUsers)
     val breakoutVoiceUsers = voiceUsers map { vu => BreakoutVoiceUser(vu.intId, vu.intId, vu.voiceUserId) }

@@ -4,7 +4,8 @@ public class UserJoined implements IMessage {
   public final String meetingId;
   public final String userId;
   public final String externalUserId;
-  public final String name;
+  public final String plainName;
+  public final String htmlName;
   public final String role;
   public final String avatarURL;
   public final Boolean guest;
@@ -15,7 +16,8 @@ public class UserJoined implements IMessage {
   public UserJoined(String meetingId,
 										String userId,
 										String externalUserId,
-										String name,
+										String plainName,
+										String htmlName,
 										String role,
 										String avatarURL,
 										Boolean guest,
@@ -24,7 +26,8 @@ public class UserJoined implements IMessage {
   	this.meetingId = meetingId;
   	this.userId = userId;
   	this.externalUserId = externalUserId;
-  	this.name = name;
+  	this.plainName = plainName;
+	this.htmlName = htmlName;
   	this.role = role;
   	this.avatarURL = avatarURL;
   	this.guest = guest;

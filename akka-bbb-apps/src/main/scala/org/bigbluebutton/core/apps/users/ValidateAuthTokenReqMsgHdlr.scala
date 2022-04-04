@@ -5,7 +5,7 @@ import org.bigbluebutton.core.bus.InternalEventBus
 import org.bigbluebutton.core.domain.MeetingState2x
 import org.bigbluebutton.core.models._
 import org.bigbluebutton.core.running.{ HandlerHelpers, LiveMeeting, OutMsgRouter }
-import org.bigbluebutton.core2.message.senders.{ MsgBuilder, Sender }
+import org.bigbluebutton.core2.message.senders.MsgBuilder
 
 trait ValidateAuthTokenReqMsgHdlr extends HandlerHelpers {
   this: UsersApp =>
@@ -108,7 +108,7 @@ trait ValidateAuthTokenReqMsgHdlr extends HandlerHelpers {
     val meetingId = liveMeeting.props.meetingProp.intId
     val users = Users2x.findAll(liveMeeting.users2x)
     val webUsers = users.map { u =>
-      WebUser(intId = u.intId, extId = u.extId, name = u.name, role = u.role,
+      WebUser(intId = u.intId, extId = u.extId, name = u.htmlName, role = u.role,
         guest = u.guest, authed = u.authed, guestStatus = u.guestStatus, emoji = u.emoji,
         locked = u.locked, presenter = u.presenter, avatar = u.avatar, clientType = u.clientType)
     }

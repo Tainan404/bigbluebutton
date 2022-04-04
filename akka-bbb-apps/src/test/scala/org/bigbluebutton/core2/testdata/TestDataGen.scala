@@ -23,8 +23,8 @@ object TestDataGen {
   def createVoiceUserForUser(user: RegisteredUser, callingWith: String, muted: Boolean, talking: Boolean,
                              listenOnly: Boolean): VoiceUserState = {
     val voiceUserId = RandomStringGenerator.randomAlphanumericString(8)
-    VoiceUserState(intId = user.id, voiceUserId = voiceUserId, callingWith, callerName = user.name,
-      callerNum = user.name, muted, talking, listenOnly)
+    VoiceUserState(intId = user.id, voiceUserId = voiceUserId, callingWith, callerName = user.htmlFullname,
+      callerNum = user.htmlFullname, muted, talking, listenOnly)
   }
 
   def createFakeVoiceOnlyUser(callingWith: String, muted: Boolean, talking: Boolean,

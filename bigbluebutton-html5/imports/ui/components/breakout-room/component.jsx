@@ -398,41 +398,47 @@ class BreakoutRoom extends PureComponent {
     } = this.state;
 
     const { animations } = Settings.application;
-
-    const roomItems = breakoutRooms.map((breakout) => (
-      <Styled.BreakoutItems key={`breakoutRoomItems-${breakout.breakoutId}`} >
-        <Styled.Content key={`breakoutRoomList-${breakout.breakoutId}`}>
-          <Styled.BreakoutRoomListNameLabel aria-hidden>
-            {breakout.isDefaultName
-              ? intl.formatMessage(intlMessages.breakoutRoom, { 0: breakout.sequence })
-              : breakout.shortName}
-            <Styled.UsersAssignedNumberLabel>
-              (
-              {breakout.joinedUsers.length}
-              )
-            </Styled.UsersAssignedNumberLabel>
-          </Styled.BreakoutRoomListNameLabel>
-          {waiting && requestedBreakoutId === breakout.breakoutId ? (
-            <span>
-              {intl.formatMessage(intlMessages.generatingURL)}
-              <Styled.ConnectingAnimation animations={animations}/>
-            </span>
-          ) : this.renderUserActions(
-            breakout.breakoutId,
-            breakout.joinedUsers,
-            breakout.shortName,
-          )}
-        </Styled.Content>
-        <Styled.JoinedUserNames>
-          {breakout.joinedUsers
-            .sort(BreakoutRoom.sortById)
-            .filter((value, idx, arr) => !(value.userId === (arr[idx + 1] || {}).userId))
-            .sort(Service.sortUsersByName)
-            .map((u) => u.name)
-            .join(', ')}
-        </Styled.JoinedUserNames>
-      </Styled.BreakoutItems>
-    ));
+    
+    const roomItems = breakoutRooms.map((breakout) => {
+      const joinedNames = breakout.joinedUsers
+        .sort(BreakoutRoom.sortById)
+        .filter((value, idx, arr) => !(value.userId === (arr[idx + 1] || {}).userId))
+        .sort(Service.sortUsersByName)
+        .map((u) => u.name)
+        
+        console.log('joinedNames', joinedNames);
+      return (
+        <Styled.BreakoutItems key={`breakoutRoomItems-${breakout.breakoutId}`} >
+          <Styled.Content key={`breakoutRoomList-${breakout.breakoutId}`}>
+            <Styled.BreakoutRoomListNameLabel aria-hidden>
+              {breakout.isDefaultName
+                ? intl.formatMessage(intlMessages.breakoutRoom, { 0: breakout.sequence })
+                : breakout.shortName}
+              <Styled.UsersAssignedNumberLabel>
+                (
+                {breakout.joinedUsers.length}
+                )
+              </Styled.UsersAssignedNumberLabel>
+            </Styled.BreakoutRoomListNameLabel>
+            {waiting && requestedBreakoutId === breakout.breakoutId ? (
+              <span>
+                {intl.formatMessage(intlMessages.generatingURL)}
+                <Styled.ConnectingAnimation animations={animations} />
+              </span>
+            ) : this.renderUserActions(
+              breakout.breakoutId,
+              breakout.joinedUsers,
+              breakout.shortName,
+            )}
+          </Styled.Content>
+          <Styled.JoinedUserNames
+            dangerouslySetInnerHTML={{
+              __html: `${joinedNames}`,
+            }}
+          />
+        </Styled.BreakoutItems>
+      )
+    });
 
     return (
       <Styled.BreakoutColumn>

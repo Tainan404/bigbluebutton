@@ -25,7 +25,7 @@ trait SendMessageToAllBreakoutRoomsMsgHdlr extends RightsManagementTrait {
         senderUser <- RegisteredUsers.findWithUserId(msg.header.userId, liveMeeting.registeredUsers)
       } yield {
         breakoutModel.rooms.values.foreach { room =>
-          eventBus.publish(BigBlueButtonEvent(room.id, SendMessageToBreakoutRoomInternalMsg(props.breakoutProps.parentId, room.id, senderUser.name, msg.body.msg)))
+          eventBus.publish(BigBlueButtonEvent(room.id, SendMessageToBreakoutRoomInternalMsg(props.breakoutProps.parentId, room.id, senderUser.htmlFullname, msg.body.msg)))
         }
 
         val event = buildSendMessageToAllBreakoutRoomsEvtMsg(msg.header.userId, msg.body.msg, breakoutModel.rooms.size)

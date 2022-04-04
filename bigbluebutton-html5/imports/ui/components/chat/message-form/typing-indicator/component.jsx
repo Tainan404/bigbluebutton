@@ -45,10 +45,9 @@ class TypingIndicator extends PureComponent {
           id="app.chat.one.typing"
           description="label used when one user is typing"
           values={{
-            0: <Styled.SingleTyper>
-              {`${name}`}
-&nbsp;
-            </Styled.SingleTyper>,
+            0: <Styled.SingleTyper
+              dangerouslySetInnerHTML={{ __html: `${name} &nbsp;` }}
+            />,
           }}
         />
       );
@@ -62,15 +61,8 @@ class TypingIndicator extends PureComponent {
           id="app.chat.two.typing"
           description="label used when two users are typing"
           values={{
-            0: <Styled.CoupleTyper>
-              {`${name}`}
-&nbsp;
-            </Styled.CoupleTyper>,
-            1: <Styled.CoupleTyper>
-&nbsp;
-              {`${name2}`}
-&nbsp;
-            </Styled.CoupleTyper>,
+            0: <Styled.CoupleTyper dangerouslySetInnerHTML={{ __html: `${name} &nbsp;` }} />,
+            1: <Styled.CoupleTyper dangerouslySetInnerHTML={{ __html: `${name2} &nbsp;` }} />,
           }}
         />
       );

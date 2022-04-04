@@ -28,7 +28,8 @@ public class UserSession {
   public String meetingID = null;
   public String externMeetingID = null;
   public String externUserID = null;
-  public String fullname = null; 
+  public String plainFullname = null;
+  public String htmlFullname = null;
   public String role = null;
   public String conference = null;
   public String room = null;
@@ -78,8 +79,12 @@ public class UserSession {
     return externUserID;
   }
 
-  public String getFullname() {
-    return fullname;
+  public String getPlainFullname() {
+    return plainFullname;
+  }
+
+  public String getHtmlFullname() {
+    return htmlFullname;
   }
 
   public String getRole() {
@@ -143,6 +148,6 @@ public class UserSession {
   }
 
   public String toString() {
-    return fullname + " " + meetingID + " " + conferencename;
+    return plainFullname + " " + meetingID + " " + conferencename;
   }
 }

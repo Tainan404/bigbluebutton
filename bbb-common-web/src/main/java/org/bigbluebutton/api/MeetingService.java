@@ -69,6 +69,7 @@ import org.bigbluebutton.web.services.EnteredUserCleanupTimerTask;
 import org.bigbluebutton.web.services.callback.CallbackUrlService;
 import org.bigbluebutton.web.services.callback.MeetingEndedEvent;
 import org.bigbluebutton.web.services.turn.StunTurnService;
+import org.bigbluebutton.api.util.ParamsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,10 +139,10 @@ public class MeetingService implements MessageListener {
   }
 
   public void registerUser(String meetingID, String internalUserId,
-                           String fullname, String role, String externUserID,
+                           String plainFullname, String htmlFullname, String role, String externUserID,
                            String authToken, String avatarURL, Boolean guest,
                            Boolean authed, String guestStatus, Boolean excludeFromDashboard, Boolean leftGuestLobby) {
-    handle(new RegisterUser(meetingID, internalUserId, fullname, role,
+    handle(new RegisterUser(meetingID, internalUserId, plainFullname, htmlFullname, role,
       externUserID, authToken, avatarURL, guest, authed, guestStatus, excludeFromDashboard, leftGuestLobby));
 
     Meeting m = getMeeting(meetingID);
@@ -179,7 +180,7 @@ public class MeetingService implements MessageListener {
   public UserSession removeUserSessionWithAuthToken(String token) {
     UserSession user = sessions.remove(token);
     if (user != null) {
-      log.debug("Found user {} token={} to meeting {}", user.fullname, token, user.meetingID);
+      log.debug("Found user {} token={} to meeting {}", user.plainFullname, token, user.meetingID);
     }
     return user;
   }
@@ -439,7 +440,7 @@ public class MeetingService implements MessageListener {
         logData.put("name", m.getName());
         logData.put("extUserId", prevUser.getExternalUserId());
         logData.put("intUserId", prevUser.getInternalUserId());
-        logData.put("username", prevUser.getFullname());
+        logData.put("username", prevUser.getPlainFullname());
         logData.put("logCode", "duplicate_user_with_external_userid");
         logData.put("description", "Duplicate user with external userid.");
 
@@ -449,7 +450,7 @@ public class MeetingService implements MessageListener {
 
         if (!m.allowDuplicateExtUserid) {
           gw.ejectDuplicateUser(message.meetingID,
-                  prevUser.getInternalUserId(), prevUser.getFullname(),
+                  prevUser.getInternalUserId(), prevUser.getPlainFullname(),
                   prevUser.getExternalUserId());
         }
 
@@ -457,7 +458,7 @@ public class MeetingService implements MessageListener {
 
     }
     gw.registerUser(message.meetingID,
-      message.internalUserId, message.fullname, message.role,
+        message.internalUserId, message.plainFullname, message.htmlFullname, message.role,
       message.externUserID, message.authToken, message.avatarURL, message.guest,
             message.authed, message.guestStatus, message.excludeFromDashboard);
   }
@@ -923,8 +924,15 @@ public class MeetingService implements MessageListener {
         m.setEndTime(0);
       }
 
-      User user = new User(message.userId, message.externalUserId,
-        message.name, message.role, message.avatarURL, message.guest, message.guestStatus,
+      User user = new User(
+              message.userId,
+              message.externalUserId,
+              message.plainName,
+              message.htmlName,
+              message.role,
+              message.avatarURL,
+              message.guest,
+              message.guestStatus,
               message.clientType);
       m.userJoined(user);
       m.setGuestStatusWithId(user.getInternalUserId(), message.guestStatus);
@@ -939,7 +947,7 @@ public class MeetingService implements MessageListener {
       logData.put("name", m.getName());
       logData.put("userId", message.userId);
       logData.put("externalUserId", user.getExternalUserId());
-      logData.put("username", user.getFullname());
+      logData.put("username", user.getPlainFullname());
       logData.put("role", user.getRole());
       logData.put("guest", user.isGuest());
       logData.put("guestStatus", user.getGuestStatus());
@@ -965,7 +973,7 @@ public class MeetingService implements MessageListener {
         logData.put("name", m.getName());
         logData.put("userId", message.userId);
         logData.put("externalUserId", user.getExternalUserId());
-        logData.put("username", user.getFullname());
+        logData.put("username", user.getPlainFullname());
         logData.put("role", user.getRole());
         logData.put("guest", user.isGuest());
         logData.put("guestStatus", user.getGuestStatus());
@@ -1038,7 +1046,7 @@ public class MeetingService implements MessageListener {
       } else {
         if (message.userId.startsWith("v_")) {
           // A dial-in user joined the meeting. Dial-in users by convention has userId that starts with "v_".
-                    User vuser = new User(message.userId, message.userId, message.name, "DIAL-IN-USER", "",
+                    User vuser = new User(message.userId, message.userId, message.name, ParamsUtil.escapeHTMLTags(message.name),"DIAL-IN-USER", "",
                             true, GuestPolicy.ALLOW, "DIAL-IN");
           vuser.setVoiceJoined(true);
           m.userJoined(vuser);
@@ -1109,7 +1117,7 @@ public class MeetingService implements MessageListener {
             userSession.role = message.role;
             sessions.replace(sessionToken, userSession);
         }
-        log.debug("Setting new role in meeting {} for participant: {}", message.meetingId, user.getFullname());
+        log.debug("Setting new role in meeting {} for participant: {}", message.meetingId, user.getPlainFullname());
         return;
       }
       log.warn("The participant {} doesn't exist in the meeting {}", message.userId, message.meetingId);

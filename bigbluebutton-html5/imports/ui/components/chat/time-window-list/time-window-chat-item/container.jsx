@@ -47,7 +47,7 @@ const TimeWindowChatItemContainer = (props) => {
         isSystemSender: sender === 'SYSTEM',
         isOnline: !user?.loggedOut,
         avatar: user?.avatar,
-        name: user?.name,
+        name: user?.htmlName,
         read: message.read,
         messages,
         extra,

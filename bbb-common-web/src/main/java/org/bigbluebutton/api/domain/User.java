@@ -28,7 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class User {
 	private String internalUserId;
 	private String externalUserId;
-	private String fullname;
+	private String plainFullname;
+	private String htmlFullname;
 	private String role;
 	private String avatarURL;
 	private Map<String,String> status;
@@ -42,7 +43,8 @@ public class User {
 
 	public User(String internalUserId,
 							String externalUserId,
-							String fullname,
+							String plainFullname,
+							String htmlFullname,
 							String role,
 							String avatarURL,
 							Boolean guest,
@@ -50,7 +52,8 @@ public class User {
 							String clientType) {
 		this.internalUserId = internalUserId;
 		this.externalUserId = externalUserId;
-		this.fullname = fullname;
+		this.plainFullname = plainFullname;
+		this.htmlFullname = htmlFullname;
 		this.role = role;
 		this.avatarURL = avatarURL;
 		this.guest = guest;
@@ -107,11 +110,18 @@ public class User {
 		return this.leftOn;
 	}
 
-	public String getFullname() {
-		return fullname;
+	public String getHtmlFullname() {
+		return htmlFullname;
 	}
-	public void setFullname(String fullname) {
-		this.fullname = fullname;
+	public void setHtmlFullname(String fullname) {
+		this.htmlFullname = fullname;
+	}
+
+	public String getPlainFullname() {
+		return plainFullname;
+	}
+	public void setPlainFullname(String fullname) {
+		this.plainFullname = fullname;
 	}
 	public String getRole() {
 		return role;

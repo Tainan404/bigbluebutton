@@ -157,7 +157,7 @@ const messages = defineMessages({
 const propTypes = {
   compact: PropTypes.bool.isRequired,
   user: PropTypes.shape({
-    name: PropTypes.string.isRequired,
+    htmlName: PropTypes.string.isRequired,
     pin: PropTypes.bool.isRequired,
   }),
   intl: PropTypes.shape({
@@ -481,8 +481,8 @@ class UserListItem extends PureComponent {
       {
         allowed: allowedToChangeUserLockStatus && isMeteorConnected && !showNestedOptions,
         key: 'unlockUser',
-        label: userLocked ? intl.formatMessage(messages.UnlockUserLabel, { 0: user.name })
-          : intl.formatMessage(messages.LockUserLabel, { 0: user.name }),
+        label: userLocked ? intl.formatMessage(messages.UnlockUserLabel, { 0: user.htmlName })
+          : intl.formatMessage(messages.LockUserLabel, { 0: user.htmlName }),
         onClick: () => {
           this.onActionsHide(toggleUserLock(user.userId, !userLocked));
           this.handleClose();
@@ -503,13 +503,13 @@ class UserListItem extends PureComponent {
       {
         allowed: allowedToRemove && isMeteorConnected && !showNestedOptions,
         key: 'remove',
-        label: intl.formatMessage(messages.RemoveUserLabel, { 0: user.name }),
+        label: intl.formatMessage(messages.RemoveUserLabel, { 0: user.htmlName }),
         onClick: () => {
           this.onActionsHide(mountModal(
             <ConfirmationModal
               intl={intl}
               titleMessageId="app.userList.menu.removeConfirmation.label"
-              titleMessageExtra={user.name}
+              titleMessageExtra={user.htmlName}
               checkboxMessageId="app.userlist.menu.removeConfirmation.desc"
               confirmParam={user.userId}
               onConfirm={removeUser}
@@ -609,7 +609,7 @@ class UserListItem extends PureComponent {
 
     const iconUser = user.emoji !== 'none'
       ? (<Icon iconName={normalizeEmojiName(user.emoji)} />)
-      : user.name.toLowerCase().slice(0, 2);
+      : user.htmlName.toLowerCase().slice(0, 2);
 
     const iconVoiceOnlyUser = (<Icon iconName="volume_level_2" />);
     const userIcon = isVoiceOnly ? iconVoiceOnlyUser : iconUser;
@@ -692,7 +692,7 @@ class UserListItem extends PureComponent {
     const userAriaLabel = intl.formatMessage(
       messages.userAriaLabel,
       {
-        0: user.name,
+        0: user.htmlName,
         1: presenter,
         2: you,
         3: user.emoji,
@@ -760,11 +760,10 @@ class UserListItem extends PureComponent {
               aria-expanded={isActionsOpen}
             >
               <Styled.UserNameMain>
-                <TooltipContainer title={user.name}>
-                  <span>
-                    {user.name}
-                    &nbsp;
-                  </span>
+                <TooltipContainer title={user.htmlName}>
+                  <span
+                    dangerouslySetInnerHTML={{__html: `${user.htmlName} &nbsp;`}}
+                  />
                 </TooltipContainer>
                 <i>{(isMe(user.userId)) ? `(${intl.formatMessage(messages.you)})` : ''}</i>
               </Styled.UserNameMain>

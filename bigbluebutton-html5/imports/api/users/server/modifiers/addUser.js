@@ -19,11 +19,11 @@ export default function addUser(meetingId, userData) {
   const user = userData;
 
   check(meetingId, String);
-
   check(user, {
     intId: String,
     extId: String,
-    name: String,
+    plainName: String,
+    htmlName: String,
     role: String,
     guest: Boolean,
     authed: Boolean,
@@ -51,7 +51,7 @@ export default function addUser(meetingId, userData) {
 
   const userInfos = {
     meetingId,
-    sortName: user.name.trim().toLowerCase(),
+    sortName: user.plainName.trim().toLowerCase(),
     color,
     mobile: false,
     breakoutProps: {
@@ -75,7 +75,7 @@ export default function addUser(meetingId, userData) {
     addVoiceUser(meetingId, {
       voiceUserId: '',
       intId: userId,
-      callerName: user.name,
+      callerName: user.htmlName,
       callerNum: '',
       muted: false,
       talking: false,

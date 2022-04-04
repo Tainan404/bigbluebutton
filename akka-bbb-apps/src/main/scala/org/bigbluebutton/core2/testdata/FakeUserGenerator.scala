@@ -53,7 +53,7 @@ object FakeUserGenerator {
     val avatarURL = "https://www." + RandomStringGenerator.randomAlphanumericString(32) + ".com/" +
       RandomStringGenerator.randomAlphanumericString(10) + ".png"
 
-    val ru = RegisteredUsers.create(userId = id, extId, name, role,
+    val ru = RegisteredUsers.create(userId = id, extId, name, name, role,
       authToken, avatarURL, guest, authed, guestStatus = GuestStatus.ALLOW, false, false)
     RegisteredUsers.add(users, ru)
     ru
@@ -63,8 +63,8 @@ object FakeUserGenerator {
                           listenOnly: Boolean, floor: Boolean = false): VoiceUserState = {
     val voiceUserId = RandomStringGenerator.randomAlphanumericString(8)
     val lastFloorTime = System.currentTimeMillis().toString();
-    VoiceUserState(intId = user.id, voiceUserId = voiceUserId, callingWith, callerName = user.name,
-      callerNum = user.name, muted, talking, listenOnly, "freeswitch", System.currentTimeMillis(), floor, lastFloorTime)
+    VoiceUserState(intId = user.id, voiceUserId = voiceUserId, callingWith, callerName = user.htmlFullname,
+      callerNum = user.htmlFullname, muted, talking, listenOnly, "freeswitch", System.currentTimeMillis(), floor, lastFloorTime)
   }
 
   def createFakeVoiceOnlyUser(callingWith: String, muted: Boolean, talking: Boolean,

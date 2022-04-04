@@ -618,12 +618,12 @@ class MeetingActor(
     val breakoutRoom: BreakoutRoom = BreakoutRoom(liveMeeting.props.breakoutProps.parentId, breakoutRoomNames)
     MeetingInfoAnalytics(
       meetingName, externalId, internalId, hasUserJoined, isMeetingRecorded, getMeetingInfoWebcamDetails, getMeetingInfoAudioDetails,
-      screenshare, listOfUsers.map(u => Participant(u.intId, u.name, u.role)), getMeetingInfoPresentationDetails, breakoutRoom
+      screenshare, listOfUsers.map(u => Participant(u.intId, u.htmlName, u.role)), getMeetingInfoPresentationDetails, breakoutRoom
     )
   }
 
   private def resolveUserName(userId: String): String = {
-    val userName: String = Users2x.findWithIntId(liveMeeting.users2x, userId).map(_.name).getOrElse("")
+    val userName: String = Users2x.findWithIntId(liveMeeting.users2x, userId).map(_.htmlName).getOrElse("")
     if (userName.isEmpty) log.error(s"Failed to map username for id $userId")
     userName
   }

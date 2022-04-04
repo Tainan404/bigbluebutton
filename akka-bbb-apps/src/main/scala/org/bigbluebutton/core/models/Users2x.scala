@@ -1,7 +1,6 @@
 package org.bigbluebutton.core.models
 
 import com.softwaremill.quicklens._
-import org.bigbluebutton.core.util.TimeUtil
 
 object Users2x {
   def findWithIntId(users: Users2x, intId: String): Option[UserState] = {
@@ -324,7 +323,8 @@ case class UserLeftFlag(left: Boolean, leftOn: Long)
 case class UserState(
     intId:                 String,
     extId:                 String,
-    name:                  String,
+    plainName:             String,
+    htmlName:              String,
     role:                  String,
     guest:                 Boolean,
     pin:                   Boolean,

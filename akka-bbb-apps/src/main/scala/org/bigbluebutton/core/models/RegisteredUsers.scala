@@ -4,13 +4,14 @@ import com.softwaremill.quicklens._
 import org.bigbluebutton.core.domain.BreakoutRoom2x
 
 object RegisteredUsers {
-  def create(userId: String, extId: String, name: String, roles: String,
+  def create(userId: String, extId: String, plainFullname: String, htmlFullname: String,roles: String,
              token: String, avatar: String, guest: Boolean, authenticated: Boolean,
              guestStatus: String, excludeFromDashboard: Boolean, loggedOut: Boolean): RegisteredUser = {
     new RegisteredUser(
       userId,
       extId,
-      name,
+      plainFullname,
+      htmlFullname,
       roles,
       token,
       avatar,
@@ -175,7 +176,8 @@ class RegisteredUsers {
 case class RegisteredUser(
     id:                       String,
     externId:                 String,
-    name:                     String,
+    plainFullname:            String,
+    htmlFullname:             String,
     role:                     String,
     authToken:                String,
     avatarURL:                String,

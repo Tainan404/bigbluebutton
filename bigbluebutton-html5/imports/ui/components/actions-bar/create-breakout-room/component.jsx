@@ -470,7 +470,7 @@ class BreakoutRoom extends PureComponent {
       .filter((user) => !stateUsersId.includes(user.userId))
       .map((user) => ({
         userId: user.userId,
-        userName: user.name,
+        userName: user.plainName,
         isModerator: user.role === ROLE_MODERATOR,
         room: 0,
       }));

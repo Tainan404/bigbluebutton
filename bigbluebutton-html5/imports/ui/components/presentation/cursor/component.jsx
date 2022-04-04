@@ -259,9 +259,8 @@ export default class Cursor extends Component {
                 fontSize={cursorLabelText.fontSize}
                 clipPath={`url(#${cursorId})`}
                 textAnchor={isRTL ? 'end' : 'start'}
-              >
-                {userName}
-              </text>
+                dangerouslySetInnerHTML={{__html: userName}}
+              />
               <clipPath id={cursorId}>
                 <rect
                   x={boxX}

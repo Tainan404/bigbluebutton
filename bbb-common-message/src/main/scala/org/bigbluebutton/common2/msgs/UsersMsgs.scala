@@ -13,7 +13,7 @@ case class RegisterUserReqMsg(
     header: BbbCoreHeaderWithMeetingId,
     body:   RegisterUserReqMsgBody
 ) extends BbbCoreMsg
-case class RegisterUserReqMsgBody(meetingId: String, intUserId: String, name: String, role: String,
+case class RegisterUserReqMsgBody(meetingId: String, intUserId: String, plainFullname: String, htmlFullname: String, role: String,
                                   extUserId: String, authToken: String, avatarURL: String,
                                   guest: Boolean, authed: Boolean, guestStatus: String, excludeFromDashboard: Boolean)
 
@@ -22,7 +22,7 @@ case class UserRegisteredRespMsg(
     header: BbbCoreHeaderWithMeetingId,
     body:   UserRegisteredRespMsgBody
 ) extends BbbCoreMsg
-case class UserRegisteredRespMsgBody(meetingId: String, userId: String, name: String,
+case class UserRegisteredRespMsgBody(meetingId: String, userId: String, plainFullname: String, htmlFullname: String,
                                      role: String, excludeFromDashboard: Boolean, registeredOn: Long)
 
 object ValidateAuthTokenReqMsg {
@@ -82,7 +82,7 @@ case class UserJoinedMeetingEvtMsg(
     header: BbbClientMsgHeader,
     body:   UserJoinedMeetingEvtMsgBody
 ) extends BbbCoreMsg
-case class UserJoinedMeetingEvtMsgBody(intId: String, extId: String, name: String, role: String,
+case class UserJoinedMeetingEvtMsgBody(intId: String, extId: String, plainName: String, htmlName: String, role: String,
                                        guest: Boolean, authed: Boolean, guestStatus: String,
                                        emoji:     String,
                                        pin:       Boolean,

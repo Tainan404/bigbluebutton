@@ -39,8 +39,8 @@ trait GuestsWaitingApprovedMsgHdlr extends HandlerHelpers with RightsManagementT
                     g.guest,
                     dialInUser.extId,
                     "none",
-                    dialInUser.name,
-                    dialInUser.name,
+                    dialInUser.htmlName,
+                    dialInUser.htmlName,
                     false,
                     false,
                     "freeswitch"

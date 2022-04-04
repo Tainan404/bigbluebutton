@@ -172,7 +172,9 @@ class TimeWindowChatItem extends PureComponent {
           <Styled.Content>
             <Styled.Meta>
               <Styled.Name isOnline={isOnline}>
-                <span>{name}</span>
+                <span
+                  dangerouslySetInnerHTML={{__html: name}}
+                />
                 {isOnline
                   ? null
                   : (

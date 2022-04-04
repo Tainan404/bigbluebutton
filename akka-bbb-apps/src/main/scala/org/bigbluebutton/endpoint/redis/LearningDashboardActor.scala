@@ -312,7 +312,7 @@ class LearningDashboardActor(
   }
 
   private def handleUserJoinedMeetingEvtMsg(msg: UserJoinedMeetingEvtMsg): Unit = {
-    this.addUserToMeeting(msg.header.meetingId, msg.body.intId, msg.body.extId, msg.body.name, (msg.body.role == Roles.MODERATOR_ROLE), false)
+    this.addUserToMeeting(msg.header.meetingId, msg.body.intId, msg.body.extId, msg.body.plainName, (msg.body.role == Roles.MODERATOR_ROLE), false)
   }
 
   private def handleUserLeaveReqMsg(msg: UserLeaveReqMsg): Unit = {

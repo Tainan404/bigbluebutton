@@ -349,7 +349,7 @@ class ConnectionStatusComponent extends PureComponent {
                 moderator={conn.moderator}
                 color={conn.color}
               >
-                {conn.name.toLowerCase().slice(0, 2)}
+                {conn.htmlName.toLowerCase().slice(0, 2)}
               </UserAvatar>
             </Styled.Avatar>
 
@@ -357,10 +357,13 @@ class ConnectionStatusComponent extends PureComponent {
               <Styled.Text
                 offline={conn.offline}
                 data-test={conn.offline ? "offlineUser" : null}
-              >
-                {conn.name}
-                {conn.offline ? ` (${intl.formatMessage(intlMessages.offline)})` : null}
-              </Styled.Text>
+                dangerouslySetInnerHTML={{
+                  __html: `
+                  ${conn.htmlName}
+                  ${conn.offline ? ` (${intl.formatMessage(intlMessages.offline)})` : ''}
+                  `,
+                }}
+              />
             </Styled.Name>
             <Styled.Status aria-label={`${intl.formatMessage(intlMessages.title)} ${conn.level}`}>
               <Styled.Icon>

@@ -40,7 +40,7 @@ object AssignPresenterActionHandler extends RightsManagementTrait {
       val headerUnassign = BbbClientMsgHeader(PresenterUnassignedEvtMsg.NAME, liveMeeting.props.meetingProp.intId,
         oldPres.intId)
 
-      val bodyUnassign = PresenterUnassignedEvtMsgBody(oldPres.intId, oldPres.name, assignedBy)
+      val bodyUnassign = PresenterUnassignedEvtMsgBody(oldPres.intId, oldPres.htmlName, assignedBy)
       val eventUnassign = PresenterUnassignedEvtMsg(headerUnassign, bodyUnassign)
       val msgEventUnassign = BbbCommonEnvCoreMsg(envelopeUnassign, eventUnassign)
       outGW.send(msgEventUnassign)
@@ -56,7 +56,7 @@ object AssignPresenterActionHandler extends RightsManagementTrait {
       val headerAssign = BbbClientMsgHeader(PresenterAssignedEvtMsg.NAME, liveMeeting.props.meetingProp.intId,
         newPres.intId)
 
-      val bodyAssign = PresenterAssignedEvtMsgBody(newPres.intId, newPres.name, assignedBy)
+      val bodyAssign = PresenterAssignedEvtMsgBody(newPres.intId, newPres.htmlName, assignedBy)
       val eventAssign = PresenterAssignedEvtMsg(headerAssign, bodyAssign)
       val msgEventAssign = BbbCommonEnvCoreMsg(envelopeAssign, eventAssign)
       outGW.send(msgEventAssign)

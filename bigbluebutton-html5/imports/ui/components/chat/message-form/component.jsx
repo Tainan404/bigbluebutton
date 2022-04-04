@@ -255,8 +255,8 @@ class MessageForm extends PureComponent {
       disabled,
       idChatOpen,
       partnerIsLoggedOut,
+      plainTitle,
     } = this.props;
-
     const { hasErrors, error, message } = this.state;
 
     return isChatEnabled() ? (
@@ -268,7 +268,7 @@ class MessageForm extends PureComponent {
           <Styled.Input
             id="message-input"
             innerRef={(ref) => { this.textarea = ref; return this.textarea; }}
-            placeholder={intl.formatMessage(messages.inputPlaceholder, { 0: title })}
+            placeholder={intl.formatMessage(messages.inputPlaceholder, { 0: plainTitle })}
             aria-label={intl.formatMessage(messages.inputLabel, { 0: chatTitle })}
             aria-invalid={hasErrors ? 'true' : 'false'}
             autoCorrect="off"

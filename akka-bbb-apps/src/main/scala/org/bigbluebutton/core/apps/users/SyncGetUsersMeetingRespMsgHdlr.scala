@@ -20,7 +20,7 @@ trait SyncGetUsersMeetingRespMsgHdlr {
       WebUser(
         intId = u.intId,
         extId = u.extId,
-        name = u.name,
+        name = u.htmlName,
         role = u.role,
         guest = u.guest,
         authed = u.authed,

@@ -136,9 +136,14 @@ const ChatContainer = (props) => {
 
   const { groupChat } = usingGroupChatContext;
   const participants = groupChat[idChatOpen]?.participants;
-  const chatName = participants?.filter((user) => user.id !== Auth.userID)[0]?.name;
+  const theOtherParticipant = participants?.filter((user) => user.id !== Auth.userID)[0];
+  const chatName = theOtherParticipant?.name;
   const title = chatName
     ? intl.formatMessage(intlMessages.titlePrivate, { 0: chatName })
+    : intl.formatMessage(intlMessages.titlePublic);
+  const theOtherUserPlainName = users[Auth.meetingID][theOtherParticipant?.id]?.plainName;
+  const plainTitle = theOtherUserPlainName
+    ? intl.formatMessage(intlMessages.titlePrivate, { 0: theOtherUserPlainName })
     : intl.formatMessage(intlMessages.titlePublic);
 
   let partnerIsLoggedOut = false;
@@ -237,6 +242,7 @@ const ChatContainer = (props) => {
       syncing: contextChat?.syncing,
       syncedPercent: contextChat?.syncedPercent,
       chatName,
+      plainTitle,
       contextChat,
       layoutContextDispatch,
       lastTimeWindowValuesBuild,

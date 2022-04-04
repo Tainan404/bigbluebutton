@@ -204,7 +204,7 @@ const getConnectionStatus = () => {
       fields:
       {
         userId: 1,
-        name: 1,
+        htmlName: 1,
         role: 1,
         avatar: 1,
         color: 1,
@@ -214,7 +214,7 @@ const getConnectionStatus = () => {
   ).fetch().reduce((result, user) => {
     const {
       userId,
-      name,
+      htmlName,
       role,
       avatar,
       color,
@@ -225,7 +225,7 @@ const getConnectionStatus = () => {
 
     if (status) {
       result.push({
-        name,
+        htmlName,
         avatar,
         offline: loggedOut,
         you: Auth.userID === userId,
