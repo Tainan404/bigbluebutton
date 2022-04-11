@@ -151,7 +151,7 @@ class MessageChatItem extends PureComponent {
 
   render() {
     const {
-      textHtmlSafe,
+      textHtml,
       type,
       className,
       isSystemMessage,
@@ -166,7 +166,7 @@ class MessageChatItem extends PureComponent {
           className={className}
           style={{ borderLeft: `3px ${color} solid`, whiteSpace: 'pre-wrap' }}
           ref={(ref) => { this.text = ref; }}
-          dangerouslySetInnerHTML={{ __html: textHtmlSafe }}
+          dangerouslySetInnerHTML={{ __html: textHtml }}
           data-test="chatPollMessageText"
         />
       );
@@ -175,7 +175,7 @@ class MessageChatItem extends PureComponent {
       <p
         className={className}
         ref={(ref) => { this.text = ref; }}
-        dangerouslySetInnerHTML={{ __html: textHtmlSafe }}
+        dangerouslySetInnerHTML={{ __html: textHtml }}
         data-test={isSystemMessage ? systemMessageType : chatUserMessageItem ? 'chatUserMessageText' : ''}
       />
     );

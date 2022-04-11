@@ -97,7 +97,7 @@ const ChatContainer = (props) => {
       id: sysMessagesIds.welcomeId,
       content: [{
         id: sysMessagesIds.welcomeId,
-        textHtmlSafe: welcomeProp.welcomeMsg,
+        textHtml: welcomeProp.welcomeMsg,
         time: loginTime,
       }],
       key: sysMessagesIds.welcomeId,
@@ -108,7 +108,7 @@ const ChatContainer = (props) => {
       id: sysMessagesIds.moderatorId,
       content: [{
         id: sysMessagesIds.moderatorId,
-        textHtmlSafe: modOnlyMessage,
+        textHtml: modOnlyMessage,
         time: loginTime + 1,
       }],
       key: sysMessagesIds.moderatorId,
@@ -178,7 +178,7 @@ const ChatContainer = (props) => {
                 id: sysMessagesIds.syncId,
                 content: [{
                   id: 'synced',
-                  textHtmlSafe: intl.formatMessage(intlMessages.loading, { 0: contextChat?.syncedPercent }),
+                  textHtml: intl.formatMessage(intlMessages.loading, { 0: contextChat?.syncedPercent }),
                   time: loginTime + 1,
                 }],
                 key: sysMessagesIds.syncId,
@@ -200,7 +200,7 @@ const ChatContainer = (props) => {
           id,
           content: [{
             id,
-            textHtmlSafe: intl.formatMessage(intlMessages.partnerDisconnected, { 0: chatName }),
+            textHtml: intl.formatMessage(intlMessages.partnerDisconnected, { 0: chatName }),
             time,
           }],
           time,

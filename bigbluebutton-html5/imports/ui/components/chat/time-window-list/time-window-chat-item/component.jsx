@@ -110,15 +110,15 @@ class TimeWindowChatItem extends PureComponent {
         ref={element => this.itemRef = element} >
         <Styled.Messages>
           {messages.map((message) => (
-            message.textHtmlSafe !== ''
+            message.textHtml !== ''
               ? (
                 <Styled.SystemMessageChatItem
                   border={message.id}
                   key={message.id ? message.id : _.uniqueId('id-')}
-                  textHtmlSafe={intlMessages[message.textHtmlSafe] ? intl.formatMessage(
-                    intlMessages[message.textHtmlSafe],
+                  textHtml={intlMessages[message.textHtml] ? intl.formatMessage(
+                    intlMessages[message.textHtml],
                     messageValues || {},
-                  ) : message.textHtmlSafe}
+                  ) : message.textHtml}
                   time={message.time}
                   isSystemMessage={message.id ? true : false}
                   systemMessageType={message.text === CHAT_CLEAR_MESSAGE ? 'chatClearMessageText' : 'chatWelcomeMessageText'}
@@ -191,7 +191,7 @@ class TimeWindowChatItem extends PureComponent {
                   hasLink={regEx.test(message.text)}
                   emphasizedMessage={emphasizedText}
                   key={message.id}
-                  textHtmlSafe={message.textHtmlSafe}
+                  textHtml={message.textHtml}
                   time={message.time}
                   chatAreaId={chatAreaId}
                   dispatch={dispatch}
@@ -257,7 +257,7 @@ class TimeWindowChatItem extends PureComponent {
             <Styled.PollMessageChatItem
               type="poll"
               key={messages[0].id}
-              textHtmlSafe={getPollResultString(extra.pollResultData, intl)}
+              textHtml={getPollResultString(extra.pollResultData, intl)}
               time={messages[0].time}
               chatAreaId={chatAreaId}
               lastReadMessageTime={lastReadMessageTime}
