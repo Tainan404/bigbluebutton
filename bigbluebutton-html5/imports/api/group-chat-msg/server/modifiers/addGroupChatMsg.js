@@ -42,6 +42,7 @@ export default function addGroupChatMsg(meetingId, chatId, msg) {
     meetingId,
     chatId,
     message: parseMessage(msg.message),
+    messageHtmlSafe: parseMessage(msg.message),
   };
 
   try {
