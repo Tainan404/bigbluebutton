@@ -82,8 +82,8 @@ const intlMessages = defineMessages({
 
 const getPollResultsText = (isDefaultPoll, answers, numRespondents, intl) => {
   let responded = 0;
-  let resultString = '';
-  let optionsString = '';
+  let resultStringHtml = '';
+  let optionsStringHtml = '';
 
   answers.map((item) => {
     responded += item.numVotes;
@@ -94,55 +94,44 @@ const getPollResultsText = (isDefaultPoll, answers, numRespondents, intl) => {
     const pctBars = '|'.repeat((pct * MAX_POLL_RESULT_BARS) / 100);
     const pctFotmatted = `${Number.isNaN(pct) ? 0 : pct}%`;
     if (isDefaultPoll) {
-      const translatedKey = pollAnswerIds[item.key.toLowerCase()]
-        ? intl.formatMessage(pollAnswerIds[item.key.toLowerCase()])
-        : item.key;
-      resultString += `${translatedKey}: ${item.numVotes || 0} |${pctBars} ${pctFotmatted}\n`;
+      const translatedKey = pollAnswerIds[item.keyHtml.toLowerCase()]
+        ? intl.formatMessage(pollAnswerIds[item.keyHtml.toLowerCase()])
+        : item.keyHtml;
+      resultStringHtml += `${translatedKey}: ${Number(item.numVotes) || 0} |${pctBars} ${pctFotmatted}\n`;
     } else {
-      resultString += `${item.id + 1}: ${item.numVotes || 0} |${pctBars} ${pctFotmatted}\n`;
-      optionsString += `${item.id + 1}: ${item.key}\n`;
+      resultStringHtml += `${Number(item.id) + 1}: ${item.numVotes || 0} |${pctBars} ${pctFotmatted}\n`;
+      optionsStringHtml += `${Number(item.id) + 1}: ${item.keyHtml}\n`;
     }
   });
 
-  return { resultString, optionsString };
+  return { resultStringHtml, optionsStringHtml };
 };
 
 const isDefaultPoll = (pollType) => pollType !== pollTypes.Custom
   && pollType !== pollTypes.Response;
 
-const getPollResultString = (pollResultData, intl) => {
+const getPollResultStringHtml = (pollResultData, intl) => {
   const formatBoldBlack = (s) => s.bold().fontcolor('black');
-
-  // Sanitize. See: https://gist.github.com/sagewall/47164de600df05fb0f6f44d48a09c0bd
-  const sanitize = (value) => {
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(value));
-    return div.innerHTML;
-  };
 
   const { answers, numRespondents, questionType } = pollResultData;
   const ísDefault = isDefaultPoll(questionType);
-  let {
-    resultString,
-    optionsString,
+  const {
+    resultStringHtml,
+    optionsStringHtml,
   } = getPollResultsText(ísDefault, answers, numRespondents, intl);
-  resultString = sanitize(resultString);
-  optionsString = sanitize(optionsString);
 
-  let pollText = formatBoldBlack(resultString);
+  let pollTextHtml = formatBoldBlack(resultStringHtml);
   if (!ísDefault) {
-    pollText += formatBoldBlack(`<br/><br/>${intl.formatMessage(intlMessages.legendTitle)}<br/>`);
-    pollText += optionsString;
+    pollTextHtml += formatBoldBlack(`<br/><br/>${intl.formatMessage(intlMessages.legendTitle)}<br/>`);
+    pollTextHtml += optionsStringHtml;
   }
 
-  const pollQuestion = pollResultData.questionText;
-  if (pollQuestion.trim() !== '') {
-    const sanitizedPollQuestion = sanitize(pollQuestion.split('<br#>').join(' '));
-
-    pollText = `${formatBoldBlack(intl.formatMessage(intlMessages.pollQuestionTitle))}<br/>${sanitizedPollQuestion}<br/><br/>${pollText}`;
+  const pollQuestionHtml = pollResultData.questionTextHtml || '';
+  if (pollQuestionHtml.trim() !== '') {
+    pollTextHtml = `${formatBoldBlack(intl.formatMessage(intlMessages.pollQuestionTitle))}<br/>${pollQuestionHtml}<br/><br/>${pollTextHtml}`;
   }
 
-  return pollText;
+  return pollTextHtml;
 };
 
 const matchYesNoPoll = (yesValue, noValue, contentString) => {
@@ -216,7 +205,8 @@ export default {
   pollAnswerIds,
   POLL_AVATAR_COLOR,
   isDefaultPoll,
-  getPollResultString,
+  // getPollResultString,
+  getPollResultStringHtml,
   matchYesNoPoll,
   matchYesNoAbstentionPoll,
   matchTrueFalsePoll,

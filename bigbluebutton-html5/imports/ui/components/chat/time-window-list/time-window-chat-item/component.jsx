@@ -223,7 +223,7 @@ class TimeWindowChatItem extends PureComponent {
       timestamp,
       color,
       intl,
-      getPollResultString,
+      getPollResultStringHtml,
       messages,
       extra,
       scrollArea,
@@ -257,7 +257,7 @@ class TimeWindowChatItem extends PureComponent {
             <Styled.PollMessageChatItem
               type="poll"
               key={messages[0].id}
-              textHtml={getPollResultString(extra.pollResultData, intl)}
+              textHtml={getPollResultStringHtml(extra.pollResultData, intl)}
               time={messages[0].time}
               chatAreaId={chatAreaId}
               lastReadMessageTime={lastReadMessageTime}
