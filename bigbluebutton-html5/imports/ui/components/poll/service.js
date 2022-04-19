@@ -90,16 +90,16 @@ const getPollResultsText = (isDefaultPoll, answers, numRespondents, intl) => {
     return item;
   }).reduce(caseInsensitiveReducer, []).forEach((item) => {
     const numResponded = responded === numRespondents ? numRespondents : responded;
-    const pct = Math.round((item.numVotes / numResponded) * 100);
-    const pctBars = '|'.repeat((pct * MAX_POLL_RESULT_BARS) / 100);
-    const pctFotmatted = `${Number.isNaN(pct) ? 0 : pct}%`;
+    const pctHtml = Number(Math.round((item.numVotes / numResponded) * 100));
+    const pctBarsHtml = '|'.repeat((pctHtml * MAX_POLL_RESULT_BARS) / 100);
+    const pctFotmattedHtml = `${Number.isNaN(pctHtml) ? 0 : pctHtml}%`;
     if (isDefaultPoll) {
       const translatedKey = pollAnswerIds[item.keyHtml.toLowerCase()]
         ? intl.formatMessage(pollAnswerIds[item.keyHtml.toLowerCase()])
         : item.keyHtml;
-      resultStringHtml += `${translatedKey}: ${Number(item.numVotes) || 0} |${pctBars} ${pctFotmatted}\n`;
+      resultStringHtml += `${translatedKey}: ${Number(item.numVotes) || 0} |${pctBarsHtml} ${pctFotmattedHtml}\n`;
     } else {
-      resultStringHtml += `${Number(item.id) + 1}: ${item.numVotes || 0} |${pctBars} ${pctFotmatted}\n`;
+      resultStringHtml += `${Number(item.id) + 1}: ${item.numVotes || 0} |${pctBarsHtml} ${pctFotmattedHtml}\n`;
       optionsStringHtml += `${Number(item.id) + 1}: ${item.keyHtml}\n`;
     }
   });
