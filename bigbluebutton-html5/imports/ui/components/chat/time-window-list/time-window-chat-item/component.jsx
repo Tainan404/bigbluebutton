@@ -115,8 +115,8 @@ class TimeWindowChatItem extends PureComponent {
                 <Styled.SystemMessageChatItem
                   border={message.id}
                   key={message.id ? message.id : _.uniqueId('id-')}
-                  textHtml={intlMessages[message.textHtml] ? intl.formatMessage(
-                    intlMessages[message.textHtml],
+                  textHtml={intlMessages[message.text] ? intl.formatMessage(
+                    intlMessages[message.text],
                     messageValues || {},
                   ) : message.textHtml}
                   time={message.time}
