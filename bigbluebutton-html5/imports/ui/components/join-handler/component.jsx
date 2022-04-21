@@ -3,7 +3,7 @@ import { Session } from 'meteor/session';
 import PropTypes from 'prop-types';
 import SanitizeHTML from 'sanitize-html';
 import Auth from '/imports/ui/services/auth';
-import { setCustomLogoUrl, setModeratorOnlyMessage } from '/imports/ui/components/user-list/service';
+import { setCustomLogoUrl, setModeratorOnlyMessageHtml } from '/imports/ui/components/user-list/service';
 import { makeCall } from '/imports/ui/services/api';
 import logger from '/imports/startup/client/logger';
 import LoadingScreen from '/imports/ui/components/common/loading-screen/component';
@@ -149,7 +149,7 @@ class JoinHandler extends Component {
 
     const setModOnlyMessage = (resp) => {
       if (resp && resp.modOnlyMessage) {
-        const sanitizedModOnlyText = SanitizeHTML(resp.modOnlyMessage, {
+        const sanitizedModOnlyTextHtml = SanitizeHTML(resp.modOnlyMessageHtml, {
           allowedTags: ['a', 'b', 'br', 'i', 'img', 'li', 'small', 'span', 'strong', 'u', 'ul'],
           allowedAttributes: {
             a: ['href', 'name', 'target'],
@@ -157,7 +157,7 @@ class JoinHandler extends Component {
           },
           allowedSchemes: ['https'],
         });
-        setModeratorOnlyMessage(sanitizedModOnlyText);
+        setModeratorOnlyMessageHtml(sanitizedModOnlyTextHtml);
       }
       return resp;
     };
@@ -183,7 +183,7 @@ class JoinHandler extends Component {
     const fetchContent = await fetch(url, { credentials: 'include' });
     const parseToJson = await fetchContent.json();
     const { response } = parseToJson;
-
+    console.log('response', response);
     setLogoutURL(response);
     logUserInfo();
 

@@ -87,7 +87,7 @@ const ChatContainer = (props) => {
     ChatService.removeFromClosedChatsSession();
   }, []);
 
-  const modOnlyMessage = Storage.getItem('ModeratorOnlyMessage');
+  const modOnlyMessageHtml = Storage.getItem('ModeratorOnlyMessageHtml');
   const { welcomeProp } = ChatService.getWelcomeProp();
 
   ChatLogger.debug('ChatContainer::render::props', props);
@@ -97,7 +97,7 @@ const ChatContainer = (props) => {
       id: sysMessagesIds.welcomeId,
       content: [{
         id: sysMessagesIds.welcomeId,
-        textHtml: welcomeProp.welcomeMsg,
+        textHtml: welcomeProp.welcomeMsgHtml,
         time: loginTime,
       }],
       key: sysMessagesIds.welcomeId,
@@ -108,7 +108,7 @@ const ChatContainer = (props) => {
       id: sysMessagesIds.moderatorId,
       content: [{
         id: sysMessagesIds.moderatorId,
-        textHtml: modOnlyMessage,
+        textHtml: modOnlyMessageHtml,
         time: loginTime + 1,
       }],
       key: sysMessagesIds.moderatorId,
@@ -122,7 +122,7 @@ const ChatContainer = (props) => {
   const amIModerator = currentUser.role === ROLE_MODERATOR;
   const systemMessagesIds = [
     sysMessagesIds.welcomeId,
-    amIModerator && modOnlyMessage && sysMessagesIds.moderatorId,
+    amIModerator && modOnlyMessageHtml && sysMessagesIds.moderatorId,
   ].filter((i) => i);
 
   const usingChatContext = useContext(ChatContext);

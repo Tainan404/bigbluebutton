@@ -944,6 +944,7 @@ class ApiController {
             welcome us.welcome
             if (!StringUtils.isEmpty(meeting.moderatorOnlyMessage) && us.role.equals(ROLE_MODERATOR)) {
               modOnlyMessage meeting.moderatorOnlyMessage
+              modOnlyMessageHtml meeting.moderatorOnlyMessage
             }
             if (!StringUtils.isEmpty(meeting.bannerText)) {
               bannerText meeting.getBannerText()

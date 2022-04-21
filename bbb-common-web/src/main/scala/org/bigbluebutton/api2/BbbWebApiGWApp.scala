@@ -3,6 +3,8 @@ package org.bigbluebutton.api2
 import scala.collection.JavaConverters._
 import akka.actor.ActorSystem
 import akka.event.Logging
+import org.apache.commons.text.StringEscapeUtils
+
 import java.util
 import org.bigbluebutton.api.domain.{ BreakoutRoomsParams, Group, LockSettingsParams }
 import org.bigbluebutton.api.messaging.converters.messages._
@@ -185,7 +187,7 @@ class BbbWebApiGWApp(
     )
 
     val welcomeProp = WelcomeProp(welcomeMsgTemplate = welcomeMsgTemplate, welcomeMsg = welcomeMsg,
-      modOnlyMessage = modOnlyMessage)
+      modOnlyMessage = modOnlyMessage, welcomeMsgHtml = welcomeMsg)
     val voiceProp = VoiceProp(telVoice = voiceBridge, voiceConf = voiceBridge, dialNumber = dialNumber, muteOnStart = muteOnStart.booleanValue())
     val usersProp = UsersProp(maxUsers = maxUsers.intValue(), webcamsOnlyForModerator = webcamsOnlyForModerator.booleanValue(),
       userCameraCap = userCameraCap.intValue(),

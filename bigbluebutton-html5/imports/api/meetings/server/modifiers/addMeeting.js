@@ -83,6 +83,7 @@ export default function addMeeting(meeting) {
       welcomeMsg: String,
       modOnlyMessage: String,
       welcomeMsgTemplate: String,
+      welcomeMsgHtml: String,
     },
     recordProp: Match.ObjectIncluding({
       allowStartStopRecording: Boolean,
