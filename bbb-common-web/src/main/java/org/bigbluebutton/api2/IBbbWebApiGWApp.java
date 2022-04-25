@@ -43,7 +43,7 @@ public interface IBbbWebApiGWApp {
                      ArrayList<Group> groups,
                      ArrayList<String> disabledFeatures);
 
-  void registerUser(String meetingID, String internalUserId, String fullname, String role,
+  void registerUser(String meetingID, String internalUserId, String fullname, String fullnameHtml, String role,
                     String externUserID, String authToken, String avatarURL,
                     Boolean guest, Boolean authed, String guestStatus, Boolean excludeFromDashboard);
   void ejectDuplicateUser(String meetingID, String internalUserId, String fullname,

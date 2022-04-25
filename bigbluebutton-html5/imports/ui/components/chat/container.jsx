@@ -136,6 +136,7 @@ const ChatContainer = (props) => {
 
   const { groupChat } = usingGroupChatContext;
   const participants = groupChat[idChatOpen]?.participants;
+  const chatNameHtml = participants?.filter((user) => user.id !== Auth.userID)[0]?.nameHtml;
   const chatName = participants?.filter((user) => user.id !== Auth.userID)[0]?.name;
   const title = chatName
     ? intl.formatMessage(intlMessages.titlePrivate, { 0: chatName })
@@ -200,7 +201,7 @@ const ChatContainer = (props) => {
           id,
           content: [{
             id,
-            textHtml: intl.formatMessage(intlMessages.partnerDisconnected, { 0: chatName }),
+            textHtml: intl.formatMessage(intlMessages.partnerDisconnected, { 0: chatNameHtml }),
             time,
           }],
           time,
@@ -236,7 +237,6 @@ const ChatContainer = (props) => {
       title,
       syncing: contextChat?.syncing,
       syncedPercent: contextChat?.syncedPercent,
-      chatName,
       contextChat,
       layoutContextDispatch,
       lastTimeWindowValuesBuild,

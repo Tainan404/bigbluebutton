@@ -25,6 +25,7 @@ import org.apache.commons.codec.binary.Base64
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang.RandomStringUtils
 import org.apache.commons.lang.StringUtils
+import org.apache.commons.text.StringEscapeUtils
 import org.bigbluebutton.api.*
 import org.bigbluebutton.api.domain.Config
 import org.bigbluebutton.api.domain.GuestPolicy
@@ -309,6 +310,7 @@ class ApiController {
     us.externMeetingID = meeting.getExternalId()
     us.externUserID = externUserID
     us.fullname = fullName
+    us.fullnameHtml = StringEscapeUtils.escapeHtml4(fullName)
     us.role = role
     us.conference = meeting.getInternalId()
     us.room = meeting.getInternalId()
@@ -360,6 +362,7 @@ class ApiController {
         us.meetingID,
         us.internalUserId,
         us.fullname,
+        us.fullnameHtml,
         us.role,
         us.externUserID,
         us.authToken,
