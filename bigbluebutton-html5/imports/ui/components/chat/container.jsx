@@ -11,6 +11,7 @@ import { UsersContext } from '../components-data/users-context/context';
 import ChatLogger from '/imports/ui/components/chat/chat-logger/ChatLogger';
 import lockContextContainer from '/imports/ui/components/lock-viewers/context/container';
 import Chat from '/imports/ui/components/chat/component';
+import { sanitizeHTML } from '/imports/utils/string-utils';
 import ChatService from './service';
 import { layoutSelect, layoutDispatch } from '../layout/context';
 
@@ -88,6 +89,7 @@ const ChatContainer = (props) => {
   }, []);
 
   const modOnlyMessageHtml = Storage.getItem('ModeratorOnlyMessageHtml');
+  const modOnlyMessage = Storage.getItem('ModeratorOnlyMessage');
   const { welcomeProp } = ChatService.getWelcomeProp();
 
   ChatLogger.debug('ChatContainer::render::props', props);
@@ -108,7 +110,7 @@ const ChatContainer = (props) => {
       id: sysMessagesIds.moderatorId,
       content: [{
         id: sysMessagesIds.moderatorId,
-        textHtml: modOnlyMessageHtml,
+        textHtml: modOnlyMessageHtml || modOnlyMessage,
         time: loginTime + 1,
       }],
       key: sysMessagesIds.moderatorId,
@@ -179,7 +181,8 @@ const ChatContainer = (props) => {
                 id: sysMessagesIds.syncId,
                 content: [{
                   id: 'synced',
-                  textHtml: intl.formatMessage(intlMessages.loading, { 0: contextChat?.syncedPercent }),
+                  textHtml: sanitizeHTML(intl.formatMessage(intlMessages.loading,
+                    { 0: contextChat?.syncedPercent })),
                   time: loginTime + 1,
                 }],
                 key: sysMessagesIds.syncId,
@@ -201,7 +204,8 @@ const ChatContainer = (props) => {
           id,
           content: [{
             id,
-            textHtml: intl.formatMessage(intlMessages.partnerDisconnected, { 0: chatNameHtml }),
+            textHtml: sanitizeHTML(intl.formatMessage(intlMessages.partnerDisconnected,
+              { 0: chatNameHtml })),
             time,
           }],
           time,

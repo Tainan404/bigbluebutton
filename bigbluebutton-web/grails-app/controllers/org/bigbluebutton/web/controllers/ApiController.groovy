@@ -142,7 +142,6 @@ class ApiController {
     params.html5InstanceId = html5LoadBalancingService.findSuitableHTML5ProcessByRoundRobin().toString()
 
     Meeting newMeeting = paramsProcessorUtil.processCreateParams(params)
-
     ApiErrors errors = new ApiErrors()
 
     if (meetingService.createMeeting(newMeeting)) {
@@ -945,9 +944,14 @@ class ApiController {
             logoutTimer meeting.getLogoutTimer()
             allowStartStopRecording meeting.getAllowStartStopRecording()
             welcome us.welcome
-            if (!StringUtils.isEmpty(meeting.moderatorOnlyMessage) && us.role.equals(ROLE_MODERATOR)) {
+            if (StringUtils.isEmpty(meeting.moderatorOnlyMessageHtml)
+                && !StringUtils.isEmpty(meeting.moderatorOnlyMessage)
+                && us.role.equals(ROLE_MODERATOR)) {
               modOnlyMessage meeting.moderatorOnlyMessage
-              modOnlyMessageHtml meeting.moderatorOnlyMessage
+            }
+
+            if (!StringUtils.isEmpty(meeting.moderatorOnlyMessageHtml) && us.role.equals(ROLE_MODERATOR)) {
+              modOnlyMessageHtml meeting.moderatorOnlyMessageHtml
             }
             if (!StringUtils.isEmpty(meeting.bannerText)) {
               bannerText meeting.getBannerText()

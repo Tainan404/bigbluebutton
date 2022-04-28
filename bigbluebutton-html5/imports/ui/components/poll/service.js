@@ -1,6 +1,7 @@
 import Auth from '/imports/ui/services/auth';
 import { CurrentPoll } from '/imports/api/polls';
 import caseInsensitiveReducer from '/imports/utils/caseInsensitiveReducer';
+import { sanitizeHTML } from '/imports/utils/string-utils';
 import { defineMessages } from 'react-intl';
 
 const POLL_AVATAR_COLOR = '#3B48A9';
@@ -99,7 +100,7 @@ const getPollResultsText = (isDefaultPoll, answers, numRespondents, intl) => {
         : item.keyHtml;
       resultStringHtml += `${translatedKey}: ${Number(item.numVotes) || 0} |${pctBarsHtml} ${pctFotmattedHtml}\n`;
     } else {
-      resultStringHtml += `${Number(item.id) + 1}: ${item.numVotes || 0} |${pctBarsHtml} ${pctFotmattedHtml}\n`;
+      resultStringHtml += `${Number(item.id) + 1}: ${Number(item.numVotes) || 0} |${pctBarsHtml} ${pctFotmattedHtml}\n`;
       optionsStringHtml += `${Number(item.id) + 1}: ${item.keyHtml}\n`;
     }
   });
@@ -122,13 +123,13 @@ const getPollResultStringHtml = (pollResultData, intl) => {
 
   let pollTextHtml = formatBoldBlack(resultStringHtml);
   if (!ísDefault) {
-    pollTextHtml += formatBoldBlack(`<br/><br/>${intl.formatMessage(intlMessages.legendTitle)}<br/>`);
+    pollTextHtml += formatBoldBlack(`<br/><br/>${sanitizeHTML(intl.formatMessage(intlMessages.legendTitle))}<br/>`);
     pollTextHtml += optionsStringHtml;
   }
 
   const pollQuestionHtml = pollResultData.questionTextHtml || '';
   if (pollQuestionHtml.trim() !== '') {
-    pollTextHtml = `${formatBoldBlack(intl.formatMessage(intlMessages.pollQuestionTitle))}<br/>${pollQuestionHtml}<br/><br/>${pollTextHtml}`;
+    pollTextHtml = `${formatBoldBlack(sanitizeHTML(intl.formatMessage(intlMessages.pollQuestionTitle)))}<br/>${pollQuestionHtml}<br/><br/>${pollTextHtml}`;
   }
 
   return pollTextHtml;
@@ -205,7 +206,6 @@ export default {
   pollAnswerIds,
   POLL_AVATAR_COLOR,
   isDefaultPoll,
-  // getPollResultString,
   getPollResultStringHtml,
   matchYesNoPoll,
   matchYesNoAbstentionPoll,
