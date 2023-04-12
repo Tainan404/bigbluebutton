@@ -1,22 +1,22 @@
 import React, { PureComponent } from 'react';
-import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import cx from 'classnames';
-import TextareaAutosize from 'react-autosize-textarea';
-import browser from 'browser-detect';
+import { defineMessages, injectIntl } from 'react-intl';
+import { checkText } from 'smile2emoji';
+import deviceInfo from '/imports/utils/deviceInfo';
 import PropTypes from 'prop-types';
+import { throttle } from '/imports/utils/throttle';
 import TypingIndicatorContainer from './typing-indicator/container';
-import { styles } from './styles.scss';
-import Button from '../../button/component';
+import ClickOutside from '/imports/ui/components/click-outside/component';
+import Styled from './styles';
+import { escapeHtml } from '/imports/utils/string-utils';
+import { isChatEnabled } from '/imports/ui/services/features';
 
 const propTypes = {
-  intl: intlShape.isRequired,
+  intl: PropTypes.object.isRequired,
   chatId: PropTypes.string.isRequired,
   disabled: PropTypes.bool.isRequired,
   minMessageLength: PropTypes.number.isRequired,
   maxMessageLength: PropTypes.number.isRequired,
   chatTitle: PropTypes.string.isRequired,
-  chatName: PropTypes.string.isRequired,
-  className: PropTypes.string,
   chatAreaId: PropTypes.string.isRequired,
   handleSendMessage: PropTypes.func.isRequired,
   UnsentMessagesCollection: PropTypes.objectOf(Object).isRequired,
@@ -25,10 +25,6 @@ const propTypes = {
   partnerIsLoggedOut: PropTypes.bool.isRequired,
   stopUserTyping: PropTypes.func.isRequired,
   startUserTyping: PropTypes.func.isRequired,
-};
-
-const defaultProps = {
-  className: '',
 };
 
 const messages = defineMessages({
@@ -40,12 +36,13 @@ const messages = defineMessages({
     id: 'app.chat.inputLabel',
     description: 'Chat message input label',
   },
+  emojiButtonLabel: {
+    id: 'app.chat.emojiButtonLabel',
+    description: 'Chat message emoji picker button label',
+  },
   inputPlaceholder: {
     id: 'app.chat.inputPlaceholder',
     description: 'Chat message input placeholder',
-  },
-  errorMinMessageLength: {
-    id: 'app.chat.errorMinMessageLength',
   },
   errorMaxMessageLength: {
     id: 'app.chat.errorMaxMessageLength',
@@ -70,7 +67,9 @@ const messages = defineMessages({
   },
 });
 
-const CHAT_ENABLED = Meteor.settings.public.chat.enabled;
+const CHAT_CONFIG = Meteor.settings.public.chat;
+const AUTO_CONVERT_EMOJI = Meteor.settings.public.chat.autoConvertEmoji;
+const ENABLE_EMOJI_PICKER = Meteor.settings.public.chat.emojiPicker.enable;
 
 class MessageForm extends PureComponent {
   constructor(props) {
@@ -80,22 +79,23 @@ class MessageForm extends PureComponent {
       message: '',
       error: null,
       hasErrors: false,
+      showEmojiPicker: false,
     };
-
-    this.BROWSER_RESULTS = browser();
 
     this.handleMessageChange = this.handleMessageChange.bind(this);
     this.handleMessageKeyDown = this.handleMessageKeyDown.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.setMessageHint = this.setMessageHint.bind(this);
+    this.handleUserTyping = throttle(this.handleUserTyping.bind(this), 2000, { trailing: false });
+    this.typingIndicator = CHAT_CONFIG.typingIndicator.enabled;
   }
 
   componentDidMount() {
-    const { mobile } = this.BROWSER_RESULTS;
+    const { isMobile } = deviceInfo;
     this.setMessageState();
     this.setMessageHint();
 
-    if (!mobile) {
+    if (!isMobile) {
       if (this.textarea) this.textarea.focus();
     }
   }
@@ -108,9 +108,9 @@ class MessageForm extends PureComponent {
       partnerIsLoggedOut,
     } = this.props;
     const { message } = this.state;
-    const { mobile } = this.BROWSER_RESULTS;
+    const { isMobile } = deviceInfo;
 
-    if (prevProps.chatId !== chatId && !mobile) {
+    if (prevProps.chatId !== chatId && !isMobile) {
       if (this.textarea) this.textarea.focus();
     }
 
@@ -138,6 +138,13 @@ class MessageForm extends PureComponent {
     const { message } = this.state;
     this.updateUnsentMessagesCollection(chatId, message);
     this.setMessageState();
+  }
+
+  handleClickOutside() {
+    const { showEmojiPicker } = this.state;
+    if (showEmojiPicker) {
+      this.setState({ showEmojiPicker: false });
+    }
   }
 
   setMessageHint() {
@@ -192,44 +199,49 @@ class MessageForm extends PureComponent {
         cancelable: true,
       });
 
-      this.form.dispatchEvent(event);
+      this.handleSubmit(event);
     }
+  }
+
+  handleUserTyping(error) {
+    const { startUserTyping, chatId } = this.props;
+    if (error || !this.typingIndicator) return;
+    startUserTyping(chatId);
   }
 
   handleMessageChange(e) {
     const {
       intl,
-      startUserTyping,
       maxMessageLength,
-      chatId,
     } = this.props;
 
-    const message = e.target.value;
+    let message = null;
     let error = null;
+
+    if (AUTO_CONVERT_EMOJI) {
+      message = checkText(e.target.value);
+    } else {
+      message = e.target.value;
+    }
 
     if (message.length > maxMessageLength) {
       error = intl.formatMessage(
         messages.errorMaxMessageLength,
-        { 0: message.length - maxMessageLength },
+        { 0: maxMessageLength },
       );
+      message = message.substring(0, maxMessageLength);
     }
-
-    const handleUserTyping = () => {
-      if (error) return;
-      startUserTyping(chatId);
-    };
 
     this.setState({
       message,
       error,
-    }, handleUserTyping);
+    }, this.handleUserTyping(error));
   }
 
   handleSubmit(e) {
     e.preventDefault();
 
     const {
-      intl,
       disabled,
       minMessageLength,
       maxMessageLength,
@@ -239,95 +251,144 @@ class MessageForm extends PureComponent {
     const { message } = this.state;
     let msg = message.trim();
 
-    if (message.length < minMessageLength) {
-      this.setState({
-        hasErrors: true,
-        error: intl.formatMessage(
-          messages.errorMinMessageLength,
-          { 0: minMessageLength - message.length },
-        ),
-      });
-    }
+    if (msg.length < minMessageLength) return;
 
     if (disabled
-      || msg.length === 0
       || msg.length > maxMessageLength) {
       this.setState({ hasErrors: true });
-      return false;
+      return;
     }
 
-    // Sanitize. See: http://shebang.brandonmintern.com/foolproof-html-escaping-in-javascript/
+    const callback = this.typingIndicator ? stopUserTyping : null;
 
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(msg));
-    msg = div.innerHTML;
+    handleSendMessage(escapeHtml(msg));
+    this.setState({ message: '', hasErrors: false, showEmojiPicker: false }, callback);
+  }
+
+  handleEmojiSelect(emojiObject) {
+    const { message } = this.state;
+    const cursor = this.textarea.selectionStart;
+
+    this.setState(
+      {
+        message: message.slice(0, cursor)
+        + emojiObject.native
+        + message.slice(cursor),
+      },
+    );
+
+    const newCursor = cursor + emojiObject.native.length;
+    setTimeout(() => this.textarea.setSelectionRange(newCursor, newCursor), 10);
+  }
+
+  renderEmojiPicker() {
+    const { showEmojiPicker } = this.state;
+
+    if (showEmojiPicker) {
+      return (
+        <Styled.EmojiPickerWrapper>
+          <Styled.EmojiPicker
+            onEmojiSelect={(emojiObject) => this.handleEmojiSelect(emojiObject)}
+            showPreview={false}
+            showSkinTones={false}
+          />
+        </Styled.EmojiPickerWrapper>
+      );
+    }
+    return null;
+  }
+
+  renderEmojiButton() {
+    const { intl } = this.props;
 
     return (
-      handleSendMessage(msg),
-      this.setState({
-        message: '',
-        hasErrors: false,
-      }, stopUserTyping)
+      <Styled.EmojiButton
+        onClick={() => this.setState((prevState) => ({
+          showEmojiPicker: !prevState.showEmojiPicker,
+        }))}
+        icon="happy"
+        color="light"
+        ghost
+        type="button"
+        circle
+        hideLabel
+        label={intl.formatMessage(messages.emojiButtonLabel)}
+        data-test="emojiPickerButton"
+      />
+    );
+  }
+
+  renderForm() {
+    const {
+      intl,
+      chatTitle,
+      title,
+      disabled,
+      idChatOpen,
+      partnerIsLoggedOut,
+    } = this.props;
+
+    const {
+      hasErrors, error, message,
+    } = this.state;
+
+    return (
+      <Styled.Form
+        ref={(ref) => { this.form = ref; }}
+        onSubmit={this.handleSubmit}
+      >
+        {this.renderEmojiPicker()}
+        <Styled.Wrapper>
+          <Styled.Input
+            id="message-input"
+            innerRef={(ref) => { this.textarea = ref; return this.textarea; }}
+            placeholder={intl.formatMessage(messages.inputPlaceholder, { 0: title })}
+            aria-label={intl.formatMessage(messages.inputLabel, { 0: chatTitle })}
+            aria-invalid={hasErrors ? 'true' : 'false'}
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck="true"
+            disabled={disabled || partnerIsLoggedOut}
+            value={message}
+            onChange={this.handleMessageChange}
+            onKeyDown={this.handleMessageKeyDown}
+            onPaste={(e) => { e.stopPropagation(); }}
+            onCut={(e) => { e.stopPropagation(); }}
+            onCopy={(e) => { e.stopPropagation(); }}
+            async
+          />
+          {ENABLE_EMOJI_PICKER && this.renderEmojiButton()}
+          <Styled.SendButton
+            hideLabel
+            circle
+            aria-label={intl.formatMessage(messages.submitLabel)}
+            type="submit"
+            disabled={disabled || partnerIsLoggedOut}
+            label={intl.formatMessage(messages.submitLabel)}
+            color="primary"
+            icon="send"
+            onClick={() => { }}
+            data-test="sendMessageButton"
+          />
+        </Styled.Wrapper>
+        <TypingIndicatorContainer {...{ idChatOpen, error }} />
+      </Styled.Form>
     );
   }
 
   render() {
-    const {
-      intl,
-      chatTitle,
-      chatName,
-      disabled,
-      className,
-      chatAreaId,
-    } = this.props;
+    if (!isChatEnabled()) return null;
 
-    const { hasErrors, error, message } = this.state;
-
-    return CHAT_ENABLED ? (
-      <form
-        ref={(ref) => { this.form = ref; }}
-        className={cx(className, styles.form)}
-        onSubmit={this.handleSubmit}
+    return ENABLE_EMOJI_PICKER ? (
+      <ClickOutside
+        onClick={() => this.handleClickOutside()}
       >
-        <div className={styles.wrapper}>
-          <TextareaAutosize
-            className={styles.input}
-            id="message-input"
-            innerRef={(ref) => { this.textarea = ref; return this.textarea; }}
-            placeholder={intl.formatMessage(messages.inputPlaceholder, { 0: chatName })}
-            aria-controls={chatAreaId}
-            aria-label={intl.formatMessage(messages.inputLabel, { 0: chatTitle })}
-            aria-invalid={hasErrors ? 'true' : 'false'}
-            aria-describedby={hasErrors ? 'message-input-error' : null}
-            autoCorrect="off"
-            autoComplete="off"
-            spellCheck="true"
-            disabled={disabled}
-            value={message}
-            onChange={this.handleMessageChange}
-            onKeyDown={this.handleMessageKeyDown}
-          />
-          <Button
-            hideLabel
-            circle
-            className={styles.sendButton}
-            aria-label={intl.formatMessage(messages.submitLabel)}
-            type="submit"
-            disabled={disabled}
-            label={intl.formatMessage(messages.submitLabel)}
-            color="primary"
-            icon="send"
-            onClick={() => {}}
-            data-test="sendMessageButton"
-          />
-        </div>
-        <TypingIndicatorContainer {...{ error }} />
-      </form>
-    ) : null;
+        {this.renderForm()}
+      </ClickOutside>
+    ) : this.renderForm();
   }
 }
 
 MessageForm.propTypes = propTypes;
-MessageForm.defaultProps = defaultProps;
 
 export default injectIntl(MessageForm);

@@ -17,12 +17,13 @@ object RunningMeeting {
 class RunningMeeting(val props: DefaultProps, outGW: OutMessageGateway,
                      eventBus: InternalEventBus)(implicit val context: ActorContext) {
 
+  private val externalVideoModel = new ExternalVideoModel()
   private val chatModel = new ChatModel()
   private val layouts = new Layouts()
+  private val pads = new Pads()
   private val wbModel = new WhiteboardModel()
   private val presModel = new PresentationModel()
   private val captionModel = new CaptionModel()
-  private val notesModel = new SharedNotesModel()
   private val registeredUsers = new RegisteredUsers
   private val meetingStatux2x = new MeetingStatus2x
   private val webcams = new Webcams
@@ -31,18 +32,24 @@ class RunningMeeting(val props: DefaultProps, outGW: OutMessageGateway,
   private val polls2x = new Polls
   private val guestsWaiting = new GuestsWaiting
   private val deskshareModel = new ScreenshareModel
+  private val audioCaptions = new AudioCaptions
 
   // meetingModel.setGuestPolicy(props.usersProp.guestPolicy)
 
   // We extract the meeting handlers into this class so it is
   // easy to test.
-  private val liveMeeting = new LiveMeeting(props, meetingStatux2x, deskshareModel, chatModel, layouts,
-    registeredUsers, polls2x, wbModel, presModel, captionModel,
-    notesModel, webcams, voiceUsers, users2x, guestsWaiting)
+  private val liveMeeting = new LiveMeeting(props, meetingStatux2x, deskshareModel, audioCaptions, chatModel, externalVideoModel,
+    layouts, pads, registeredUsers, polls2x, wbModel, presModel, captionModel,
+    webcams, voiceUsers, users2x, guestsWaiting)
 
   GuestsWaiting.setGuestPolicy(
     liveMeeting.guestsWaiting,
     GuestPolicy(props.usersProp.guestPolicy, SystemUser.ID)
+  )
+
+  Layouts.setCurrentLayout(
+    liveMeeting.layouts,
+    props.usersProp.meetingLayout,
   )
 
   private val recordEvents = props.recordProp.record || props.recordProp.keepEvents

@@ -1,9 +1,13 @@
 import { Meteor } from 'meteor/meteor';
 
-const GroupChat = new Mongo.Collection('group-chat');
+const collectionOptions = Meteor.isClient ? {
+  connection: null,
+} : {};
+
+const GroupChat = new Mongo.Collection('group-chat', collectionOptions);
 
 if (Meteor.isServer) {
-  GroupChat._ensureIndex({
+  GroupChat.createIndexAsync({
     meetingId: 1, chatId: 1, access: 1, users: 1,
   });
 }

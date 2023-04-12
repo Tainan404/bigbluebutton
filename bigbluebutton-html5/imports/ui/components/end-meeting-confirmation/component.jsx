@@ -1,10 +1,7 @@
-import React from 'react';
+import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
-import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import Button from '/imports/ui/components/button/component';
-import Modal from '/imports/ui/components/modal/simple/component';
-import { styles } from './styles';
-
+import { defineMessages, injectIntl } from 'react-intl';
+import ConfirmationModal from '/imports/ui/components/common/modal/confirmation/component';
 
 const intlMessages = defineMessages({
   endMeetingTitle: {
@@ -13,56 +10,60 @@ const intlMessages = defineMessages({
   },
   endMeetingDescription: {
     id: 'app.endMeeting.description',
+    description: 'end meeting description with affected users information',
+  },
+  endMeetingNoUserDescription: {
+    id: 'app.endMeeting.noUserDescription',
     description: 'end meeting description',
   },
-  yesLabel: {
-    id: 'app.endMeeting.yesLabel',
-    description: 'label for yes button for end meeting',
+  contentWarning: {
+    id: 'app.endMeeting.contentWarning',
+    description: 'end meeting content warning',
   },
-  noLabel: {
-    id: 'app.endMeeting.noLabel',
-    description: 'label for no button for end meeting',
+  confirmButtonLabel: {
+    id: 'app.endMeeting.yesLabel',
+    description: 'end meeting confirm button label',
   },
 });
 
+const { warnAboutUnsavedContentOnMeetingEnd } = Meteor.settings.public.app;
+
 const propTypes = {
-  intl: intlShape.isRequired,
-  closeModal: PropTypes.func.isRequired,
+  intl: PropTypes.shape({
+    formatMessage: PropTypes.func.isRequired,
+  }).isRequired,
   endMeeting: PropTypes.func.isRequired,
+  meetingTitle: PropTypes.string.isRequired,
+  users: PropTypes.number.isRequired,
 };
 
-class EndMeetingComponent extends React.PureComponent {
+class EndMeetingComponent extends PureComponent {
   render() {
-    const { intl, closeModal, endMeeting } = this.props;
+    const {
+      users, intl, endMeeting, meetingTitle,
+    } = this.props;
+
+    const title = intl.formatMessage(intlMessages.endMeetingTitle, { 0: meetingTitle });
+
+    let description = users > 0
+      ? intl.formatMessage(intlMessages.endMeetingDescription, { 0: users })
+      : intl.formatMessage(intlMessages.endMeetingNoUserDescription);
+
+    if (warnAboutUnsavedContentOnMeetingEnd) {
+      // the double breakline it to put one empty line between the descriptions
+      description += `\n\n${intl.formatMessage(intlMessages.contentWarning)}`;
+    }
 
     return (
-      <Modal
-        overlayClassName={styles.overlay}
-        className={styles.modal}
-        onRequestClose={closeModal}
-        hideBorder
-        title={intl.formatMessage(intlMessages.endMeetingTitle)}
-      >
-        <div className={styles.container}>
-          <div className={styles.description}>
-            {intl.formatMessage(intlMessages.endMeetingDescription)}
-          </div>
-          <div className={styles.footer}>
-            <Button
-              data-test="confirmEndMeeting"
-              color="primary"
-              className={styles.button}
-              label={intl.formatMessage(intlMessages.yesLabel)}
-              onClick={endMeeting}
-            />
-            <Button
-              label={intl.formatMessage(intlMessages.noLabel)}
-              className={styles.button}
-              onClick={closeModal}
-            />
-          </div>
-        </div>
-      </Modal>
+      <ConfirmationModal
+        intl={intl}
+        onConfirm={endMeeting}
+        title={title}
+        description={description}
+        confirmButtonColor="danger"
+        confirmButtonDataTest="confirmEndMeeting"
+        confirmButtonLabel={intl.formatMessage(intlMessages.confirmButtonLabel)}
+      />
     );
   }
 }

@@ -3,7 +3,7 @@ import Logger from '/imports/startup/server/logger';
 import Users from '/imports/api/users';
 import clearUserInfoForRequester from '/imports/api/users-infos/server/modifiers/clearUserInfoForRequester';
 
-export default function userEjected(meetingId, userId, ejectedReason) {
+export default async function userEjected(meetingId, userId, ejectedReason) {
   check(meetingId, String);
   check(userId, String);
   check(ejectedReason, String);
@@ -20,18 +20,14 @@ export default function userEjected(meetingId, userId, ejectedReason) {
     },
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      return Logger.error(`Ejecting user from collection: ${err}`);
+  try {
+    const numberAffected = await Users.updateAsync(selector, modifier);
+
+    if (numberAffected) {
+      await clearUserInfoForRequester(meetingId, userId);
+      Logger.info(`Ejected user id=${userId} meeting=${meetingId} reason=${ejectedReason}`);
     }
-
-    if (numChanged) {
-      clearUserInfoForRequester(meetingId, userId);
-      return Logger.info(`Ejected user id=${userId} meeting=${meetingId} reason=${ejectedReason}`);
-    }
-
-    return null;
-  };
-
-  return Users.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Ejecting user from collection: ${err}`);
+  }
 }

@@ -2,7 +2,7 @@ import { check } from 'meteor/check';
 import { Slides } from '/imports/api/slides';
 import Logger from '/imports/startup/server/logger';
 
-export default function changeCurrentSlide(meetingId, podId, presentationId, slideId) {
+export default async function changeCurrentSlide(meetingId, podId, presentationId, slideId) {
   check(meetingId, String);
   check(presentationId, String);
   check(slideId, String);
@@ -20,10 +20,11 @@ export default function changeCurrentSlide(meetingId, podId, presentationId, sli
     },
     callback: (err) => {
       if (err) {
-        return Logger.error(`Unsetting the current slide: ${err}`);
+        Logger.error(`Unsetting the current slide: ${err}`);
+        return;
       }
 
-      return Logger.info('Unsetted the current slide');
+      Logger.info('Unsetted the current slide');
     },
   };
 
@@ -39,15 +40,16 @@ export default function changeCurrentSlide(meetingId, podId, presentationId, sli
     },
     callback: (err) => {
       if (err) {
-        return Logger.error(`Setting as current slide id=${slideId}: ${err}`);
+        Logger.error(`Setting as current slide id=${slideId}: ${err}`);
+        return;
       }
 
-      return Logger.info(`Setted as current slide id=${slideId}`);
+      Logger.info(`Setted as current slide id=${slideId}`);
     },
   };
 
-  const oldSlide = Slides.findOne(oldCurrent.selector);
-  const newSlide = Slides.findOne(newCurrent.selector);
+  const oldSlide = await Slides.findOneAsync(oldCurrent.selector);
+  const newSlide = await Slides.findOneAsync(newCurrent.selector);
 
   // if the oldCurrent and newCurrent have the same ids
   if (oldSlide && newSlide && (oldSlide._id === newSlide._id)) {
@@ -55,10 +57,10 @@ export default function changeCurrentSlide(meetingId, podId, presentationId, sli
   }
 
   if (newSlide) {
-    Slides.update(newSlide._id, newCurrent.modifier, newCurrent.callback);
+    await Slides.updateAsync(newSlide._id, newCurrent.modifier, newCurrent.callback);
   }
 
   if (oldSlide) {
-    Slides.update(oldSlide._id, oldCurrent.modifier, oldCurrent.callback);
+    await Slides.updateAsync(oldSlide._id, oldCurrent.modifier, oldCurrent.callback);
   }
 }

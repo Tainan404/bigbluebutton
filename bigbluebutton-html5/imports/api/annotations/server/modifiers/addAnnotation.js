@@ -3,24 +3,20 @@ import Logger from '/imports/startup/server/logger';
 import Annotations from '/imports/api/annotations';
 import addAnnotationQuery from '/imports/api/annotations/addAnnotation';
 
-export default function addAnnotation(meetingId, whiteboardId, userId, annotation) {
+export default async function addAnnotation(meetingId, whiteboardId, userId, annotation) {
   check(meetingId, String);
   check(whiteboardId, String);
   check(annotation, Object);
 
-  const query = addAnnotationQuery(meetingId, whiteboardId, userId, annotation);
+  const query = await addAnnotationQuery(meetingId, whiteboardId, userId, annotation, Annotations);
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      return Logger.error(`Adding annotation to collection: ${err}`);
-    }
+  try {
+    const { insertedId } = await Annotations.upsertAsync(query.selector, query.modifier);
 
-    const { insertedId } = numChanged;
     if (insertedId) {
-      return Logger.info(`Added annotation id=${annotation.id} whiteboard=${whiteboardId}`);
+      Logger.info(`Added annotation id=${annotation.id} whiteboard=${whiteboardId}`);
     }
-    return true;
-  };
-
-  return Annotations.upsert(query.selector, query.modifier, cb);
+  } catch (err) {
+    Logger.error(`Adding annotation to collection: ${err}`);
+  }
 }

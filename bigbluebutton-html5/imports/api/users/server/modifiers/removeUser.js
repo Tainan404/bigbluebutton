@@ -2,56 +2,82 @@ import { check } from 'meteor/check';
 import Users from '/imports/api/users';
 import VideoStreams from '/imports/api/video-streams';
 import Logger from '/imports/startup/server/logger';
-import stopWatchingExternalVideo from '/imports/api/external-videos/server/methods/stopWatchingExternalVideo';
+import setloggedOutStatus from '/imports/api/users-persistent-data/server/modifiers/setloggedOutStatus';
 import clearUserInfoForRequester from '/imports/api/users-infos/server/modifiers/clearUserInfoForRequester';
+import ClientConnections from '/imports/startup/server/ClientConnections';
+import UsersPersistentData from '/imports/api/users-persistent-data';
+import userEjected from '/imports/api/users/server/modifiers/userEjected';
+import clearVoiceUser from '/imports/api/voice-users/server/modifiers/clearVoiceUser';
 
-const clearAllSessions = (sessionUserId) => {
+const disconnectUser = (meetingId, userId) => {
+  const sessionUserId = `${meetingId}--${userId}`;
+  ClientConnections.removeClientConnection(sessionUserId);
+
   const serverSessions = Meteor.server.sessions;
-  Object.keys(serverSessions)
-    .filter(i => serverSessions[i].userId === sessionUserId)
-    .forEach(i => serverSessions[i].close());
+  const interable = serverSessions.values();
+
+  for (const session of interable) {
+    if (session.userId === sessionUserId) {
+      Logger.info(`Removed session id=${userId} meeting=${meetingId}`);
+      session.close();
+    }
+  }
 };
 
-export default function removeUser(meetingId, userId) {
+export default async function removeUser(body, meetingId) {
+  const { intId: userId, reasonCode } = body;
   check(meetingId, String);
   check(userId, String);
 
-  const userToRemove = Users.findOne({ userId });
+  try {
+    const selector = {
+      meetingId,
+      userId,
+    };
 
-  if (userToRemove) {
-    const { presenter } = userToRemove;
-    if (presenter) {
-      stopWatchingExternalVideo({ meetingId, requesterUserId: userId });
+    // we don't want to fully process the redis message in frontend
+    // since the backend is supposed to update Mongo
+    if ((process.env.BBB_HTML5_ROLE !== 'frontend')) {
+      if (body.eject) {
+        await userEjected(meetingId, userId, reasonCode);
+      }
+
+      await setloggedOutStatus(userId, meetingId, true);
+      await VideoStreams.removeAsync({ meetingId, userId });
+
+      await clearUserInfoForRequester(meetingId, userId);
+
+      const currentUser = await UsersPersistentData.findOneAsync({ userId, meetingId });
+      const hasMessages = currentUser?.shouldPersist?.hasMessages?.public || 
+      currentUser?.shouldPersist?.hasMessages?.private;
+      const hasConnectionStatus = currentUser?.shouldPersist?.hasConnectionStatus;
+
+      if (!hasMessages && !hasConnectionStatus) {
+        await UsersPersistentData.removeAsync(selector);
+      }
+
+      await Users.removeAsync(selector);
+      await clearVoiceUser(meetingId, userId);
     }
+
+    if (!process.env.BBB_HTML5_ROLE || process.env.BBB_HTML5_ROLE === 'frontend') {
+      // Wait for user removal and then kill user connections and sessions
+      const queryCurrentUser = Users.find(selector);
+      const countUser = await queryCurrentUser.countAsync();
+      if (countUser === 0) {
+        disconnectUser(meetingId, userId);
+      } else {
+        const queryUserObserver = queryCurrentUser.observeChanges({
+          removed() {
+            disconnectUser(meetingId, userId);
+            queryUserObserver.stop();
+          },
+        });
+      }
+    }
+
+    Logger.info(`Removed user id=${userId} meeting=${meetingId}`);
+  } catch (err) {
+    Logger.error(`Removing user from Users collection: ${err}`);
   }
-
-  const selector = {
-    meetingId,
-    userId,
-  };
-
-  const modifier = {
-    $set: {
-      connectionStatus: 'offline',
-      validated: false,
-      emoji: 'none',
-      presenter: false,
-      role: 'VIEWER',
-    },
-  };
-
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Removing user from collection: ${err}`);
-    }
-
-    const sessionUserId = `${meetingId}-${userId}`;
-    clearAllSessions(sessionUserId);
-
-    clearUserInfoForRequester(meetingId, userId);
-
-    return Logger.info(`Removed user id=${userId} meeting=${meetingId}`);
-  };
-  VideoStreams.remove({ meetingId, userId });
-  return Users.update(selector, modifier, cb);
 }

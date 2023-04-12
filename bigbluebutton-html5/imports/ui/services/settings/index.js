@@ -1,6 +1,10 @@
-import Storage from '/imports/ui/services/storage/session';
-import _ from 'lodash';
+import {default as LocalStorage} from '/imports/ui/services/storage/local';
+import {default as SessionStorage} from '/imports/ui/services/storage/session';
+
 import { makeCall } from '/imports/ui/services/api';
+import { isEmpty } from 'radash';
+
+const APP_CONFIG = Meteor.settings.public.app;
 
 const SETTINGS = [
   'application',
@@ -8,7 +12,11 @@ const SETTINGS = [
   'video',
   'cc',
   'dataSaving',
+  'animations',
 ];
+
+const CHANGED_SETTINGS = 'changed_settings';
+const DEFAULT_SETTINGS = 'default_settings';
 
 class Settings {
   constructor(defaultValues = {}) {
@@ -31,33 +39,67 @@ class Settings {
         },
       });
     });
-
+    this.defaultSettings = {};
     // Sets default locale to browser locale
     defaultValues.application.locale = navigator.languages ? navigator.languages[0] : false
-                                       || navigator.language
-                                       || defaultValues.application.locale;
+      || navigator.language
+      || defaultValues.application.locale;
 
     this.setDefault(defaultValues);
+    this.loadChanged();
   }
 
   setDefault(defaultValues) {
+    Object.keys(defaultValues).forEach((key) => {
+      this[key] = defaultValues[key];
+      this.defaultSettings[`_${key}`] = defaultValues[key];
+    });
+
+    this.save(DEFAULT_SETTINGS);
+  }
+
+  loadChanged() {
+    const Storage = (APP_CONFIG.userSettingsStorage == 'local') ? LocalStorage : SessionStorage;
     const savedSettings = {};
 
     SETTINGS.forEach((s) => {
-      savedSettings[s] = Storage.getItem(`settings_${s}`);
+      savedSettings[s] = Storage.getItem(`${CHANGED_SETTINGS}_${s}`);
     });
 
-    Object.keys(defaultValues).forEach((key) => {
-      this[key] = _.extend(defaultValues[key], savedSettings[key]);
+    Object.keys(savedSettings).forEach((key) => {
+      const savedItem = savedSettings[key];
+      if (!savedItem) return;
+      this[key] = {
+        ...this[key],
+        ...savedItem,
+      };
     });
-
-    this.save();
   }
 
-  save() {
-    Object.keys(this).forEach((k) => {
-      Storage.setItem(`settings${k}`, this[k].value);
-    });
+  save(settings = CHANGED_SETTINGS) {
+    const Storage = (APP_CONFIG.userSettingsStorage == 'local') ? LocalStorage : SessionStorage;
+    if (settings === CHANGED_SETTINGS) {
+      Object.keys(this).forEach((k) => {
+        const values = this[k].value;
+        const defaultValues = this.defaultSettings[k];
+
+        if (!values) return;
+        const changedValues = Object.keys(values)
+          .filter(item => values[item] !== defaultValues[item])
+          .reduce((acc, item) => ({
+            ...acc,
+            [item]: values[item],
+          }), {});
+
+        if (isEmpty(changedValues)) Storage.removeItem(`${settings}${k}`);
+        Storage.setItem(`${settings}${k}`, changedValues);
+      });
+    } else {
+      Object.keys(this).forEach((k) => {
+        Storage.setItem(`${settings}${k}`, this[k].value);
+      });
+    }
+
 
     const userSettings = {};
 
@@ -65,7 +107,13 @@ class Settings {
       userSettings[e] = this[e];
     });
 
-    makeCall('userChangedLocalSettings', userSettings);
+    Tracker.autorun((c) => {
+      const { status } = Meteor.status();
+      if (status === 'connected') {
+        c.stop();
+        makeCall('userChangedLocalSettings', userSettings);
+      }
+    });
   }
 }
 

@@ -3,6 +3,9 @@ package org.bigbluebutton.freeswitch.voice;
 import org.bigbluebutton.freeswitch.voice.events.ConfMember;
 import org.bigbluebutton.freeswitch.voice.events.ConfRecording;
 
+import java.util.List;
+import java.util.Map;
+
 public interface IVoiceConferenceService {
   void voiceConfRecordingStarted(String voiceConfId,
                                  String recordStream,
@@ -40,29 +43,28 @@ public interface IVoiceConferenceService {
                               String voiceUserId,
                               Boolean talking);
 
-  void deskShareStarted(String voiceConfId,
-                        String callerIdNum,
-                        String callerIdName);
-
-  void deskShareEnded(String voiceConfId,
-                      String callerIdNum,
-                      String callerIdName);
-
-  void deskShareRTMPBroadcastStarted(String room,
-                                     String streamname,
-                                     Integer videoWidth,
-                                     Integer videoHeight,
-                                     String timestamp);
-
-  void deskShareRTMPBroadcastStopped(String room,
-                                     String streamname,
-                                     Integer videoWidth,
-                                     Integer videoHeight,
-                                     String timestamp);
+  void audioFloorChanged(String room,
+                         String voiceUserId,
+                         String oldVoiceUserId,
+                         String floorTimestamp);
 
   void voiceConfRunningAndRecording(String room,
                                     Boolean isRunning,
                                     Boolean isRecording,
                                     java.util.List<ConfRecording> confRecording);
 
+  void voiceCallStateEvent(String conf,
+                           String callSession,
+                           String clientSession,
+                           String userId,
+                           String callerName,
+                           String callState,
+                           String origCallerIdName,
+                           String origCalledDest);
+
+  void freeswitchStatusReplyEvent(Long sendCommandTimestamp,
+                                  List<String> status,
+                                  Long receivedResponseTimestamp);
+
+  void freeswitchHeartbeatEvent(Map<String, String> heartbeat);
 }

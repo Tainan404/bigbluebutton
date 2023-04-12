@@ -21,16 +21,16 @@
 require File.expand_path('../../../lib/recordandplayback', __FILE__)
 require File.expand_path('../../../lib/recordandplayback/edl', __FILE__)
 
-require 'trollop'
+require 'optimist'
 require 'yaml'
 require 'nokogiri'
 require 'erb'
 
-opts = Trollop::options do
+opts = Optimist::options do
   opt :meeting_id, "Meeting id to process", :type => String
   opt :stderr, "Log output to stderr"
 end
-Trollop::die :meeting_id, "must be provided" unless opts[:meeting_id]
+Optimist::die :meeting_id, "must be provided" unless opts[:meeting_id]
 meeting_id = opts[:meeting_id]
 
 start_real_time = nil
@@ -84,7 +84,7 @@ begin
   logger.info "Generating video events list"
 
   # Webcams
-  webcam_edl = BigBlueButton::Events.create_webcam_edl(events, raw_archive_dir)
+  webcam_edl = BigBlueButton::Events.create_webcam_edl(events, raw_archive_dir, props['show_moderator_viewpoint'])
   logger.debug "Webcam EDL:"
   BigBlueButton::EDL::Video.dump(webcam_edl)
 
@@ -166,6 +166,9 @@ end
 
 logger.info "Generating metadata xml"
 duration = BigBlueButton::Events.get_recording_length(events)
+meeting_xml = events.at_xpath('/recording/meeting')
+breakout_xml = events.at_xpath('/recording/breakout')
+breakout_rooms_xml = events.at_xpath('/recording/breakoutRooms')
 metadata_xml = Nokogiri::XML::Builder.new do |xml|
   xml.recording {
     xml.id(meeting_id)
@@ -173,6 +176,9 @@ metadata_xml = Nokogiri::XML::Builder.new do |xml|
     xml.published('true')
     xml.start_time(start_real_time)
     xml.end_time(start_real_time + final_timestamp - initial_timestamp)
+    xml << meeting_xml.to_xml unless meeting_xml.nil?
+    xml << breakout_xml.to_xml unless breakout_xml.nil?
+    xml << breakout_rooms_xml.to_xml unless breakout_rooms_xml.nil?
     xml.playback {
       xml.format('screenshare')
       xml.link("#{props['playback_protocol']}://#{props['playback_host']}/recording/screenshare/#{meeting_id}/")

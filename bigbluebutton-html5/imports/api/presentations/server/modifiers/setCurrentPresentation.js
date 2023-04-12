@@ -2,7 +2,7 @@ import { check } from 'meteor/check';
 import Presentations from '/imports/api/presentations';
 import Logger from '/imports/startup/server/logger';
 
-export default function setCurrentPresentation(meetingId, podId, presentationId) {
+export default async function setCurrentPresentation(meetingId, podId, presentationId) {
   check(meetingId, String);
   check(presentationId, String);
   check(podId, String);
@@ -12,16 +12,20 @@ export default function setCurrentPresentation(meetingId, podId, presentationId)
       meetingId,
       podId,
       current: true,
+      id: {
+        $ne: presentationId,
+      },
     },
     modifier: {
       $set: { current: false },
     },
     callback: (err) => {
       if (err) {
-        return Logger.error(`Unsetting the current presentation: ${err}`);
+        Logger.error(`Unsetting the current presentation: ${err}`);
+        return;
       }
 
-      return Logger.info('Unsetted as current presentation');
+      Logger.info('Unsetted as current presentation');
     },
   };
 
@@ -36,27 +40,31 @@ export default function setCurrentPresentation(meetingId, podId, presentationId)
     },
     callback: (err) => {
       if (err) {
-        return Logger.error(`Setting as current presentation id=${presentationId}: ${err}`);
+        Logger.error(`Setting as current presentation id=${presentationId}: ${err}`);
+        return;
       }
 
-      return Logger.info(`Setted as current presentation id=${presentationId}`);
+      Logger.info(`Setted as current presentation id=${presentationId}`);
     },
   };
 
-  const oldPresentation = Presentations.findOne(oldCurrent.selector);
-  const newPresentation = Presentations.findOne(newCurrent.selector);
-
-  // Prevent bug with presentation being unset, same happens in the slide
-  // See: https://github.com/bigbluebutton/bigbluebutton/pull/4431
-  if (oldPresentation && newPresentation && (oldPresentation._id === newPresentation._id)) {
-    return;
-  }
-
+  const oldPresentation = await Presentations.findOneAsync(oldCurrent.selector);
+  const newPresentation = await Presentations.findOneAsync(newCurrent.selector);
+// We update it before unset current to avoid the case where theres no current presentation.
   if (newPresentation) {
-    Presentations.update(newPresentation._id, newCurrent.modifier, newCurrent.callback);
+    try{
+      await Presentations.updateAsync(newPresentation._id, newCurrent.modifier);
+    } catch(e){
+      newCurrent.callback(e);
+    }
   }
 
   if (oldPresentation) {
-    Presentations.update(oldPresentation._id, oldCurrent.modifier, oldCurrent.callback);
+    try {
+      await Presentations.updateAsync(oldCurrent.selector, oldCurrent.modifier, { multi: true });
+    } catch (e) {
+      oldCurrent.callback(e);
+    }
   }
+
 }

@@ -1,18 +1,18 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { Session } from 'meteor/session';
-import { withModalMounter } from '/imports/ui/components/modal/service';
+import { withModalMounter } from '/imports/ui/components/common/modal/service';
 import BreakoutJoinConfirmation from '/imports/ui/components/breakout-join-confirmation/container';
+import BreakoutService from '../service';
 
 const BREAKOUT_MODAL_DELAY = 200;
 
 const propTypes = {
   mountModal: PropTypes.func.isRequired,
-  currentBreakoutUser: PropTypes.shape({
-    insertedTime: PropTypes.number.isRequired,
+  lastBreakoutReceived: PropTypes.shape({
+    breakoutUrlData: PropTypes.object.isRequired,
   }),
-  getBreakoutByUser: PropTypes.func.isRequired,
-  breakoutUserIsIn: PropTypes.shape({
+  breakoutRoomsUserIsIn: PropTypes.shape({
     sequence: PropTypes.number.isRequired,
   }),
   breakouts: PropTypes.arrayOf(PropTypes.shape({
@@ -21,8 +21,8 @@ const propTypes = {
 };
 
 const defaultProps = {
-  currentBreakoutUser: undefined,
-  breakoutUserIsIn: undefined,
+  lastBreakoutReceived: undefined,
+  breakoutRoomsUserIsIn: undefined,
   breakouts: [],
 };
 
@@ -32,8 +32,6 @@ const openBreakoutJoinConfirmation = (breakout, breakoutName, mountModal) => mou
     breakoutName={breakoutName}
   />,
 );
-
-const closeBreakoutJoinConfirmation = mountModal => mountModal(null);
 
 class BreakoutRoomInvitation extends Component {
   constructor(props) {
@@ -56,51 +54,53 @@ class BreakoutRoomInvitation extends Component {
   checkBreakouts(oldProps) {
     const {
       breakouts,
-      mountModal,
-      currentBreakoutUser,
-      getBreakoutByUser,
-      breakoutUserIsIn,
+      lastBreakoutReceived,
+      breakoutRoomsUserIsIn,
     } = this.props;
 
     const {
       didSendBreakoutInvite,
     } = this.state;
 
-    const hadBreakouts = oldProps.breakouts.length > 0;
-    const hasBreakouts = breakouts.length > 0;
-    if (!hasBreakouts && hadBreakouts) {
-      closeBreakoutJoinConfirmation(mountModal);
-    }
+    const hasBreakoutsAvailable = breakouts.length > 0;
 
-    if (hasBreakouts && !breakoutUserIsIn) {
-      // Have to check for freeJoin breakouts first because currentBreakoutUser will
-      // populate after a room has been joined
-      const freeJoinBreakout = breakouts.find(breakout => breakout.freeJoin);
-      if (freeJoinBreakout) {
-        if (!didSendBreakoutInvite) {
-          this.inviteUserToBreakout(freeJoinBreakout);
-          this.setState({ didSendBreakoutInvite: true });
+    if (hasBreakoutsAvailable
+      && !breakoutRoomsUserIsIn
+      && BreakoutService.checkInviteModerators()) {
+      const freeJoinRooms = breakouts.filter((breakout) => breakout.freeJoin);
+
+      if (lastBreakoutReceived) {
+        const lastBreakoutIdOpened = Session.get('lastBreakoutIdOpened');
+        const oldLastBktReceivedInsertedTime = (typeof oldProps.lastBreakoutReceived === 'object') ? oldProps.lastBreakoutReceived.breakoutUrlData.insertedTime : 0;
+
+        // check if user has a new invitation
+        if (lastBreakoutReceived.breakoutUrlData.insertedTime !== oldLastBktReceivedInsertedTime
+        // or check if user just left a room and was invited to another room in last 15 secs
+        || (typeof oldProps.breakoutRoomsUserIsIn === 'object'
+            && !breakoutRoomsUserIsIn
+            && lastBreakoutReceived.breakoutId !== lastBreakoutIdOpened
+          && lastBreakoutReceived.breakoutUrlData.insertedTime > (new Date().getTime()) - 15000)
+        ) {
+          this.inviteUserToBreakout(lastBreakoutReceived);
         }
-      } else if (currentBreakoutUser) {
-        const currentInsertedTime = currentBreakoutUser.insertedTime;
-        const oldCurrentUser = oldProps.currentBreakoutUser || {};
-        const oldInsertedTime = oldCurrentUser.insertedTime;
-        if (currentInsertedTime !== oldInsertedTime) {
-          const breakoutRoom = getBreakoutByUser(currentBreakoutUser);
-          const breakoutId = Session.get('lastBreakoutOpened');
-          if (breakoutRoom.breakoutId !== breakoutId) {
-            this.inviteUserToBreakout(breakoutRoom);
-          }
+      } else if (freeJoinRooms.length > 0 && !didSendBreakoutInvite) {
+        const maxSeq = Math.max(...freeJoinRooms.map(((room) => room.sequence)));
+        // Check if received all rooms and Pick a room randomly
+        if (maxSeq === freeJoinRooms.length) {
+          const randomRoom = freeJoinRooms[Math.floor(Math.random() * freeJoinRooms.length)];
+          this.inviteUserToBreakout(randomRoom);
+          this.setState({ didSendBreakoutInvite: true });
         }
       }
     }
 
-    if (!hasBreakouts && didSendBreakoutInvite) {
+    if (!hasBreakoutsAvailable && didSendBreakoutInvite) {
       this.setState({ didSendBreakoutInvite: false });
     }
   }
 
   inviteUserToBreakout(breakout) {
+    Session.set('lastBreakoutIdInvited', breakout.breakoutId);
     const {
       mountModal,
     } = this.props;

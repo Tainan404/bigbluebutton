@@ -1,24 +1,20 @@
 import React, { PureComponent } from 'react';
-import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import _ from 'lodash';
+import { defineMessages, injectIntl } from 'react-intl';
 import PropTypes from 'prop-types';
-import { withModalMounter } from '/imports/ui/components/modal/service';
+import { withModalMounter } from '/imports/ui/components/common/modal/service';
 import EndMeetingConfirmationContainer from '/imports/ui/components/end-meeting-confirmation/container';
 import { makeCall } from '/imports/ui/services/api';
 import AboutContainer from '/imports/ui/components/about/container';
+import MobileAppModal from '/imports/ui/components/mobile-app-modal/container';
 import SettingsMenuContainer from '/imports/ui/components/settings/container';
-import Button from '/imports/ui/components/button/component';
-import Dropdown from '/imports/ui/components/dropdown/component';
-import DropdownTrigger from '/imports/ui/components/dropdown/trigger/component';
-import DropdownContent from '/imports/ui/components/dropdown/content/component';
-import DropdownList from '/imports/ui/components/dropdown/list/component';
-import DropdownListItem from '/imports/ui/components/dropdown/list/item/component';
-import DropdownListSeparator from '/imports/ui/components/dropdown/list/separator/component';
+import BBBMenu from '/imports/ui/components/common/menu/component';
 import ShortcutHelpComponent from '/imports/ui/components/shortcut-help/component';
 import withShortcutHelper from '/imports/ui/components/shortcut-help/service';
-import FullscreenService from '../../fullscreen-button/service';
-
-import { styles } from '../styles';
+import FullscreenService from '/imports/ui/components/common/fullscreen-button/service';
+import { colorDanger, colorWhite } from '/imports/ui/stylesheets/styled-components/palette';
+import Styled from './styles';
+import browserInfo from '/imports/utils/browserInfo';
+import deviceInfo from '/imports/utils/deviceInfo';
 
 const intlMessages = defineMessages({
   optionsLabel: {
@@ -77,6 +73,10 @@ const intlMessages = defineMessages({
     id: 'app.navBar.settingsDropdown.helpLabel',
     description: 'Help options label',
   },
+  openAppLabel: {
+    id: 'app.navBar.settingsDropdown.openAppLabel',
+    description: 'Open mobile app label',
+  },
   helpDesc: {
     id: 'app.navBar.settingsDropdown.helpDesc',
     description: 'Describes help option',
@@ -89,10 +89,20 @@ const intlMessages = defineMessages({
     id: 'app.navBar.settingsDropdown.endMeetingDesc',
     description: 'Describes settings option closing the current meeting',
   },
+  startCaption: {
+    id: 'app.audio.captions.button.start',
+    description: 'Start audio captions',
+  },
+  stopCaption: {
+    id: 'app.audio.captions.button.stop',
+    description: 'Stop audio captions',
+  },
 });
 
 const propTypes = {
-  intl: intlShape.isRequired,
+  intl: PropTypes.shape({
+    formatMessage: PropTypes.func.isRequired,
+  }).isRequired,
   handleToggleFullscreen: PropTypes.func.isRequired,
   mountModal: PropTypes.func.isRequired,
   noIOSFullscreen: PropTypes.bool,
@@ -100,6 +110,11 @@ const propTypes = {
   shortcuts: PropTypes.string,
   isBreakoutRoom: PropTypes.bool,
   isMeteorConnected: PropTypes.bool.isRequired,
+  isDropdownOpen: PropTypes.bool,
+  audioCaptionsEnabled: PropTypes.bool.isRequired,
+  audioCaptionsActive: PropTypes.bool.isRequired,
+  audioCaptionsSet: PropTypes.func.isRequired,
+  isMobile: PropTypes.bool.isRequired,
 };
 
 const defaultProps = {
@@ -107,46 +122,35 @@ const defaultProps = {
   amIModerator: false,
   shortcuts: '',
   isBreakoutRoom: false,
+  isDropdownOpen: false,
 };
 
 const ALLOW_FULLSCREEN = Meteor.settings.public.app.allowFullscreen;
+const BBB_TABLET_APP_CONFIG = Meteor.settings.public.app.bbbTabletApp;
+const { isSafari, isTabletApp } = browserInfo;
+const FULLSCREEN_CHANGE_EVENT = isSafari ? 'webkitfullscreenchange' : 'fullscreenchange';
 
 class SettingsDropdown extends PureComponent {
   constructor(props) {
     super(props);
 
     this.state = {
-      isSettingOpen: false,
       isFullscreen: false,
     };
 
     // Set the logout code to 680 because it's not a real code and can be matched on the other side
     this.LOGOUT_CODE = '680';
 
-    this.onActionsShow = this.onActionsShow.bind(this);
-    this.onActionsHide = this.onActionsHide.bind(this);
     this.leaveSession = this.leaveSession.bind(this);
     this.onFullscreenChange = this.onFullscreenChange.bind(this);
   }
 
   componentDidMount() {
-    document.documentElement.addEventListener('fullscreenchange', this.onFullscreenChange);
+    document.documentElement.addEventListener(FULLSCREEN_CHANGE_EVENT, this.onFullscreenChange);
   }
 
   componentWillUnmount() {
-    document.documentElement.removeEventListener('fullscreenchange', this.onFullscreenChange);
-  }
-
-  onActionsShow() {
-    this.setState({
-      isSettingOpen: true,
-    });
-  }
-
-  onActionsHide() {
-    this.setState({
-      isSettingOpen: false,
-    });
+    document.documentElement.removeEventListener(FULLSCREEN_CHANGE_EVENT, this.onFullscreenChange);
   }
 
   onFullscreenChange() {
@@ -157,7 +161,7 @@ class SettingsDropdown extends PureComponent {
     }
   }
 
-  getFullscreenItem() {
+  getFullscreenItem(menuItems) {
     const {
       intl,
       noIOSFullscreen,
@@ -178,30 +182,32 @@ class SettingsDropdown extends PureComponent {
     }
 
     return (
-      <DropdownListItem
-        key="list-item-fullscreen"
-        icon={fullscreenIcon}
-        label={fullscreenLabel}
-        description={fullscreenDesc}
-        onClick={handleToggleFullscreen}
-      />
+      menuItems.push(
+        {
+          key: 'list-item-fullscreen',
+          icon: fullscreenIcon,
+          label: fullscreenLabel,
+          description: fullscreenDesc,
+          onClick: handleToggleFullscreen,
+        },
+      )
     );
   }
 
   leaveSession() {
-    document.dispatchEvent(new Event('exitVideo'));
-
     makeCall('userLeftMeeting');
     // we don't check askForFeedbackOnLogout here,
     // it is checked in meeting-ended component
     Session.set('codeError', this.LOGOUT_CODE);
-    // mountModal(<MeetingEndedComponent code={LOGOUT_CODE} />);
   }
 
   renderMenuItems() {
     const {
-      intl, mountModal, amIModerator, isBreakoutRoom, isMeteorConnected,
+      intl, mountModal, amIModerator, isBreakoutRoom, isMeteorConnected, audioCaptionsEnabled,
+      audioCaptionsActive, audioCaptionsSet, isMobile,
     } = this.props;
+
+    const { isIos } = deviceInfo;
 
     const allowedToEndMeeting = amIModerator && !isBreakoutRoom;
 
@@ -211,104 +217,155 @@ class SettingsDropdown extends PureComponent {
       allowLogout: allowLogoutSetting,
     } = Meteor.settings.public.app;
 
-    const logoutOption = (
-      <DropdownListItem
-        key="list-item-logout"
-        icon="logout"
-        label={intl.formatMessage(intlMessages.leaveSessionLabel)}
-        description={intl.formatMessage(intlMessages.leaveSessionDesc)}
-        onClick={() => this.leaveSession()}
-      />
+    this.menuItems = [];
+
+    this.getFullscreenItem(this.menuItems);
+
+    this.menuItems.push(
+      {
+        key: 'list-item-settings',
+        icon: 'settings',
+        dataTest: 'settings',
+        label: intl.formatMessage(intlMessages.settingsLabel),
+        description: intl.formatMessage(intlMessages.settingsDesc),
+        onClick: () => mountModal(<SettingsMenuContainer />),
+      },
+      {
+        key: 'list-item-about',
+        icon: 'about',
+        dataTest: 'aboutModal',
+        label: intl.formatMessage(intlMessages.aboutLabel),
+        description: intl.formatMessage(intlMessages.aboutDesc),
+        onClick: () => mountModal(<AboutContainer />),
+      },
     );
 
-    const shouldRenderLogoutOption = (isMeteorConnected && allowLogoutSetting)
-      ? logoutOption
-      : null;
+    if (helpButton) {
+      this.menuItems.push(
+        {
+          key: 'list-item-help',
+          icon: 'help',
+          iconRight: 'popout_window',
+          label: intl.formatMessage(intlMessages.helpLabel),
+          dataTest: 'helpButton',
+          description: intl.formatMessage(intlMessages.helpDesc),
+          onClick: () => window.open(`${helpLink}`),
+        },
+      );
+    }
 
-    return _.compact([
-      this.getFullscreenItem(),
-      (<DropdownListItem
-        key="list-item-settings"
-        icon="settings"
-        label={intl.formatMessage(intlMessages.settingsLabel)}
-        description={intl.formatMessage(intlMessages.settingsDesc)}
-        onClick={() => mountModal(<SettingsMenuContainer />)}
-      />),
-      (<DropdownListItem
-        key="list-item-about"
-        icon="about"
-        label={intl.formatMessage(intlMessages.aboutLabel)}
-        description={intl.formatMessage(intlMessages.aboutDesc)}
-        onClick={() => mountModal(<AboutContainer />)}
-      />),
-      !helpButton ? null
-        : (
-          <DropdownListItem
-            key="list-item-help"
-            icon="help"
-            iconRight="popout_window"
-            label={intl.formatMessage(intlMessages.helpLabel)}
-            description={intl.formatMessage(intlMessages.helpDesc)}
-            onClick={() => window.open(`${helpLink}`)}
-          />
-        ),
-      (<DropdownListItem
-        key="list-item-shortcuts"
-        icon="shortcuts"
-        label={intl.formatMessage(intlMessages.hotkeysLabel)}
-        description={intl.formatMessage(intlMessages.hotkeysDesc)}
-        onClick={() => mountModal(<ShortcutHelpComponent />)}
-      />),
-      (isMeteorConnected ? <DropdownListSeparator key={_.uniqueId('list-separator-')} /> : null),
-      allowedToEndMeeting && isMeteorConnected
-        ? (<DropdownListItem
-          key="list-item-end-meeting"
-          icon="application"
-          label={intl.formatMessage(intlMessages.endMeetingLabel)}
-          description={intl.formatMessage(intlMessages.endMeetingDesc)}
-          onClick={() => mountModal(<EndMeetingConfirmationContainer />)}
-        />
-        )
-        : null,
-      shouldRenderLogoutOption,
-    ]);
+    if (isIos &&
+      !isTabletApp &&
+      BBB_TABLET_APP_CONFIG.enabled == true &&
+      BBB_TABLET_APP_CONFIG.iosAppStoreUrl !== '') {
+      this.menuItems.push(
+        {
+          key: 'list-item-help',
+          icon: 'popout_window',
+          label: intl.formatMessage(intlMessages.openAppLabel),
+          onClick: () => mountModal(<MobileAppModal />),
+         }
+      );
+    }
+
+    if (audioCaptionsEnabled && isMobile) {
+      this.menuItems.push(
+        {
+          key: 'audioCaptions',
+          dataTest: 'audioCaptions',
+          icon: audioCaptionsActive ? 'closed_caption_stop' : 'closed_caption',
+          label: intl.formatMessage(
+            audioCaptionsActive ? intlMessages.stopCaption : intlMessages.startCaption,
+          ),
+          onClick: () => audioCaptionsSet(!audioCaptionsActive),
+        },
+      );
+    }
+
+    this.menuItems.push(
+      {
+        key: 'list-item-shortcuts',
+        icon: 'shortcuts',
+        label: intl.formatMessage(intlMessages.hotkeysLabel),
+        description: intl.formatMessage(intlMessages.hotkeysDesc),
+        onClick: () => mountModal(<ShortcutHelpComponent />),
+        divider: true,
+      },
+    );
+
+    if (allowLogoutSetting && isMeteorConnected) {
+      this.menuItems.push(
+        {
+          key: 'list-item-logout',
+          dataTest: 'logout',
+          icon: 'logout',
+          label: intl.formatMessage(intlMessages.leaveSessionLabel),
+          description: intl.formatMessage(intlMessages.leaveSessionDesc),
+          onClick: () => this.leaveSession(),
+        },
+      );
+    }
+
+    if (allowedToEndMeeting && isMeteorConnected) {
+      const customStyles = { background: colorDanger, color: colorWhite };
+
+      this.menuItems.push(
+        {
+          key: 'list-item-end-meeting',
+          icon: 'application',
+          label: intl.formatMessage(intlMessages.endMeetingLabel),
+          description: intl.formatMessage(intlMessages.endMeetingDesc),
+          customStyles,
+          onClick: () => mountModal(<EndMeetingConfirmationContainer />),
+        },
+      );
+    }
+
+    return this.menuItems;
   }
 
   render() {
     const {
       intl,
       shortcuts: OPEN_OPTIONS_AK,
+      isDropdownOpen,
+      isMobile,
+      isRTL,
     } = this.props;
 
-    const { isSettingOpen } = this.state;
+    const customStyles = { top: '1rem' };
 
     return (
-      <Dropdown
-        autoFocus
-        keepOpen={isSettingOpen}
-        onShow={this.onActionsShow}
-        onHide={this.onActionsHide}
-      >
-        <DropdownTrigger tabIndex={0} accessKey={OPEN_OPTIONS_AK}>
-          <Button
+      <BBBMenu
+        accessKey={OPEN_OPTIONS_AK}
+        customStyles={!isMobile ? customStyles : null}
+        trigger={(
+          <Styled.DropdownButton
+            state={isDropdownOpen ? 'open' : 'closed'}
             label={intl.formatMessage(intlMessages.optionsLabel)}
             icon="more"
-            ghost
+            data-test="optionsButton"
+            color="dark"
+            size="md"
             circle
             hideLabel
-            className={styles.btn}
-
             // FIXME: Without onClick react proptypes keep warning
             // even after the DropdownTrigger inject an onClick handler
             onClick={() => null}
           />
-        </DropdownTrigger>
-        <DropdownContent placement="bottom right">
-          <DropdownList>
-            {this.renderMenuItems()}
-          </DropdownList>
-        </DropdownContent>
-      </Dropdown>
+        )}
+        actions={this.renderMenuItems()}
+        opts={{
+          id: 'app-settings-dropdown-menu',
+          keepMounted: true,
+          transitionDuration: 0,
+          elevation: 3,
+          getContentAnchorEl: null,
+          fullwidth: 'true',
+          anchorOrigin: { vertical: 'bottom', horizontal: isRTL ? 'left' : 'right' },
+          transformorigin: { vertical: 'top', horizontal: isRTL ? 'left' : 'right' },
+        }}
+      />
     );
   }
 }

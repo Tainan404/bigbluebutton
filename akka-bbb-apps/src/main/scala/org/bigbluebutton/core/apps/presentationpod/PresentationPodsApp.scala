@@ -41,10 +41,27 @@ object PresentationPodsApp {
 
   def translatePresentationPodToVO(pod: PresentationPod): PresentationPodVO = {
     val presentationObjects = pod.presentations
-    val presentationVOs = presentationObjects.values.map(p => PresentationVO(p.id, p.name, p.current,
-      p.pages.values.toVector, p.downloadable)).toVector
+    val presentationVOs = presentationObjects.values.map { p =>
+      val pages = p.pages.values.map { page =>
+        PageVO(
+          id = page.id,
+          num = page.num,
+          thumbUri = page.urls.getOrElse("thumb", ""),
+          txtUri = page.urls.getOrElse("text", ""),
+          svgUri = page.urls.getOrElse("svg", ""),
+          current = page.current,
+          xOffset = page.xOffset,
+          yOffset = page.yOffset,
+          widthRatio = page.widthRatio,
+          heightRatio = page.heightRatio
+        )
+      }
 
-    PresentationPodVO(pod.id, pod.currentPresenter, presentationVOs)
+      PresentationVO(p.id, "", p.name, p.current,
+        pages.toVector, p.downloadable, p.removable)
+    }
+
+    PresentationPodVO(pod.id, pod.currentPresenter, presentationVOs.toVector)
   }
 
   def findPodsWhereUserIsPresenter(mgr: PresentationPodManager, userId: String): Vector[PresentationPod] = {
@@ -56,8 +73,22 @@ object PresentationPodsApp {
     state.update(podManager)
   }
 
-  def translatePresentationToPresentationVO(pres: PresentationInPod): PresentationVO = {
-    PresentationVO(pres.id, pres.name, pres.current, pres.pages.values.toVector, pres.downloadable)
+  def translatePresentationToPresentationVO(pres: PresentationInPod, temporaryPresentationId: String): PresentationVO = {
+    val pages = pres.pages.values.map { page =>
+      PageVO(
+        id = page.id,
+        num = page.num,
+        thumbUri = page.urls.getOrElse("thumb", ""),
+        txtUri = page.urls.getOrElse("text", ""),
+        svgUri = page.urls.getOrElse("svg", ""),
+        current = page.current,
+        xOffset = page.xOffset,
+        yOffset = page.yOffset,
+        widthRatio = page.widthRatio,
+        heightRatio = page.heightRatio
+      )
+    }
+    PresentationVO(pres.id, temporaryPresentationId, pres.name, pres.current, pages.toVector, pres.downloadable, pres.removable)
   }
 
   def setCurrentPresentationInPod(state: MeetingState2x, podId: String, nextCurrentPresId: String): Option[PresentationPod] = {

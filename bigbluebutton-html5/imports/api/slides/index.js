@@ -1,7 +1,11 @@
 import { Meteor } from 'meteor/meteor';
 
-const Slides = new Mongo.Collection('slides');
-const SlidePositions = new Mongo.Collection('slide-positions');
+const collectionOptions = Meteor.isClient ? {
+  connection: null,
+} : {};
+
+const Slides = new Mongo.Collection('slides', collectionOptions);
+const SlidePositions = new Mongo.Collection('slide-positions', collectionOptions);
 
 if (Meteor.isServer) {
   // types of queries for the slides:
@@ -13,11 +17,11 @@ if (Meteor.isServer) {
   // 4. meetingId, podId, presentationId, id       ( 3 ) - incl. resizeSlide, which can be intense
   // 5. meetingId, podId, presentationId, current  ( 1 )
 
-  Slides._ensureIndex({
+  Slides.createIndexAsync({
     meetingId: 1, podId: 1, presentationId: 1, id: 1,
   });
 
-  SlidePositions._ensureIndex({
+  SlidePositions.createIndexAsync({
     meetingId: 1, podId: 1, presentationId: 1, id: 1,
   });
 }

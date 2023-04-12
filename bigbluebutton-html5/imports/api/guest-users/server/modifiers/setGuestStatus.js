@@ -1,10 +1,11 @@
 import { check } from 'meteor/check';
 import GuestUsers from '/imports/api/guest-users';
 import Logger from '/imports/startup/server/logger';
+import updatePositionInWaitingQueue from '../methods/updatePositionInWaitingQueue';
 
 const GUEST_STATUS_ALLOW = 'ALLOW';
 const GUEST_STATUS_DENY = 'DENY';
-export default function setGuestStatus(meetingId, intId, status, approvedBy = null) {
+export default async function setGuestStatus(meetingId, intId, status, approvedBy = null) {
   check(meetingId, String);
   check(intId, String);
   check(status, String);
@@ -21,13 +22,18 @@ export default function setGuestStatus(meetingId, intId, status, approvedBy = nu
       approvedBy,
     },
   };
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Updating status=${status} user=${intId}: ${err}`);
+
+  try {
+    const numberAffected = await GuestUsers.updateAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.info(`Updated status=${status} user=${intId} meeting=${meetingId}`);
+      /** Update position of waiting users after user has been
+      *  approved or denied by the moderator
+      */
+      await updatePositionInWaitingQueue(meetingId);
     }
-
-    return Logger.info(`Updated status=${status} user=${intId} meeting=${meetingId}`);
-  };
-
-  return GuestUsers.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Updating status=${status} user=${intId}: ${err}`);
+  }
 }

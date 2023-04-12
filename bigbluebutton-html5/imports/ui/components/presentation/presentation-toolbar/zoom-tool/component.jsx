@@ -1,9 +1,7 @@
 import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
-import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import Button from '/imports/ui/components/button/component';
-import cx from 'classnames';
-import { styles } from '../styles.scss';
+import { defineMessages, injectIntl } from 'react-intl';
+import Styled from './styles';
 import HoldButton from './holdButton/component';
 
 const DELAY_MILLISECONDS = 200;
@@ -57,7 +55,9 @@ class ZoomTool extends PureComponent {
     const { zoomValue } = this.props;
     const { stateZoomValue } = this.state;
     const isDifferent = zoomValue !== stateZoomValue;
-    if (isDifferent) this.onChanger(zoomValue);
+    if (isDifferent) {
+      this.onChanger(zoomValue);
+    }
   }
 
   onChanger(value) {
@@ -145,7 +145,6 @@ class ZoomTool extends PureComponent {
       minBound,
       maxBound,
       intl,
-      tooltipDistance,
       isMeteorConnected,
       step,
     } = this.props;
@@ -172,16 +171,18 @@ class ZoomTool extends PureComponent {
             value={zoomValue}
             minBound={minBound}
           >
-            <Button
+            <Styled.DecreaseZoomButton
+              color="light"
+              circle
+              size="md"
               key="zoom-tool-1"
               aria-describedby="zoomOutDescription"
               aria-label={zoomOutAriaLabel}
               label={intl.formatMessage(intlMessages.zoomOutLabel)}
+              data-test="zoomOutBtn"
               icon="substract"
               onClick={() => { }}
               disabled={(zoomValue <= minBound) || !isMeteorConnected}
-              className={cx(styles.prevSlide, styles.presentationBtn)}
-              tooltipDistance={tooltipDistance}
               hideLabel
             />
             <div id="zoomOutDescription" hidden>{intl.formatMessage(intlMessages.zoomOutDesc)}</div>
@@ -189,7 +190,7 @@ class ZoomTool extends PureComponent {
         ),
         (
           <span key="zoom-tool-2">
-            <Button
+            <Styled.ResetZoomButton
               aria-label={intl.formatMessage(intlMessages.resetZoomLabel)}
               aria-describedby="resetZoomDescription"
               disabled={(stateZoomValue === minBound) || !isMeteorConnected}
@@ -198,8 +199,7 @@ class ZoomTool extends PureComponent {
               size="md"
               onClick={() => this.resetZoom()}
               label={intl.formatMessage(intlMessages.resetZoomLabel)}
-              className={cx(styles.zoomPercentageDisplay, styles.presentationBtn)}
-              tooltipDistance={tooltipDistance}
+              data-test="resetZoomButton"
               hideLabel
             />
             <div id="resetZoomDescription" hidden>
@@ -214,16 +214,18 @@ class ZoomTool extends PureComponent {
             value={zoomValue}
             maxBound={maxBound}
           >
-            <Button
+            <Styled.IncreaseZoomButton
+              color="light"
+              circle
+              size="md"
               key="zoom-tool-3"
               aria-describedby="zoomInDescription"
               aria-label={zoomInAriaLabel}
               label={intl.formatMessage(intlMessages.zoomInLabel)}
+              data-test="zoomInBtn"
               icon="add"
               onClick={() => { }}
               disabled={(zoomValue >= maxBound) || !isMeteorConnected}
-              className={cx(styles.skipSlide, styles.presentationBtn)}
-              tooltipDistance={tooltipDistance}
               hideLabel
             />
             <div id="zoomInDescription" hidden>{intl.formatMessage(intlMessages.zoomInDesc)}</div>
@@ -235,14 +237,16 @@ class ZoomTool extends PureComponent {
 }
 
 const propTypes = {
-  intl: intlShape.isRequired,
+  intl: PropTypes.shape({
+    formatMessage: PropTypes.func.isRequired,
+    formatNumber: PropTypes.func.isRequired,
+  }).isRequired,
   zoomValue: PropTypes.number.isRequired,
   change: PropTypes.func.isRequired,
   minBound: PropTypes.number.isRequired,
   maxBound: PropTypes.number.isRequired,
   step: PropTypes.number.isRequired,
   isMeteorConnected: PropTypes.bool.isRequired,
-  tooltipDistance: PropTypes.number.isRequired,
 };
 
 ZoomTool.propTypes = propTypes;

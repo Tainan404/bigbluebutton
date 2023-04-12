@@ -6,7 +6,7 @@ import stopTyping from './stopTyping';
 
 const TYPING_TIMEOUT = 5000;
 
-export default function startTyping(meetingId, userId, chatId) {
+export default async function startTyping(meetingId, userId, chatId) {
   check(meetingId, String);
   check(userId, String);
 
@@ -15,9 +15,9 @@ export default function startTyping(meetingId, userId, chatId) {
     userId,
   };
 
-  const user = Users.findOne(selector);
+  const user = await Users.findOneAsync(selector, { fields: { name: 1, role: 1 } });
 
-  const mod = {
+  const modifier = {
     meetingId,
     userId,
     name: user.name,
@@ -26,26 +26,26 @@ export default function startTyping(meetingId, userId, chatId) {
     time: (new Date()),
   };
 
-  const typingUser = UsersTyping.findOne(selector, {
+  const typingUser = await UsersTyping.findOneAsync(selector, {
     fields: {
       time: 1,
     },
   });
 
   if (typingUser) {
-    if (mod.time - typingUser.time <= TYPING_TIMEOUT - 100) return;
+    if (modifier.time - typingUser.time <= TYPING_TIMEOUT - 100) return;
   }
 
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Typing indicator update error: ${err}`);
+  try {
+    const { numberAffected } = await UsersTyping.upsertAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.debug('Typing indicator update', { userId, chatId });
+      Meteor.setTimeout(() => {
+        stopTyping(meetingId, userId);
+      }, TYPING_TIMEOUT);
     }
-
-    Meteor.setTimeout(() => {
-      stopTyping(meetingId, userId);
-    }, TYPING_TIMEOUT);
-    return Logger.debug(`Typing indicator update for userId={${userId}} chatId={${chatId}}`);
-  };
-
-  return UsersTyping.upsert(selector, mod, cb);
+  } catch (err) {
+    Logger.error(`Typing indicator update error: ${err}`);
+  }
 }

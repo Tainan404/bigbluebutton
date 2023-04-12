@@ -1,16 +1,24 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import Button from '/imports/ui/components/button/component';
-import MediaService from '/imports/ui/components/media/service';
-import { styles } from '../styles';
+import { defineMessages, injectIntl } from 'react-intl';
+import Button from '/imports/ui/components/common/button/component';
 
 const propTypes = {
-  intl: intlShape.isRequired,
-  toggleSwapLayout: PropTypes.func.isRequired,
+  intl: PropTypes.shape({
+    formatMessage: PropTypes.func.isRequired,
+  }).isRequired,
+  setPresentationIsOpen: PropTypes.func.isRequired,
 };
 
 const intlMessages = defineMessages({
+  minimizePresentationLabel: {
+    id: 'app.actionsBar.actionsDropdown.minimizePresentationLabel',
+    description: '',
+  },
+  minimizePresentationDesc: {
+    id: 'app.actionsBar.actionsDropdown.restorePresentationDesc',
+    description: '',
+  },
   restorePresentationLabel: {
     id: 'app.actionsBar.actionsDropdown.restorePresentationLabel',
     description: 'Restore Presentation option label',
@@ -21,23 +29,41 @@ const intlMessages = defineMessages({
   },
 });
 
-const shouldUnswapLayout = () => MediaService.shouldShowScreenshare() || MediaService.shouldShowExternalVideo();
+const PresentationOptionsContainer = ({
+  intl,
+  presentationIsOpen,
+  setPresentationIsOpen,
+  layoutContextDispatch,
+  hasPresentation,
+  hasExternalVideo,
+  hasScreenshare,
+  hasPinnedSharedNotes,
+}) => {
+  let buttonType = 'presentation';
+  if (hasExternalVideo) {
+    // hack until we have an external-video icon
+    buttonType = 'external-video';
+  } else if (hasScreenshare) {
+    buttonType = 'desktop';
+  }
 
-const PresentationOptionsContainer = ({ intl, toggleSwapLayout, isThereCurrentPresentation }) => {
-  if (shouldUnswapLayout()) toggleSwapLayout();
+  const isThereCurrentPresentation = hasExternalVideo || hasScreenshare || hasPresentation || hasPinnedSharedNotes;
   return (
     <Button
-      className={styles.button}
-      icon="presentation"
-      label={intl.formatMessage(intlMessages.restorePresentationLabel)}
-      description={intl.formatMessage(intlMessages.restorePresentationDesc)}
-      color="primary"
+      icon={`${buttonType}${!presentationIsOpen ? '_off' : ''}`}
+      label={intl.formatMessage(!presentationIsOpen ? intlMessages.restorePresentationLabel : intlMessages.minimizePresentationLabel)}
+      aria-label={intl.formatMessage(!presentationIsOpen ? intlMessages.restorePresentationLabel : intlMessages.minimizePresentationLabel)}
+      aria-describedby={intl.formatMessage(!presentationIsOpen ? intlMessages.restorePresentationDesc : intlMessages.minimizePresentationDesc)}
+      description={intl.formatMessage(!presentationIsOpen ? intlMessages.restorePresentationDesc : intlMessages.minimizePresentationDesc)}
+      color={presentationIsOpen ? "primary" : "default"}
       hideLabel
       circle
       size="lg"
-      onClick={toggleSwapLayout}
+      onClick={() => setPresentationIsOpen(layoutContextDispatch, !presentationIsOpen)}
       id="restore-presentation"
+      ghost={!presentationIsOpen}
       disabled={!isThereCurrentPresentation}
+      data-test={!presentationIsOpen ? 'restorePresentation' : 'minimizePresentation'}
     />
   );
 };

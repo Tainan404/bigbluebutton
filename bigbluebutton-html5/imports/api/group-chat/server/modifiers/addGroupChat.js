@@ -3,13 +3,12 @@ import { Match, check } from 'meteor/check';
 import Logger from '/imports/startup/server/logger';
 import GroupChat from '/imports/api/group-chat';
 
-export default function addGroupChat(meetingId, chat) {
+export default async function addGroupChat(meetingId, chat) {
   check(meetingId, String);
   check(chat, {
     id: Match.Maybe(String),
     chatId: Match.Maybe(String),
     correlationId: Match.Maybe(String),
-    name: String,
     access: String,
     createdBy: Object,
     users: Array,
@@ -19,9 +18,9 @@ export default function addGroupChat(meetingId, chat) {
   const chatDocument = {
     meetingId,
     chatId: chat.chatId || chat.id,
-    name: chat.name,
     access: chat.access,
-    users: chat.users.map(u => u.id),
+    users: chat.users.map((u) => u.id),
+    participants: chat.users,
     createdBy: chat.createdBy.id,
   };
 
@@ -34,19 +33,15 @@ export default function addGroupChat(meetingId, chat) {
     $set: flat(chatDocument, { safe: true }),
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      return Logger.error(`Adding group-chat to collection: ${err}`);
-    }
-
-    const { insertedId } = numChanged;
+  try {
+    const { insertedId } = await GroupChat.upsertAsync(selector, modifier);
 
     if (insertedId) {
-      return Logger.info(`Added group-chat name=${chat.name} meetingId=${meetingId}`);
+      Logger.info(`Added group-chat chatId=${chatDocument.chatId} meetingId=${meetingId}`);
+    } else {
+      Logger.info(`Upserted group-chat chatId=${chatDocument.chatId} meetingId=${meetingId}`);
     }
-
-    return Logger.info(`Upserted group-chat name=${chat.name} meetingId=${meetingId}`);
-  };
-
-  return GroupChat.upsert(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Adding group-chat to collection: ${err}`);
+  }
 }

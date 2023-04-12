@@ -2,7 +2,12 @@ import { check } from 'meteor/check';
 import Users from '/imports/api/users';
 import Logger from '/imports/startup/server/logger';
 
-export default function setConnectionIdAndAuthToken(meetingId, userId, connectionId, authToken) {
+export default async function setConnectionIdAndAuthToken(
+  meetingId,
+  userId,
+  connectionId,
+  authToken,
+) {
   check(meetingId, String);
   check(userId, String);
   check(authToken, String);
@@ -20,16 +25,13 @@ export default function setConnectionIdAndAuthToken(meetingId, userId, connectio
     },
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      Logger.error(`Updating connectionId user=${userId}: ${err}`);
-      return;
-    }
+  try {
+    const numberAffected = await Users.updateAsync(selector, modifier);
 
-    if (numChanged) {
+    if (numberAffected) {
       Logger.info(`Updated connectionId and authToken user=${userId} connectionId=${connectionId} meeting=${meetingId} authToken=${authToken}`);
     }
-  };
-
-  return Users.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Updating connectionId user=${userId}: ${err}`);
+  }
 }

@@ -21,8 +21,10 @@ package org.bigbluebutton.common2.redis;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
+import io.lettuce.core.api.sync.BaseRedisCommands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,6 +114,33 @@ public class RedisStorageService extends RedisAwareCommunicator {
         commands.exec();
     }
 
+    public void storePresentationAnnotations(String meetingId, Map<String, String> event, String msgType) {
+        RedisCommands<String, String> commands = connection.sync();      
+        
+        commands.multi();
+        
+        switch (msgType) {
+            case "PresAnn": {
+                commands.hmset(event.get("jobId"), event);
+                break;
+            }
+
+            case "ExportJob": {
+                Gson gson = new Gson();
+                String exportJobAsJson = gson.toJson(event);
+                commands.rpush("exportJobs", exportJobAsJson.toString());
+                break;
+            }
+
+            default: {
+                log.error("Attempted to store PresentationAnnotations message of type: {}", clientName);
+                break;
+            }
+        }
+
+        commands.exec();
+    }
+
     // @fixme: not used anywhere
     public void removeMeeting(String meetingId) {
         RedisCommands<String, String> commands = connection.sync();
@@ -145,5 +174,12 @@ public class RedisStorageService extends RedisAwareCommunicator {
         RedisCommands<String, String> commands = connection.sync();
         result = commands.hmset(key, info);
         return result;
+    }
+
+    public Boolean checkConnectionStatusBasic() {
+        BaseRedisCommands command = connection.sync();
+        String response = command.ping();
+
+        return response.equals("PONG");
     }
 }

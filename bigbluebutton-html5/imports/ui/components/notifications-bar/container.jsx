@@ -1,14 +1,15 @@
 import { Meteor } from 'meteor/meteor';
 import { withTracker } from 'meteor/react-meteor-data';
-import React, { Fragment } from 'react';
+import React, { useEffect } from 'react';
 import { defineMessages, injectIntl } from 'react-intl';
-import _ from 'lodash';
 import Auth from '/imports/ui/services/auth';
-import Meetings, { MeetingTimeRemaining } from '/imports/api/meetings';
-import Users from '/imports/api/users';
-import BreakoutRemainingTime from '/imports/ui/components/breakout-room/breakout-remaining-time/container';
-import SlowConnection from '/imports/ui/components/slow-connection/component';
-import { styles } from './styles.scss';
+import { MeetingTimeRemaining } from '/imports/api/meetings';
+import Meetings from '/imports/api/meetings';
+import MeetingRemainingTime from './meeting-remaining-time/container';
+import Styled from './styles';
+import { layoutSelectInput, layoutDispatch } from '../layout/context';
+import { ACTIONS } from '../layout/enums';
+import { isEmpty } from 'radash';
 
 import breakoutService from '/imports/ui/components/breakout-room/service';
 import NotificationsBar from './component';
@@ -24,10 +25,7 @@ const STATUS_WAITING = 'waiting';
 
 const METEOR_SETTINGS_APP = Meteor.settings.public.app;
 
-const SLOW_CONNECTIONS_TYPES = METEOR_SETTINGS_APP.effectiveConnection;
-const ENABLE_NETWORK_MONITORING = Meteor.settings.public.networkMonitoring.enableNetworkMonitoring;
-
-const HELP_LINK = METEOR_SETTINGS_APP.helpLink;
+const REMAINING_TIME_THRESHOLD = METEOR_SETTINGS_APP.remainingTimeThreshold;
 
 const intlMessages = defineMessages({
   failedMessage: {
@@ -66,30 +64,38 @@ const intlMessages = defineMessages({
     id: 'app.meeting.meetingTimeHasEnded',
     description: 'Message that tells time has ended and meeting will close',
   },
-  alertMeetingEndsUnderOneMinute: {
-    id: 'app.meeting.alertMeetingEndsUnderOneMinute',
-    description: 'Alert that tells that the meeting end under a minute',
+  alertMeetingEndsUnderMinutes: {
+    id: 'app.meeting.alertMeetingEndsUnderMinutes',
+    description: 'Alert that tells that the meeting ends under x minutes',
   },
-  alertBreakoutEndsUnderOneMinute: {
-    id: 'app.meeting.alertBreakoutEndsUnderOneMinute',
-    description: 'Alert that tells that the breakout end under a minute',
-  },
-  slowEffectiveConnectionDetected: {
-    id: 'app.network.connection.effective.slow',
-    description: 'Alert for detected slow connections',
-  },
-  slowEffectiveConnectionHelpLink: {
-    id: 'app.network.connection.effective.slow.help',
-    description: 'Help link for slow connections',
+  alertBreakoutEndsUnderMinutes: {
+    id: 'app.meeting.alertBreakoutEndsUnderMinutes',
+    description: 'Alert that tells that the breakout ends under x minutes',
   },
 });
 
 const NotificationsBarContainer = (props) => {
   const { message, color } = props;
-  if (_.isEmpty(message)) {
+
+  const notificationsBar = layoutSelectInput((i) => i.notificationsBar);
+  const layoutContextDispatch = layoutDispatch();
+
+  const { hasNotification } = notificationsBar;
+
+  useEffect(() => {
+    const localHasNotification = !!message;
+
+    if (localHasNotification !== hasNotification) {
+      layoutContextDispatch({
+        type: ACTIONS.SET_HAS_NOTIFICATIONS_BAR,
+        value: localHasNotification,
+      });
+    }
+  }, [message, hasNotification]);
+
+  if (isEmpty(message)) {
     return null;
   }
-
 
   return (
     <NotificationsBar color={color}>
@@ -130,22 +136,6 @@ export default injectIntl(withTracker(({ intl }) => {
   const { status, connected, retryTime } = Meteor.status();
   const data = {};
 
-  const user = Users.findOne({ userId: Auth.userID }, { fields: { effectiveConnectionType: 1 } });
-
-  if (user) {
-    const { effectiveConnectionType } = user;
-    if (ENABLE_NETWORK_MONITORING && SLOW_CONNECTIONS_TYPES.includes(effectiveConnectionType)) {
-      data.message = (
-        <SlowConnection effectiveConnectionType={effectiveConnectionType}>
-          {intl.formatMessage(intlMessages.slowEffectiveConnectionDetected)}
-          <a href={HELP_LINK} target="_blank" rel="noopener noreferrer">
-            {intl.formatMessage(intlMessages.slowEffectiveConnectionHelpLink)}
-          </a>
-        </SlowConnection>
-      );
-    }
-  }
-
   if (!connected) {
     data.color = 'primary';
     switch (status) {
@@ -162,12 +152,12 @@ export default injectIntl(withTracker(({ intl }) => {
         const sec = Math.round((retryTime - (new Date()).getTime()) / 1000);
         retryInterval = startCounter(sec, setRetrySeconds, getRetrySeconds, retryInterval);
         data.message = (
-          <Fragment>
+          <>
             {intl.formatMessage(intlMessages.waitingMessage, { 0: getRetrySeconds() })}
-            <button className={styles.retryButton} type="button" onClick={reconnect}>
+            <Styled.RetryButton type="button" onClick={reconnect}>
               {intl.formatMessage(intlMessages.retryNow)}
-            </button>
-          </Fragment>
+            </Styled.RetryButton>
+          </>
         );
         break;
       }
@@ -182,17 +172,15 @@ export default injectIntl(withTracker(({ intl }) => {
   const breakouts = breakoutService.getBreakouts();
 
   if (breakouts.length > 0) {
-    const currentBreakout = breakouts.find(b => b.breakoutId === meetingId);
+    const currentBreakout = breakouts.find((b) => b.breakoutId === meetingId);
 
     if (currentBreakout) {
       data.message = (
-        <BreakoutRemainingTime
+        <MeetingRemainingTime
           breakoutRoom={currentBreakout}
           messageDuration={intlMessages.breakoutTimeRemaining}
           timeEndedMessage={intlMessages.breakoutWillClose}
-          alertMessageUnderOneMinute={
-            intl.formatMessage(intlMessages.alertBreakoutEndsUnderOneMinute)
-          }
+          displayAlerts={true}
         />
       );
     }
@@ -205,17 +193,15 @@ export default injectIntl(withTracker(({ intl }) => {
   if (meetingTimeRemaining && Meeting) {
     const { timeRemaining } = meetingTimeRemaining;
     const { isBreakout } = Meeting.meetingProp;
-    const underThirtyMin = timeRemaining && timeRemaining <= (30 * 60);
+    const underThirtyMin = timeRemaining && timeRemaining <= (REMAINING_TIME_THRESHOLD * 60);
 
     if (underThirtyMin && !isBreakout) {
       data.message = (
-        <BreakoutRemainingTime
+        <MeetingRemainingTime
           breakoutRoom={meetingTimeRemaining}
           messageDuration={intlMessages.meetingTimeRemaining}
           timeEndedMessage={intlMessages.meetingWillClose}
-          alertMessageUnderOneMinute={
-            intl.formatMessage(intlMessages.alertMeetingEndsUnderOneMinute)
-          }
+          displayAlerts={true}
         />
       );
     }

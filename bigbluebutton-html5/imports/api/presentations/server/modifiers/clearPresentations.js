@@ -1,23 +1,44 @@
 import Presentations from '/imports/api/presentations';
 import Logger from '/imports/startup/server/logger';
 
-export default function clearPresentations(meetingId, podId) {
+export default async function clearPresentations(meetingId, podId) {
   // clearing presentations for 1 pod
   if (meetingId && podId) {
-    return Presentations.remove({ meetingId, podId }, () => {
-      Logger.info(`Cleared Presentations (${meetingId}, ${podId})`);
-    });
+    try {
+      const numberAffected = await Presentations.removeAsync({ meetingId, podId });
+
+      if (numberAffected) {
+        Logger.info(`Cleared Presentations (${meetingId}, ${podId})`);
+        return true;
+      }
+    } catch (err) {
+      Logger.error(`Error on cleaning Presentations (${meetingId}, ${podId}). ${err}`);
+      return false;
+    }
   }
 
   // clearing presentations for the whole meeting
   if (meetingId) {
-    return Presentations.remove({ meetingId }, () => {
-      Logger.info(`Cleared Presentations (${meetingId})`);
-    });
-  }
+    try {
+      const numberAffected = await Presentations.removeAsync({ meetingId });
 
-  // clearing presentations for the whole server
-  return Presentations.remove({}, () => {
-    Logger.info('Cleared Presentations (all)');
-  });
+      if (numberAffected) {
+        Logger.info(`Cleared Presentations (${meetingId})`);
+      }
+    } catch (err) {
+      Logger.error(`Error on cleaning Presentations (${meetingId}). ${err}`);
+    }
+  } else {
+    try {
+      const numberAffected = await Presentations.removeAsync({});
+
+      if (numberAffected) {
+        Logger.info('Cleared Presentations (all)');
+      }
+    } catch (err) {
+      Logger.error(`Error on cleaning Presentations (all). ${err}`);
+    }
+  }
+  // Returned true because the function requires some value to be returned.
+  return true;
 }

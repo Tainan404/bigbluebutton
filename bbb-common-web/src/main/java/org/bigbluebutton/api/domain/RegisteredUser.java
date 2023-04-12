@@ -6,12 +6,20 @@ public class RegisteredUser {
     public final Long registeredOn;
 
     private String guestStatus;
+    private Boolean excludeFromDashboard;
+    private Long guestWaitedOn;
+    private Boolean leftGuestLobby;
 
-    public RegisteredUser(String authToken, String userId, String guestStatus) {
+    public RegisteredUser(String authToken, String userId, String guestStatus, Boolean excludeFromDashboard, Boolean leftGuestLobby) {
         this.authToken = authToken;
         this.userId = userId;
         this.guestStatus = guestStatus;
-        registeredOn = System.currentTimeMillis();
+        this.excludeFromDashboard = excludeFromDashboard;
+        this.leftGuestLobby = leftGuestLobby;
+
+        Long currentTimeMillis = System.currentTimeMillis();
+        this.registeredOn = currentTimeMillis;
+        this.guestWaitedOn = currentTimeMillis;
     }
 
     public void setGuestStatus(String status) {
@@ -22,4 +30,26 @@ public class RegisteredUser {
         return guestStatus;
     }
 
+    public Boolean getLeftGuestLobby() {
+        return leftGuestLobby;
+    }
+
+    public void setExcludeFromDashboard(Boolean excludeFromDashboard) {
+        this.excludeFromDashboard = excludeFromDashboard;
+    }
+
+    public Boolean getExcludeFromDashboard() {
+        return excludeFromDashboard;
+    }
+
+    public void updateGuestWaitedOn() {
+        this.guestWaitedOn = System.currentTimeMillis();
+    }
+
+    public void setLeftGuestLobby(boolean bool) {
+        this.leftGuestLobby = bool;
+    }
+    public Long getGuestWaitedOn() {
+        return this.guestWaitedOn;
+    }
 }

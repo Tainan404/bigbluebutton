@@ -1,15 +1,17 @@
 package org.bigbluebutton.freeswitch
 
-import scala.collection.JavaConverters._
 import org.bigbluebutton.SystemConfiguration
-import org.bigbluebutton.common2.msgs
 import org.bigbluebutton.freeswitch.voice.IVoiceConferenceService
 import org.bigbluebutton.common2.msgs._
 import org.bigbluebutton.common2.util.JsonUtil
 import org.bigbluebutton.common2.redis.RedisPublisher
-import org.bigbluebutton.freeswitch.voice.events.{ ConfMember, ConfRecording }
+import org.bigbluebutton.freeswitch.voice.events.{ConfMember, ConfRecording}
+import org.bigbluebutton.service.HealthzService
+import scala.collection.JavaConverters._
 
-class VoiceConferenceService(sender: RedisPublisher) extends IVoiceConferenceService with SystemConfiguration {
+class VoiceConferenceService(healthz: HealthzService,
+                              sender: RedisPublisher,
+                            ) extends IVoiceConferenceService with SystemConfiguration {
 
   val FROM_VOICE_CONF_SYSTEM_CHAN = "bigbluebutton:from-voice-conf:system"
 
@@ -194,83 +196,74 @@ class VoiceConferenceService(sender: RedisPublisher) extends IVoiceConferenceSer
 
   }
 
-  def deskShareStarted(
-      voiceConfId:  String,
-      callerIdNum:  String,
-      callerIdName: String
-  ) {
-
-    val header = BbbCoreVoiceConfHeader(ScreenshareStartedVoiceConfEvtMsg.NAME, voiceConfId)
-    val body = ScreenshareStartedVoiceConfEvtMsgBody(voiceConf = voiceConfId, screenshareConf = voiceConfId,
-      callerIdNum = callerIdNum, callerIdName = callerIdName)
-    val envelope = BbbCoreEnvelope(ScreenshareStartedVoiceConfEvtMsg.NAME, Map("voiceConf" -> voiceConfId))
-
-    val msg = new ScreenshareStartedVoiceConfEvtMsg(header, body)
-    val msgEvent = BbbCommonEnvCoreMsg(envelope, msg)
-
-    val json = JsonUtil.toJson(msgEvent)
-    sender.publish(fromVoiceConfRedisChannel, json)
-  }
-
-  def deskShareEnded(
-      voiceConfId:  String,
-      callerIdNum:  String,
-      callerIdName: String
-  ) {
-
-    val header = BbbCoreVoiceConfHeader(ScreenshareStoppedVoiceConfEvtMsg.NAME, voiceConfId)
-    val body = ScreenshareStoppedVoiceConfEvtMsgBody(voiceConf = voiceConfId, screenshareConf = voiceConfId,
-      callerIdNum = callerIdNum, callerIdName = callerIdName)
-    val envelope = BbbCoreEnvelope(ScreenshareStoppedVoiceConfEvtMsg.NAME, Map("voiceConf" -> voiceConfId))
-
-    val msg = new ScreenshareStoppedVoiceConfEvtMsg(header, body)
-    val msgEvent = BbbCommonEnvCoreMsg(envelope, msg)
-
-    val json = JsonUtil.toJson(msgEvent)
-    sender.publish(fromVoiceConfRedisChannel, json)
-  }
-
-  def deskShareRTMPBroadcastStarted(
+  def audioFloorChanged(
       voiceConfId: String,
-      streamname:  String,
-      vw:          java.lang.Integer,
-      vh:          java.lang.Integer,
-      timestamp:   String
+      voiceUserId: String,
+      oldVoiceUserId: String,
+      floorTimestamp: String
   ) {
+    val header = BbbCoreVoiceConfHeader(AudioFloorChangedVoiceConfEvtMsg.NAME, voiceConfId)
+    val body = AudioFloorChangedVoiceConfEvtMsgBody(
+      voiceConfId,
+      voiceUserId,
+      oldVoiceUserId,
+      floorTimestamp
+    );
+    val envelope = BbbCoreEnvelope(AudioFloorChangedVoiceConfEvtMsg.NAME, Map("voiceConf" -> voiceConfId))
 
-    val header = BbbCoreVoiceConfHeader(ScreenshareRtmpBroadcastStartedVoiceConfEvtMsg.NAME, voiceConfId)
-    val body = ScreenshareRtmpBroadcastStartedVoiceConfEvtMsgBody(voiceConf = voiceConfId, screenshareConf = voiceConfId,
-      stream = streamname, vidWidth = vw.intValue(), vidHeight = vh.intValue(),
-      timestamp)
-    val envelope = BbbCoreEnvelope(ScreenshareRtmpBroadcastStartedVoiceConfEvtMsg.NAME, Map("voiceConf" -> voiceConfId))
-
-    val msg = new ScreenshareRtmpBroadcastStartedVoiceConfEvtMsg(header, body)
-    val msgEvent = BbbCommonEnvCoreMsg(envelope, msg)
-
-    val json = JsonUtil.toJson(msgEvent)
-    sender.publish(fromVoiceConfRedisChannel, json)
-
-  }
-
-  def deskShareRTMPBroadcastStopped(
-      voiceConfId: String,
-      streamname:  String,
-      vw:          java.lang.Integer,
-      vh:          java.lang.Integer,
-      timestamp:   String
-  ) {
-
-    val header = BbbCoreVoiceConfHeader(ScreenshareRtmpBroadcastStoppedVoiceConfEvtMsg.NAME, voiceConfId)
-    val body = ScreenshareRtmpBroadcastStoppedVoiceConfEvtMsgBody(voiceConf = voiceConfId, screenshareConf = voiceConfId,
-      stream = streamname, vidWidth = vw.intValue(), vidHeight = vh.intValue(),
-      timestamp)
-    val envelope = BbbCoreEnvelope(ScreenshareRtmpBroadcastStoppedVoiceConfEvtMsg.NAME, Map("voiceConf" -> voiceConfId))
-
-    val msg = new ScreenshareRtmpBroadcastStoppedVoiceConfEvtMsg(header, body)
+    val msg = new AudioFloorChangedVoiceConfEvtMsg(header, body)
     val msgEvent = BbbCommonEnvCoreMsg(envelope, msg)
 
     val json = JsonUtil.toJson(msgEvent)
     sender.publish(fromVoiceConfRedisChannel, json)
   }
 
+  def voiceCallStateEvent(
+      conf:             String,
+      callSession:      String,
+      clientSession:    String,
+      userId:           String,
+      callerName:       String,
+      callState:        String,
+      origCallerIdName: String,
+      origCalledDest:   String
+  ): Unit = {
+    val header = BbbCoreVoiceConfHeader(VoiceConfCallStateEvtMsg.NAME, conf)
+    val body = VoiceConfCallStateEvtMsgBody(
+      voiceConf = conf,
+      callSession = callSession,
+      clientSession = clientSession,
+      userId = userId,
+      callerName = callerName,
+      callState = callState,
+      origCallerIdName = origCallerIdName,
+      origCalledDest = origCalledDest
+    )
+    val envelope = BbbCoreEnvelope(VoiceConfCallStateEvtMsg.NAME, Map("voiceConf" -> conf))
+
+    val msg = new VoiceConfCallStateEvtMsg(header, body)
+    val msgEvent = BbbCommonEnvCoreMsg(envelope, msg)
+
+    val json = JsonUtil.toJson(msgEvent)
+    sender.publish(fromVoiceConfRedisChannel, json)
+  }
+
+  def freeswitchStatusReplyEvent(
+      sendCommandTimestamp:      java.lang.Long,
+      status:                      java.util.List[String],
+      receivedResponseTimestamp: java.lang.Long
+  ): Unit = {
+    //println("***** >>>> " + sendCommandTimestamp)
+    //println(json)
+    //println("<<<< ***** " + receivedResponsTimestatmp)
+    val seq = status.asScala.toVector
+    healthz.setFreeswitchStatus(seq)
+  }
+
+  def freeswitchHeartbeatEvent(heartbeat: java.util.Map[String, String]): Unit = {
+    //println("***** >>>> ")
+    //println(json)
+    //println("<<<< ***** ")
+    healthz.setFreeswitchHeartbeat(heartbeat.asScala.toMap)
+  }
 }

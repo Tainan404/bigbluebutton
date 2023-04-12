@@ -1,6 +1,11 @@
 import { Meteor } from 'meteor/meteor';
 
-const Presentations = new Mongo.Collection('presentations');
+const collectionOptions = Meteor.isClient ? {
+  connection: null,
+} : {};
+
+export const UploadingPresentations = Meteor.isClient ? new Mongo.Collection("uploadingPresentations", collectionOptions) : null;
+const Presentations = new Mongo.Collection('presentations', collectionOptions);
 
 if (Meteor.isServer) {
   // types of queries for the presentations:
@@ -9,7 +14,7 @@ if (Meteor.isServer) {
   // 3. meetingId, id, current      ( 2 )
   // 4. meetingId                   ( 1 )
 
-  Presentations._ensureIndex({ meetingId: 1, podId: 1, id: 1 });
+  Presentations.createIndexAsync({ meetingId: 1, podId: 1, id: 1 });
 }
 
 export default Presentations;

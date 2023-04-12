@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, injectIntl } from 'react-intl';
-import Button from '/imports/ui/components/button/component';
-import { styles } from '../styles';
+import Styled from './styles';
 
 const propTypes = {
   confirm: PropTypes.func.isRequired,
@@ -13,8 +12,8 @@ const propTypes = {
 };
 
 const defaultProps = {
-  onCheck: () => {},
-  onUncheck: () => {},
+  onCheck: () => { },
+  onUncheck: () => { },
 };
 
 const intlMessages = defineMessages({
@@ -35,15 +34,19 @@ class SortUsers extends Component {
     this.setUsers = this.setUsers.bind(this);
     this.renderUserItem = this.renderUserItem.bind(this);
     this.onChage = this.onChage.bind(this);
+    this.renderJoinedUserItem = this.renderJoinedUserItem.bind(this);
 
     this.state = {
       users: [],
+      joinedUsers: [],
     };
   }
 
   componentDidMount() {
-    const { users } = this.props;
+    const { users, breakoutJoinedUsers } = this.props;
+
     this.setUsers(users);
+    this.setJoinedUsers(breakoutJoinedUsers);
   }
 
   onChage(userId, room) {
@@ -64,13 +67,18 @@ class SortUsers extends Component {
     this.setState({ users: users.sort((a, b) => a.room - b.room) });
   }
 
+  setJoinedUsers(users) {
+    if (!users) return;
+    this.setState({ joinedUsers: users.sort((a, b) => a.sequence - b.sequence) });
+  }
+
   renderUserItem() {
     const { room } = this.props;
     const { users } = this.state;
     return users
       .map((user, idx) => (
-        <div id={user.userId} className={styles.selectUserContainer} key={`breakout-user-${user.userId}`}>
-          <span className={styles.round}>
+        <Styled.SelectUserContainer id={user.userId} key={`breakout-user-${user.userId}`}>
+          <Styled.Round>
             <input
               type="checkbox"
               id={`itemId${idx}`}
@@ -85,12 +93,31 @@ class SortUsers extends Component {
                 onChange={this.onChage(user.userId, room)}
               />
             </label>
-          </span>
-          <span className={styles.textName}>
+          </Styled.Round>
+          <Styled.TextName>
             {user.userName}
             {user.room && !(user.room === room) ? `\t[${user.room}]` : ''}
-          </span>
-        </div>));
+          </Styled.TextName>
+        </Styled.SelectUserContainer>
+      ));
+  }
+
+  renderJoinedUserItem() {
+    const { joinedUsers } = this.state;
+    if (!joinedUsers.length) return null;
+
+    return joinedUsers
+      .map((b) => b.joinedUsers.map((u) => ({ ...u, room: b.sequence })))
+      .flat()
+      .map((user) => (
+        <Styled.SelectUserContainer>
+          <Styled.LockIcon />
+          <Styled.TextName>
+            {user.name}
+            {`\t[${user.room}]`}
+          </Styled.TextName>
+        </Styled.SelectUserContainer>
+      ));
   }
 
   render() {
@@ -100,21 +127,21 @@ class SortUsers extends Component {
       confirm,
     } = this.props;
     return (
-      <div className={styles.selectUserScreen}>
-        <header className={styles.header}>
-          <h2 className={styles.title}>
+      <Styled.SelectUserScreen>
+        <Styled.Header>
+          <Styled.Title>
             {intl.formatMessage(intlMessages.breakoutRoomLabel, { 0: room })}
-          </h2>
-          <Button
-            className={styles.buttonAdd}
+          </Styled.Title>
+          <Styled.ButtonAdd
             size="md"
             label={intl.formatMessage(intlMessages.doneLabel)}
             color="primary"
             onClick={confirm}
           />
-        </header>
+        </Styled.Header>
         {this.renderUserItem()}
-      </div>
+        {this.renderJoinedUserItem()}
+      </Styled.SelectUserScreen>
     );
   }
 }

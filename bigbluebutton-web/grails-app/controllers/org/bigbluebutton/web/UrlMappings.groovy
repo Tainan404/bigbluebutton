@@ -19,20 +19,22 @@ class UrlMappings {
       action = [GET: 'numberOfSlides']
     }
 
-    "/bigbluebutton/presentation/$conference/$room/$presentation_name/slide/$id"(controller: "presentation") {
-      action = [GET: 'showSlide']
-    }
-
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/thumbnails"(controller: "presentation") {
       action = [GET: 'numberOfThumbnails']
     }
 
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/thumbnail/$id"(controller: "presentation") {
       action = [GET: 'showThumbnail']
+      constraints {
+        id matches: /\d+/
+      }
     }
 
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/png/$id"(controller: "presentation") {
       action = [GET: 'showPng']
+      constraints {
+        id matches: /\d+/
+      }
     }
 
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/svgs"(controller: "presentation") {
@@ -41,6 +43,9 @@ class UrlMappings {
 
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/svg/$id"(controller: "presentation") {
       action = [GET: 'showSvgImage']
+      constraints {
+        id matches: /\d+/
+      }
     }
 
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/textfiles"(controller: "presentation") {
@@ -49,18 +54,13 @@ class UrlMappings {
 
     "/bigbluebutton/presentation/$conference/$room/$presentation_name/textfiles/$id"(controller: "presentation") {
       action = [GET: 'showTextfile']
+      constraints {
+        id matches: /\d+/
+      }
     }
 
     "/bigbluebutton/presentation/download/$meetingId/$presId"(controller: "presentation") {
       action = [GET: 'downloadFile']
-    }
-
-    "/bigbluebutton/api/setConfigXML"(controller: "api") {
-      action = [POST: 'setConfigXML']
-    }
-
-    "/bigbluebutton/api/setPollXML"(controller: "api") {
-      action = [POST: 'setPollXML']
     }
 
     "/bigbluebutton/api/getMeetings"(controller: "api") {
@@ -71,11 +71,11 @@ class UrlMappings {
       action = [GET: 'getSessionsHandler', POST: 'getSessionsHandler']
     }
 
-    "/bigbluebutton/api/getRecordings"(controller: "api") {
+    "/bigbluebutton/api/getRecordings"(controller: "recording") {
       action = [GET: 'getRecordingsHandler', POST: 'getRecordingsHandler']
     }
 
-    "/bigbluebutton/api/updateRecordings"(controller: "api") {
+    "/bigbluebutton/api/updateRecordings"(controller: "recording") {
       action = [GET: 'updateRecordingsHandler', POST: 'updateRecordingsHandler']
     }
 
@@ -95,8 +95,12 @@ class UrlMappings {
       action = [POST: 'putRecordingTextTrack']
     }
 
-    "/connection/checkAuthorization"(controller:"connection") {
-      action = [GET:'checkAuthorization']
+    "/bigbluebutton/api/publishRecordings"(controller: "recording") {
+      action = [GET: 'publishRecordings']
+    }
+
+    "/bigbluebutton/api/deleteRecordings"(controller: "recording") {
+      action = [GET: 'deleteRecordings']
     }
 
     "/bigbluebutton/$controller/$action?/$id?(.${format})?" {

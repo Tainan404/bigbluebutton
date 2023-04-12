@@ -36,6 +36,10 @@ public class ApiErrors {
 		errors.add(new String[] {"NotUniqueMeetingID", "A meeting already exists with that meeting ID.  Please use a different meeting ID."});
 	}
 
+	public void nonUniqueVoiceBridgeError() {
+		errors.add(new String[] {"nonUniqueVoiceBridge", "The selected voice bridge is already in use."});
+	}
+
 	public void invalidMeetingIdError() {
 		errors.add(new String[] {"invalidMeetingId", "The meeting ID that you supplied did not match any existing meetings"});
 	}
@@ -66,6 +70,10 @@ public class ApiErrors {
 
 	public void maxParticipantsReached() {
 		errors.add(new String[] {"maxParticipantsReached", "The number of participants allowed for this meeting has been reached."});
+	}
+
+	public void guestDeniedAccess() {
+		errors.add(new String[] {"guestDeniedAccess", "You have been denied access to this meeting based on the meeting's guest policy"});
 	}
 
 	public void addError(String[] error) {

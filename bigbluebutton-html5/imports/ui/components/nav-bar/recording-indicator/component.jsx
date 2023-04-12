@@ -1,10 +1,11 @@
 import React, { PureComponent, Fragment } from 'react';
 import RecordingContainer from '/imports/ui/components/recording/container';
 import humanizeSeconds from '/imports/utils/humanizeSeconds';
-import Tooltip from '/imports/ui/components/tooltip/component';
+import Tooltip from '/imports/ui/components/common/tooltip/component';
 import PropTypes from 'prop-types';
-import { defineMessages, injectIntl, intlShape } from 'react-intl';
-import { styles } from './styles';
+import { defineMessages, injectIntl } from 'react-intl';
+import Styled from './styles';
+import RecordingNotifyContainer from './notify/container';
 
 const intlMessages = defineMessages({
   notificationRecordingStart: {
@@ -39,10 +40,14 @@ const intlMessages = defineMessages({
     id: 'app.navBar.recording.off',
     description: 'label for indicator when the session is not being recorded',
   },
+  emptyAudioBrdige: {
+    id: 'app.navBar.emptyAudioBrdige',
+    description: 'message for notification when recording starts with no users in audio bridge',
+  },
 });
 
 const propTypes = {
-  intl: intlShape.isRequired,
+  intl: PropTypes.object.isRequired,
   amIModerator: PropTypes.bool,
   record: PropTypes.bool,
   recording: PropTypes.bool,
@@ -63,18 +68,48 @@ class RecordingIndicator extends PureComponent {
     super(props);
     this.state = {
       time: (props.time ? props.time : 0),
+      shouldNotify: false,
     };
 
     this.incrementTime = this.incrementTime.bind(this);
+    this.toggleShouldNotify = this.toggleShouldNotify.bind(this);
   }
 
-  componentDidUpdate() {
-    const { recording } = this.props;
+  toggleShouldNotify() {
+    const { shouldNotify } = this.state;
+    this.setState({shouldNotify: !shouldNotify});
+  }
+
+  componentDidMount() {
+    const { recording, recordingNotificationEnabled } = this.props;
+
+    if (recordingNotificationEnabled && recording) {
+      this.toggleShouldNotify();
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    const { recording, mountModal, getModal, recordingNotificationEnabled } = this.props;
+    const { shouldNotify } = this.state;
+
     if (!recording) {
       clearInterval(this.interval);
       this.interval = null;
     } else if (this.interval === null) {
       this.interval = setInterval(this.incrementTime, 1000);
+    }
+
+    if (recordingNotificationEnabled) {
+      if (!prevProps.recording && recording && !shouldNotify) {
+        return this.setState({shouldNotify: true});
+      }
+  
+      const isModalOpen = !!getModal();
+  
+      // should only display notification modal when other modals are closed
+      if (shouldNotify && !isModalOpen) {
+        mountModal(<RecordingNotifyContainer toggleShouldNotify={this.toggleShouldNotify} />);
+      }  
     }
   }
 
@@ -97,6 +132,9 @@ class RecordingIndicator extends PureComponent {
       amIModerator,
       intl,
       allowStartStopRecording,
+      notify,
+      micUser,
+      isPhone,
     } = this.props;
 
     const { time } = this.state;
@@ -110,21 +148,27 @@ class RecordingIndicator extends PureComponent {
       : intlMessages.recordingIndicatorOff);
 
     let recordTitle = '';
-    if (!recording) {
-      recordTitle = time > 0
-        ? intl.formatMessage(intlMessages.resumeTitle)
-        : intl.formatMessage(intlMessages.startTitle);
-    } else {
-      recordTitle = intl.formatMessage(intlMessages.stopTitle);
+
+    if (!isPhone) {
+      if (!recording) {
+        recordTitle = time > 0
+          ? intl.formatMessage(intlMessages.resumeTitle)
+          : intl.formatMessage(intlMessages.startTitle);
+      } else {
+        recordTitle = intl.formatMessage(intlMessages.stopTitle);
+      }
     }
 
     const recordingToggle = () => {
+      if (!micUser && !recording) {
+        notify(intl.formatMessage(intlMessages.emptyAudioBrdige), 'error', 'warning');
+      }
       mountModal(<RecordingContainer amIModerator={amIModerator} />);
       document.activeElement.blur();
     };
 
     const recordingIndicatorIcon = (
-      <span className={styles.recordingIndicatorIcon}>
+      <Styled.RecordingIndicatorIcon titleMargin={!isPhone || recording} data-test="mainWhiteboard">
         <svg xmlns="http://www.w3.org/2000/svg" height="100%" version="1" viewBox="0 0 20 20">
           <g stroke="#FFF" fill="#FFF" strokeLinecap="square">
             <circle
@@ -135,23 +179,24 @@ class RecordingIndicator extends PureComponent {
               cy="10"
             />
             <circle
-              stroke={recording ? '#F00' : '#FFF'}
-              fill={recording ? '#F00' : '#FFF'}
-              r="4"
+              stroke="#FFF"
+              fill="#FFF"
+              r={recording ? '5' : '4'}
               cx="10"
               cy="10"
             />
           </g>
         </svg>
-      </span>
+      </Styled.RecordingIndicatorIcon>
     );
 
     const showButton = amIModerator && allowStartStopRecording;
 
     const recordMeetingButton = (
-      <div
-        aria-label={title}
-        className={recording ? styles.recordingControlON : styles.recordingControlOFF}
+      <Styled.RecordingControl
+        aria-label={recordTitle}
+        aria-describedby={"recording-description"}
+        recording={recording}
         role="button"
         tabIndex={0}
         key="recording-toggle"
@@ -159,19 +204,14 @@ class RecordingIndicator extends PureComponent {
         onKeyPress={recordingToggle}
       >
         {recordingIndicatorIcon}
-
-        <div className={styles.presentationTitle}>
-          {recording
-            ? (
-              <span className={styles.visuallyHidden}>
-                {`${intl.formatMessage(intlMessages.recordingAriaLabel)} ${humanizeSeconds(time)}`}
-              </span>
-            ) : null
-          }
+        <Styled.PresentationTitle>
+          <Styled.VisuallyHidden id={"recording-description"}>
+            {`${title} ${recording ? humanizeSeconds(time) : ''}`}
+          </Styled.VisuallyHidden>
           {recording
             ? <span aria-hidden>{humanizeSeconds(time)}</span> : <span>{recordTitle}</span>}
-        </div>
-      </div>
+        </Styled.PresentationTitle>
+      </Styled.RecordingControl>
     );
 
     const recordMeetingButtonWithTooltip = (
@@ -185,9 +225,9 @@ class RecordingIndicator extends PureComponent {
     return (
       <Fragment>
         {record
-          ? <span className={styles.presentationTitleSeparator} aria-hidden>|</span>
+          ? <Styled.PresentationTitleSeparator aria-hidden>|</Styled.PresentationTitleSeparator>
           : null}
-        <div className={styles.recordingIndicator}>
+        <Styled.RecordingIndicator data-test="recordingIndicator">
           {showButton
             ? recordingButton
             : null}
@@ -198,20 +238,20 @@ class RecordingIndicator extends PureComponent {
                 ? intlMessages.notificationRecordingStart
                 : intlMessages.notificationRecordingStop)}`}
             >
-              <div
+              <Styled.RecordingStatusViewOnly
                 aria-label={`${intl.formatMessage(recording
                   ? intlMessages.notificationRecordingStart
                   : intlMessages.notificationRecordingStop)}`}
-                className={styles.recordingStatusViewOnly}
+                  recording={recording}
               >
                 {recordingIndicatorIcon}
 
                 {recording
-                  ? <div className={styles.presentationTitle}>{humanizeSeconds(time)}</div> : null}
-              </div>
+                  ? <Styled.PresentationTitle>{humanizeSeconds(time)}</Styled.PresentationTitle> : null}
+              </Styled.RecordingStatusViewOnly>
             </Tooltip>
           )}
-        </div>
+        </Styled.RecordingIndicator>
       </Fragment>
     );
   }

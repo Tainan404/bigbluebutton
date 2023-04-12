@@ -1,5 +1,5 @@
 import changeMuteMeeting from '../modifiers/changeMuteMeeting';
 
-export default function handleMeetingMuted({ body }, meetingId) {
-  return changeMuteMeeting(meetingId, body);
+export default async function handleMeetingMuted({ body }, meetingId) {
+  await changeMuteMeeting(meetingId, body);
 }

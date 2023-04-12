@@ -3,12 +3,66 @@ import {
   check,
   Match,
 } from 'meteor/check';
-import Meetings, { RecordMeetings } from '/imports/api/meetings';
+import SanitizeHTML from 'sanitize-html';
+import Meetings, {
+  RecordMeetings,
+  ExternalVideoMeetings,
+  LayoutMeetings,
+} from '/imports/api/meetings';
 import Logger from '/imports/startup/server/logger';
-import createNote from '/imports/api/note/server/methods/createNote';
-import createCaptions from '/imports/api/captions/server/methods/createCaptions';
+import { initPads } from '/imports/api/pads/server/helpers';
+import { initCaptions } from '/imports/api/captions/server/helpers';
+import { addAnnotationsStreamer } from '/imports/api/annotations/server/streamer';
+import { addCursorStreamer } from '/imports/api/cursor/server/streamer';
+import { addExternalVideoStreamer } from '/imports/api/external-videos/server/streamer';
+import { LAYOUT_TYPE } from '/imports/ui/components/layout/enums';
 
-export default function addMeeting(meeting) {
+const addExternalVideo = async (meetingId) => {
+  const selector = { meetingId };
+
+  const modifier = {
+    meetingId,
+    externalVideoUrl: null,
+  };
+
+  try {
+    const { numberAffected } = await ExternalVideoMeetings.upsertAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.verbose(`Added external video meetingId=${meetingId}`);
+    }
+  } catch (err) {
+    Logger.error(`Adding external video: ${err}`);
+  }
+};
+
+const addLayout = async (meetingId, layout) => {
+  const selector = { meetingId };
+
+  const modifier = {
+    meetingId,
+    layout,
+    layoutUpdatedAt: new Date().getTime(),
+    presentationIsOpen: true,
+    isResizing: false,
+    cameraPosition: 'contentTop',
+    focusedCamera: 'none',
+    presentationVideoRate: 0,
+    pushLayout: false,
+  };
+
+  try {
+    const { numberAffected } = await LayoutMeetings.upsertAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.verbose(`Added layout meetingId=${meetingId}`, numberAffected);
+    }
+  } catch (err) {
+    Logger.error(`Adding layout: ${err}`);
+  }
+};
+
+export default async function addMeeting(meeting) {
   const meetingId = meeting.meetingProp.intId;
 
   check(meetingId, String);
@@ -18,33 +72,47 @@ export default function addMeeting(meeting) {
       freeJoin: Boolean,
       breakoutRooms: Array,
       parentId: String,
-      enabled: Boolean,
       record: Boolean,
       privateChatEnabled: Boolean,
+      captureNotes: Boolean,
+      captureSlides: Boolean,
+      captureNotesFilename: String,
+      captureSlidesFilename: String,
     },
     meetingProp: {
       intId: String,
       extId: String,
+      meetingCameraCap: Number,
+      maxPinnedCameras: Number,
       isBreakout: Boolean,
       name: String,
+      disabledFeatures: Array,
+      notifyRecordingIsOn: Boolean,
+      presentationUploadExternalDescription: String,
+      presentationUploadExternalUrl: String,
     },
     usersProp: {
-      webcamsOnlyForModerator: Boolean,
-      guestPolicy: String,
       maxUsers: Number,
+      maxUserConcurrentAccesses: Number,
+      webcamsOnlyForModerator: Boolean,
+      userCameraCap: Number,
+      guestPolicy: String,
+      authenticatedGuest: Boolean,
       allowModsToUnmuteUsers: Boolean,
+      allowModsToEjectCameras: Boolean,
+      meetingLayout: String,
     },
     durationProps: {
       createdTime: Number,
       duration: Number,
       createdDate: String,
-      maxInactivityTimeoutMinutes: Number,
-      warnMinutesBeforeMax: Number,
       meetingExpireIfNoUserJoinedInMinutes: Number,
       meetingExpireWhenLastUserLeftInMinutes: Number,
       userInactivityInspectTimerInMinutes: Number,
       userInactivityThresholdInMinutes: Number,
       userActivitySignResponseDelayInMinutes: Number,
+      endWhenNoModerator: Boolean,
+      endWhenNoModeratorDelayInMinutes: Number,
       timeRemaining: Number,
     },
     welcomeProp: {
@@ -60,6 +128,7 @@ export default function addMeeting(meeting) {
     password: {
       viewerPass: String,
       moderatorPass: String,
+      learningDashboardAccessToken: String,
     },
     voiceProp: {
       voiceConf: String,
@@ -67,23 +136,22 @@ export default function addMeeting(meeting) {
       telVoice: String,
       muteOnStart: Boolean,
     },
-    screenshareProps: {
-      red5ScreenshareIp: String,
-      red5ScreenshareApp: String,
-      screenshareConf: String,
-    },
     metadataProp: Object,
     lockSettingsProps: {
       disableCam: Boolean,
       disableMic: Boolean,
       disablePrivateChat: Boolean,
       disablePublicChat: Boolean,
-      disableNote: Boolean,
+      disableNotes: Boolean,
       hideUserList: Boolean,
       lockOnJoin: Boolean,
       lockOnJoinConfigurable: Boolean,
-      lockedLayout: Boolean,
+      hideViewersCursor: Boolean,
     },
+    systemProps: {
+      html5InstanceId: Number,
+    },
+    groups: Array,
   });
 
   const {
@@ -101,78 +169,109 @@ export default function addMeeting(meeting) {
 
   const meetingEnded = false;
 
-  newMeeting.welcomeProp.welcomeMsg = newMeeting.welcomeProp.welcomeMsg.replace(
+  let { welcomeMsg } = newMeeting.welcomeProp;
+
+  const sanitizeTextInChat = (original) => SanitizeHTML(original, {
+    allowedTags: ['a', 'b', 'br', 'i', 'img', 'li', 'small', 'span', 'strong', 'u', 'ul'],
+    allowedAttributes: {
+      a: ['href', 'target'],
+      img: ['src', 'width', 'height'],
+    },
+    allowedSchemes: ['https'],
+    allowedSchemesByTag: {
+      a: ['https', 'mailto', 'tel'],
+    },
+  });
+
+  const sanitizedWelcomeText = sanitizeTextInChat(welcomeMsg);
+  welcomeMsg = sanitizedWelcomeText.replace(
     'href="event:',
     'href="',
   );
 
   const insertBlankTarget = (s, i) => `${s.substr(0, i)} target="_blank"${s.substr(i)}`;
   const linkWithoutTarget = new RegExp('<a href="(.*?)">', 'g');
-  linkWithoutTarget.test(newMeeting.welcomeProp.welcomeMsg);
 
-  if (linkWithoutTarget.lastIndex > 0) {
-    newMeeting.welcomeProp.welcomeMsg = insertBlankTarget(
-      newMeeting.welcomeProp.welcomeMsg,
-      linkWithoutTarget.lastIndex - 1,
-    );
-  }
+  do {
+    linkWithoutTarget.test(welcomeMsg);
+
+    if (linkWithoutTarget.lastIndex > 0) {
+      welcomeMsg = insertBlankTarget(
+        welcomeMsg,
+        linkWithoutTarget.lastIndex - 1,
+      );
+      linkWithoutTarget.lastIndex -= 1;
+    }
+  } while (linkWithoutTarget.lastIndex > 0);
+
+  newMeeting.welcomeProp.welcomeMsg = welcomeMsg;
+
+  // note: as of July 2020 `modOnlyMessage` is not published to the client side.
+  // We are sanitizing this data simply to prevent future potential usage
+  // At the moment `modOnlyMessage` is obtained from client side as a response to Enter API
+  newMeeting.welcomeProp.modOnlyMessage = sanitizeTextInChat(newMeeting.welcomeProp.modOnlyMessage);
+
+  const { meetingLayout } = meeting.usersProp;
 
   const modifier = {
-    $set: Object.assign({
+    $set: {
       meetingId,
       meetingEnded,
+      layout: LAYOUT_TYPE[meetingLayout] || 'smart',
       publishedPoll: false,
-    }, flat(newMeeting, {
-      safe: true,
-    })),
+      guestLobbyMessage: '',
+      randomlySelectedUser: [],
+      ...flat(newMeeting, {
+        safe: true,
+      }),
+    },
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      Logger.error(`Adding meeting to collection: ${err}`);
+  if (!process.env.BBB_HTML5_ROLE || process.env.BBB_HTML5_ROLE === 'frontend') {
+    addAnnotationsStreamer(meetingId);
+    addCursorStreamer(meetingId);
+    addExternalVideoStreamer(meetingId);
+
+    // we don't want to fully process the create meeting message
+    // in frontend since it can lead to duplication of meetings in mongo.
+    if (process.env.BBB_HTML5_ROLE === 'frontend') {
       return;
     }
+  }
 
+  try {
     const {
       insertedId,
-    } = numChanged;
-
-    if (insertedId) {
-      Logger.info(`Added meeting id=${meetingId}`);
-      // TODO: Here we call Etherpad API to create this meeting notes. Is there a
-      // better place we can run this post-creation routine?
-      createNote(meetingId);
-      createCaptions(meetingId);
-    }
-
-    if (numChanged) {
-      Logger.info(`Upserted meeting id=${meetingId}`);
-    }
-  };
-
-  const cbRecord = (err, numChanged) => {
-    if (err) {
-      Logger.error(`Adding record prop to collection: ${err}`);
-      return;
-    }
-
-    const {
-      insertedId,
-    } = numChanged;
+      numberAffected,
+    } = await RecordMeetings.upsertAsync(selector, { meetingId, ...recordProp });
 
     if (insertedId) {
       Logger.info(`Added record prop id=${meetingId}`);
-    }
-
-    if (numChanged) {
+    } else if (numberAffected) {
       Logger.info(`Upserted record prop id=${meetingId}`);
     }
-  };
+  } catch (err) {
+    Logger.error(`Adding record prop to collection: ${err}`);
+  }
 
-  RecordMeetings.upsert(selector, {
-    meetingId,
-    ...recordProp,
-  }, cbRecord);
+  await addExternalVideo(meetingId);
+  await addLayout(meetingId, LAYOUT_TYPE[meetingLayout] || 'smart');
 
-  return Meetings.upsert(selector, modifier, cb);
+  try {
+    const { insertedId, numberAffected } = await Meetings.upsertAsync(selector, modifier);
+
+    if (insertedId) {
+      Logger.info(`Added meeting id=${meetingId}`);
+      if (newMeeting.meetingProp.disabledFeatures.indexOf('sharedNotes') === -1) {
+        initPads(meetingId);
+      }
+      if (newMeeting.meetingProp.disabledFeatures.indexOf('captions') === -1) {
+        await initCaptions(meetingId);
+      }
+    } else if (numberAffected) {
+      Logger.info(`Upserted meeting id=${meetingId}`);
+    }
+  } catch (err) {
+    Logger.error(`Adding meeting to collection: ${err}`);
+  }
 }

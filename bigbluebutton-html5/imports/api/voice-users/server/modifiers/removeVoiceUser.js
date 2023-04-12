@@ -1,8 +1,9 @@
 import { check } from 'meteor/check';
 import Logger from '/imports/startup/server/logger';
 import VoiceUsers from '/imports/api/voice-users';
+import { clearSpokeTimeout } from '/imports/api/common/server/helpers';
 
-export default function removeVoiceUser(meetingId, voiceUser) {
+export default async function removeVoiceUser(meetingId, voiceUser) {
   check(meetingId, String);
   check(voiceUser, {
     voiceConf: String,
@@ -23,16 +24,18 @@ export default function removeVoiceUser(meetingId, voiceUser) {
       talking: false,
       listenOnly: false,
       joined: false,
+      spoke: false,
     },
   };
 
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Remove voiceUser=${intId}: ${err}`);
+  try {
+    await clearSpokeTimeout(meetingId, intId);
+    const numberAffected = await VoiceUsers.updateAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.info(`Remove voiceUser=${intId} meeting=${meetingId}`);
     }
-
-    return Logger.info(`Remove voiceUser=${intId} meeting=${meetingId}`);
-  };
-
-  return VoiceUsers.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Remove voiceUser=${intId}: ${err}`);
+  }
 }

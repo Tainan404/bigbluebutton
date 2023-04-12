@@ -6,20 +6,19 @@ export function LockStruct() {
     lockSettings: {
       disableCam: false,
       disableMic: false,
-      disableNote: false,
+      disableNotes: false,
       disablePrivateChat: false,
       disablePublicChat: false,
       lockOnJoin: true,
       lockOnJoinConfigurable: false,
-      lockedLayout: false,
+      hideViewersCursor: false,
     },
     userLocks: {
       userWebcam: false,
       userMic: false,
-      userNote: false,
+      userNotes: false,
       userPrivateChat: false,
       userPublicChat: false,
-      userLockedLayout: false,
     },
   });
 }

@@ -2,7 +2,7 @@ import { check } from 'meteor/check';
 import Logger from '/imports/startup/server/logger';
 import Breakouts from '/imports/api/breakouts';
 
-export default function handleBreakoutJoinURL({ body }) {
+export default async function handleBreakoutJoinURL({ body }) {
   const {
     redirectToHtml5JoinURL,
     userId,
@@ -16,29 +16,32 @@ export default function handleBreakoutJoinURL({ body }) {
   };
 
   const modifier = {
-    $push: {
-      users: {
-        userId,
+    $set: {
+      [`url_${userId}`]: {
         redirectToHtml5JoinURL,
         insertedTime: new Date().getTime(),
       },
     },
   };
 
-  const cb = (cbErr, numChanged) => {
-    if (cbErr) {
-      return Logger.error(`Adding breakout to collection: ${cbErr}`);
-    }
+  try {
+    const ATTEMPT_EVERY_MS = 1000;
 
-    const {
-      insertedId,
-    } = numChanged;
-    if (insertedId) {
-      return Logger.info(`Added breakout id=${breakoutId}`);
-    }
+    let numberAffected = 0;
+    const updateBreakout = async () => {
+      numberAffected = await Breakouts.updateAsync(selector, modifier);
+    };
 
-    return Logger.info(`Upserted breakout id=${breakoutId}`);
-  };
-
-  return Breakouts.upsert(selector, modifier, cb);
+    await new Promise((resolve) => {
+      const updateBreakoutInterval = setInterval(async () => {
+        await updateBreakout();
+        if (numberAffected) {
+          resolve(clearInterval(updateBreakoutInterval));
+        }
+      }, ATTEMPT_EVERY_MS);
+    });
+    Logger.info(`Upserted breakout id=${breakoutId}`);
+  } catch (err) {
+    Logger.error(`Adding breakout to collection: ${err}`);
+  }
 }

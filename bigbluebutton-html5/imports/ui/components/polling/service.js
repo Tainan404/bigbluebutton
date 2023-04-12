@@ -1,7 +1,16 @@
 import { makeCall } from '/imports/ui/services/api';
 import Polls from '/imports/api/polls';
+import { debounce } from 'radash';
 
 const MAX_CHAR_LENGTH = 5;
+
+const handleVote = (pollId, answerIds) => {
+  makeCall('publishVote', pollId, answerIds);
+};
+
+const handleTypedVote = (pollId, answer) => {
+  makeCall('publishTypedVote', pollId, answer);
+};
 
 const mapPolls = () => {
   const poll = Polls.findOne({});
@@ -14,7 +23,7 @@ const mapPolls = () => {
 
   answers.map((obj) => {
     if (stackOptions) return obj;
-    if (obj.key.length > MAX_CHAR_LENGTH) {
+    if (obj.key && obj.key.length > MAX_CHAR_LENGTH) {
       stackOptions = true;
     }
     return obj;
@@ -26,13 +35,16 @@ const mapPolls = () => {
     poll: {
       answers: poll.answers,
       pollId: poll.id,
+      isMultipleResponse: poll.isMultipleResponse,
+      pollType: poll.pollType,
       stackOptions,
+      question: poll.question,
+      secretPoll: poll.secretPoll,
     },
     pollExists: true,
     amIRequester,
-    handleVote(pollId, answerId) {
-      makeCall('publishVote', pollId, answerId.id);
-    },
+    handleVote: debounce({ delay: 500 }, handleVote),
+    handleTypedVote: debounce({ delay: 500 }, handleTypedVote),
   };
 };
 

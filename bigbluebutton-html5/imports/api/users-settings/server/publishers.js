@@ -1,17 +1,22 @@
 import { Meteor } from 'meteor/meteor';
-import { check } from 'meteor/check';
 import UserSettings from '/imports/api/users-settings';
 import Logger from '/imports/startup/server/logger';
+import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
 
-function userSettings(credentials) {
-  const { meetingId, requesterUserId } = credentials;
+async function userSettings() {
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ connectionId: this.connection.id });
 
-  check(meetingId, String);
-  check(requesterUserId, String);
+  if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
+    Logger.warn(`Publishing UserSettings was requested by unauth connection ${this.connection.id}`);
+    return UserSettings.find({ meetingId: '' });
+  }
 
-  Logger.debug(`Publishing user settings for user=${requesterUserId}`);
+  const { meetingId, userId } = tokenValidation;
 
-  return UserSettings.find({ meetingId, userId: requesterUserId });
+  Logger.debug('Publishing UserSettings', { meetingId, userId });
+
+  return UserSettings.find({ meetingId, userId });
 }
 
 function publish(...args) {

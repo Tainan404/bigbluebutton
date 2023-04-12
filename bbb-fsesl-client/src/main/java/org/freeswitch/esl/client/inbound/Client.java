@@ -428,6 +428,7 @@ public class Client
         public void eventReceived( final EslEvent event )
         {
             log.debug( "Event received [{}]", event );
+
             /*
              *  Notify listeners in a different thread in order to:
              *    - not to block the IO threads with potentially long-running listeners
@@ -518,6 +519,12 @@ public class Client
                                     } else if (eventFunc.equals("conference_loop_input")) {
                                         listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
                                         return;
+                                    } else if (eventFunc.equals("conference_member_set_floor_holder")) {
+                                        listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
+                                        return;
+                                    } else if (eventFunc.equals("conference_video_set_floor_holder")) {
+                                        listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
+                                        return;
                                     } else if (eventFunc.equals("stop_talking_handler")) {
                                         listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
                                         return;
@@ -537,8 +544,10 @@ public class Client
                                         System.out.println("##### " + sb.toString());
                                          **/
                                     }
+                                } else {
+                                    listener.eventReceived( event );
                                 }
-                                listener.eventReceived( event );
+
                             } catch ( Throwable t ) {
                                 log.error( "Error caught notifying listener of event [" + event + ']', t );
                             }

@@ -3,7 +3,7 @@ import flat from 'flat';
 import Logger from '/imports/startup/server/logger';
 import Screenshare from '/imports/api/screenshare';
 
-export default function addScreenshare(meetingId, body) {
+export default async function addScreenshare(meetingId, body) {
   check(meetingId, String);
 
   const selector = {
@@ -17,13 +17,13 @@ export default function addScreenshare(meetingId, body) {
     },
   };
 
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Adding screenshare to collection: ${err}`);
+  try {
+    const { numberAffected } = await Screenshare.upsertAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.info(`Upserted screenshare id=${body.screenshareConf}`);
     }
-
-    return Logger.info(`Upserted screenshare id=${body.screenshareConf}`);
-  };
-
-  return Screenshare.upsert(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Adding screenshare to collection: ${err}`);
+  }
 }

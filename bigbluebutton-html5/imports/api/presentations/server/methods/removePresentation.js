@@ -1,34 +1,28 @@
 import RedisPubSub from '/imports/startup/server/redis';
 import { check } from 'meteor/check';
-import Presentations from '/imports/api/presentations';
+import { extractCredentials } from '/imports/api/common/server/helpers';
+import Logger from '/imports/startup/server/logger';
 
-export default function removePresentation(credentials, presentationId, podId) {
-  const PRESENTATION_CONFIG = Meteor.settings.public.presentation;
+export default function removePresentation(presentationId, podId) {
   const REDIS_CONFIG = Meteor.settings.private.redis;
   const CHANNEL = REDIS_CONFIG.channels.toAkkaApps;
   const EVENT_NAME = 'RemovePresentationPubMsg';
 
-  const { meetingId, requesterUserId } = credentials;
+  try {
+    const { meetingId, requesterUserId } = extractCredentials(this.userId);
 
-  check(meetingId, String);
-  check(requesterUserId, String);
-  check(presentationId, String);
-  check(podId, String);
+    check(meetingId, String);
+    check(requesterUserId, String);
+    check(presentationId, String);
+    check(podId, String);
 
-  const presentationToDelete = Presentations.findOne({
-    meetingId,
-    id: presentationId,
-    podId,
-  });
+    const payload = {
+      presentationId,
+      podId,
+    };
 
-  if (presentationToDelete.name === PRESENTATION_CONFIG.defaultPresentationFile) {
-    throw new Meteor.Error('not-allowed', 'You are not allowed to remove the default slide');
+    RedisPubSub.publishUserMessage(CHANNEL, EVENT_NAME, meetingId, requesterUserId, payload);
+  } catch (err) {
+    Logger.error(`Exception while invoking method removePresentation ${err.stack}`);
   }
-
-  const payload = {
-    presentationId,
-    podId,
-  };
-
-  return RedisPubSub.publishUserMessage(CHANNEL, EVENT_NAME, meetingId, requesterUserId, payload);
 }

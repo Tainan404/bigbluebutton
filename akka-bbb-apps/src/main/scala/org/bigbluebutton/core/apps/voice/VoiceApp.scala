@@ -1,20 +1,36 @@
 package org.bigbluebutton.core.apps.voice
 
-import org.bigbluebutton.common2.msgs.{ BbbClientMsgHeader, BbbCommonEnvCoreMsg, BbbCoreEnvelope, ConfVoiceUser, MessageTypes, Routing, UserJoinedVoiceConfToClientEvtMsg, UserJoinedVoiceConfToClientEvtMsgBody, UserLeftVoiceConfToClientEvtMsg, UserLeftVoiceConfToClientEvtMsgBody, UserMutedVoiceEvtMsg, UserMutedVoiceEvtMsgBody }
+import org.bigbluebutton.SystemConfiguration
+import org.bigbluebutton.LockSettingsUtil
 import org.bigbluebutton.core.apps.breakout.BreakoutHdlrHelpers
 import org.bigbluebutton.core.bus.InternalEventBus
-import org.bigbluebutton.core.models.{ VoiceUserState, VoiceUsers }
-import org.bigbluebutton.core.running.{ LiveMeeting, OutMsgRouter }
 import org.bigbluebutton.core2.MeetingStatus2x
 import org.bigbluebutton.core2.message.senders.MsgBuilder
+import org.bigbluebutton.common2.msgs._
+import org.bigbluebutton.core.running.{ LiveMeeting, MeetingActor, OutMsgRouter }
+import org.bigbluebutton.core.models._
+import org.bigbluebutton.core.apps.users.UsersApp
 
-object VoiceApp {
+object VoiceApp extends SystemConfiguration {
 
-  def genRecordPath(recordDir: String, meetingId: String, timestamp: Long): String = {
+  def genRecordPath(
+      recordDir:       String,
+      meetingId:       String,
+      timestamp:       Long,
+      recordAudioCode: String
+  ): String = {
+    val validCodecs = Set("wav", "ogg", "opus", "flac")
+    val tmpFileExt = recordAudioCode.toLowerCase().stripPrefix(".")
+    var fileExt = ".wav"
+    if (validCodecs.contains(tmpFileExt)) {
+      fileExt = ".".concat(tmpFileExt)
+    }
+
+    val recordFilename = meetingId.concat("-").concat(timestamp.toString).concat(fileExt)
     if (recordDir.endsWith("/")) {
-      recordDir.concat(meetingId).concat("-").concat(timestamp.toString).concat(".wav")
+      recordDir.concat(recordFilename)
     } else {
-      recordDir.concat("/").concat(meetingId).concat("-").concat(timestamp.toString).concat(".wav")
+      recordDir.concat("/").concat(recordFilename)
     }
   }
 
@@ -80,12 +96,22 @@ object VoiceApp {
     for {
       mutedUser <- VoiceUsers.userMuted(liveMeeting.voiceUsers, voiceUserId, muted)
     } yield {
+      if (!muted) {
+        // Make sure lock settings are in effect (ralam dec 6, 2019)
+        LockSettingsUtil.enforceLockSettingsForVoiceUser(
+          mutedUser,
+          liveMeeting,
+          outGW
+        )
+      }
+
       broadcastUserMutedVoiceEvtMsg(
         liveMeeting.props.meetingProp.intId,
         mutedUser,
         liveMeeting.props.voiceProp.voiceConf,
         outGW
       )
+
     }
   }
 
@@ -112,21 +138,37 @@ object VoiceApp {
               // Update the user status to indicate they are still in the voice conference.
               VoiceUsers.setLastStatusUpdate(liveMeeting.voiceUsers, vu)
             }
+
+            // Purge voice users that don't have a matching user record
+            // Avoid this if the meeting is a breakout room since might be real
+            // voice users participating
+            // Also avoid ejecting if the user is dial-in (v_*)
+            if (ejectRogueVoiceUsers && !liveMeeting.props.meetingProp.isBreakout && !cvu.intId.startsWith("v_")) {
+              Users2x.findWithIntId(liveMeeting.users2x, cvu.intId) match {
+                case Some(_) =>
+                case None =>
+                  println(s"Ejecting rogue voice user. meetingId=${liveMeeting.props.meetingProp.intId} userId=${cvu.intId}")
+                  val event = MsgBuilder.buildEjectUserFromVoiceConfSysMsg(liveMeeting.props.meetingProp.intId, liveMeeting.props.voiceProp.voiceConf, cvu.voiceUserId)
+                  outGW.send(event)
+              }
+            }
           case None =>
-            handleUserJoinedVoiceConfEvtMsg(
-              liveMeeting,
-              outGW,
-              eventBus,
-              liveMeeting.props.voiceProp.voiceConf,
-              cvu.intId,
-              cvu.voiceUserId,
-              cvu.callingWith,
-              cvu.callerIdName,
-              cvu.callerIdNum,
-              cvu.muted,
-              cvu.talking,
-              cvu.calledInto
-            )
+            if (!cvu.intId.startsWith(IntIdPrefixType.DIAL_IN)) {
+              handleUserJoinedVoiceConfEvtMsg(
+                liveMeeting,
+                outGW,
+                eventBus,
+                liveMeeting.props.voiceProp.voiceConf,
+                cvu.intId,
+                cvu.voiceUserId,
+                cvu.callingWith,
+                cvu.callerIdName,
+                cvu.callerIdNum,
+                cvu.muted,
+                cvu.talking,
+                cvu.calledInto
+              )
+            }
         }
     }
 
@@ -144,6 +186,20 @@ object VoiceApp {
           fsu.voiceUserId
         )
       }
+    }
+  }
+
+  private def checkAndEjectOldDuplicateVoiceConfUser(
+      userid:      String,
+      liveMeeting: LiveMeeting,
+      outGW:       OutMsgRouter
+  ): Unit = {
+    for {
+      u <- VoiceUsers.findWithIntId(liveMeeting.voiceUsers, userid)
+      oldU <- VoiceUsers.removeWithIntId(liveMeeting.voiceUsers, userid)
+    } yield {
+      val event = MsgBuilder.buildEjectUserFromVoiceConfSysMsg(liveMeeting.props.meetingProp.intId, liveMeeting.props.voiceProp.voiceConf, oldU.voiceUserId)
+      outGW.send(event)
     }
   }
 
@@ -201,6 +257,8 @@ object VoiceApp {
       outGW.send(msgEvent)
     }
 
+    checkAndEjectOldDuplicateVoiceConfUser(intId, liveMeeting, outGW)
+
     val isListenOnly = if (callerIdName.startsWith("LISTENONLY")) true else false
 
     val voiceUserState = VoiceUserState(
@@ -213,7 +271,9 @@ object VoiceApp {
       talking,
       listenOnly = isListenOnly,
       callingInto,
-      System.currentTimeMillis()
+      System.currentTimeMillis(),
+      floor = false,
+      lastFloorTime = "0"
     )
     VoiceUsers.add(liveMeeting.voiceUsers, voiceUserState)
 
@@ -237,6 +297,25 @@ object VoiceApp {
       )
       outGW.send(event)
     }
+
+    // Make sure lock settings are in effect. (ralam dec 6, 2019)
+    LockSettingsUtil.enforceLockSettingsForVoiceUser(
+      voiceUserState,
+      liveMeeting,
+      outGW
+    )
+
+  }
+
+  def removeUserFromVoiceConf(
+      liveMeeting:  LiveMeeting,
+      outGW:        OutMsgRouter,
+      voiceUserId:  String,
+    ): Unit = {
+    val guest = GuestApprovedVO(voiceUserId, GuestStatus.DENY)
+      UsersApp.approveOrRejectGuest(liveMeeting, outGW, guest, SystemUser.ID)
+      val event = MsgBuilder.buildEjectUserFromVoiceConfSysMsg(liveMeeting.props.meetingProp.intId, liveMeeting.props.voiceProp.voiceConf, voiceUserId)
+      outGW.send(event)
   }
 
   def handleUserLeftVoiceConfEvtMsg(
@@ -273,5 +352,67 @@ object VoiceApp {
         eventBus
       )
     }
+  }
+
+/** Toggle audio for the given user in voice conference.
+ *
+ * We first stop the current audio being played, preventing the playback
+ * to also mix the "You are the first person ..." audio.
+ * After that we check if we are turning on/off based on enabled param. If
+ * enabled is false we:
+ *  - play a sound to let user know that an action is required
+ *       (eg. guest approval) from the server/room.
+ *  - put the user on hold, so DTMFs for mute / deaf mute are also disabled
+ *  - mute the user (other participants won't hear users's audio)
+ *  - deaf the user (user won't hear other participant's audio)
+ * If disabled, we remove user from hold, mute and deaf states, allowing the
+ * user to interact with the room.
+ */
+  def toggleUserAudioInVoiceConf(
+    liveMeeting: LiveMeeting,
+    outGW:       OutMsgRouter,
+    voiceUserId: String,
+    enabled: Boolean
+  ): Unit = {
+    val stopEvent = MsgBuilder.buildStopSoundInVoiceConfSysMsg(
+      liveMeeting.props.meetingProp.intId,
+      liveMeeting.props.voiceProp.voiceConf,
+      ""
+    )
+    outGW.send(stopEvent)
+
+    if (!enabled) {
+      val playEvent = MsgBuilder.buildPlaySoundInVoiceConfSysMsg(
+        liveMeeting.props.meetingProp.intId,
+        liveMeeting.props.voiceProp.voiceConf,
+        voiceUserId,
+        dialInApprovalAudioPath
+      )
+      outGW.send(playEvent)
+    }
+
+    val holdEvent = MsgBuilder.buildHoldUserInVoiceConfSysMsg(
+      liveMeeting.props.meetingProp.intId,
+      liveMeeting.props.voiceProp.voiceConf,
+      voiceUserId,
+      !enabled
+    )
+    outGW.send(holdEvent)
+
+    val muteEvent = MsgBuilder.buildMuteUserInVoiceConfSysMsg(
+      liveMeeting.props.meetingProp.intId,
+      liveMeeting.props.voiceProp.voiceConf,
+      voiceUserId,
+      !enabled
+    )
+    outGW.send(muteEvent)
+
+    val deafEvent = MsgBuilder.buildDeafUserInVoiceConfSysMsg(
+      liveMeeting.props.meetingProp.intId,
+      liveMeeting.props.voiceProp.voiceConf,
+      voiceUserId,
+      !enabled
+    )
+    outGW.send(deafEvent)
   }
 }

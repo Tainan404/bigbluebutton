@@ -52,12 +52,14 @@ public class ResponseBuilder {
         return new Date(timestamp).toString();
     }
 
-    public String buildMeetingVersion(String version, String returnCode) {
+    public String buildMeetingVersion(String apiVersion, String bbbVersion, String returnCode) {
         StringWriter xmlText = new StringWriter();
 
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("returnCode", returnCode);
-        data.put("version", version);
+        data.put("version", apiVersion);
+        data.put("apiVersion", apiVersion);
+        data.put("bbbVersion", bbbVersion);
 
         processData(getTemplate("api-version.ftlx"), data, xmlText);
 
@@ -195,7 +197,7 @@ public class ResponseBuilder {
 
         Map<String, Serializable> data = new HashMap<String, Serializable>();
         data.put("returnCode", returnCode);
-        data.put("sessionsList", new ArrayList<UserSession>(sessions));
+        data.put("sessionsList", new ArrayList<>(sessions));
         data.put("msgKey", msgKey);
         data.put("msg", msg);
 
@@ -216,16 +218,16 @@ public class ResponseBuilder {
         return xmlText.toString();
     }
 
-    public String buildConfgXmlReject(String message, String logoutUrl, String returnCode) {
+    public String buildInsertDocumentResponse(String message, String returnCode) {
 
         StringWriter xmlText = new StringWriter();
 
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("returnCode", returnCode);
         data.put("message", message);
-        data.put("logoutUrl", logoutUrl);
 
-        processData(getTemplate("config-xml-rejected.ftlx"), data, xmlText);
+        processData(getTemplate("insert-document.ftlx"), data, xmlText);
+
         return xmlText.toString();
     }
 

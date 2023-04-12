@@ -4,7 +4,7 @@ import Logger from '/imports/startup/server/logger';
 import clearPresentations from '/imports/api/presentations/server/modifiers/clearPresentations';
 import clearPresentationUploadToken from '/imports/api/presentation-upload-token/server/modifiers/clearPresentationUploadToken';
 
-export default function removePresentationPod(meetingId, podId) {
+export default async function removePresentationPod(meetingId, podId) {
   check(meetingId, String);
   check(podId, String);
 
@@ -13,18 +13,15 @@ export default function removePresentationPod(meetingId, podId) {
     podId,
   };
 
-  const cb = (err) => {
-    if (err) {
-      Logger.error(`Removing presentation pod from collection: ${err}`);
-      return;
-    }
+  try {
+    const numberAffected = await PresentationPods.removeAsync(selector);
 
-    if (podId) {
+    if (numberAffected && podId) {
       Logger.info(`Removed presentation pod id=${podId} meeting=${meetingId}`);
       clearPresentations(meetingId, podId);
       clearPresentationUploadToken(meetingId, podId);
     }
-  };
-
-  return PresentationPods.remove(selector, cb);
+  } catch (err) {
+    Logger.error(`Error on removing presentation pod from collection: ${err}`);
+  }
 }

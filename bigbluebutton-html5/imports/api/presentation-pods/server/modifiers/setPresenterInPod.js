@@ -2,7 +2,7 @@ import { check } from 'meteor/check';
 import PresentationPods from '/imports/api/presentation-pods';
 import Logger from '/imports/startup/server/logger';
 
-export default function setPresenterInPod(meetingId, podId, nextPresenterId) {
+export default async function setPresenterInPod(meetingId, podId, nextPresenterId) {
   check(meetingId, String);
   check(podId, String);
   check(nextPresenterId, String);
@@ -18,16 +18,13 @@ export default function setPresenterInPod(meetingId, podId, nextPresenterId) {
     },
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      Logger.error(`Setting a presenter in pod: ${err}`);
-      return;
-    }
+  try {
+    const { numberAffected } = await PresentationPods.upsertAsync(selector, modifier);
 
-    if (numChanged) {
-      Logger.info(`Set a new presenter in pod id=${podId} meeting=${meetingId}`);
+    if (numberAffected) {
+      Logger.info(`Set a new presenter in pod id=${podId} meeting=${meetingId} presenter=${nextPresenterId}`);
     }
-  };
-
-  return PresentationPods.upsert(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Error on setting a presenter in pod: ${err}`);
+  }
 }

@@ -5,7 +5,7 @@ import addPresentation from '/imports/api/presentations/server/modifiers/addPres
 
 // 'presentations' is passed down here when we receive a Sync message
 // and it's not used when we just create a new presentation pod
-export default function addPresentationPod(meetingId, pod, presentations = undefined) {
+export default async function addPresentationPod(meetingId, pod, presentations = undefined) {
   check(meetingId, String);
   check(presentations, Match.Maybe(Array));
   check(pod, {
@@ -26,22 +26,21 @@ export default function addPresentationPod(meetingId, pod, presentations = undef
     currentPresenterId,
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      return Logger.error(`Adding presentation pod to the collection: ${err}`);
-    }
+  try {
+    const { insertedId } = await PresentationPods.upsertAsync(selector, modifier);
 
     // if it's a Sync message - continue adding the attached presentations
     if (presentations) {
-      presentations.forEach(presentation => addPresentation(meetingId, podId, presentation));
+      presentations.forEach(async (presentation) =>
+        addPresentation(meetingId, podId, presentation));
     }
 
-    if (numChanged) {
-      return Logger.info(`Added presentation pod id=${podId} meeting=${meetingId}`);
+    if (insertedId) {
+      Logger.info(`Added presentation pod id=${podId} meeting=${meetingId}`);
+    } else {
+      Logger.info(`Upserted presentation pod id=${podId} meeting=${meetingId}`);
     }
-
-    return Logger.info(`Upserted presentation pod id=${podId} meeting=${meetingId}`);
-  };
-
-  return PresentationPods.upsert(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Adding presentation pod to the collection: ${err}`);
+  }
 }

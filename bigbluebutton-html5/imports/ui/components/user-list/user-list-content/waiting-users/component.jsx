@@ -1,9 +1,9 @@
-import React, { PureComponent } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
-import { defineMessages } from 'react-intl';
-import Icon from '/imports/ui/components/icon/component';
-import { Session } from 'meteor/session';
-import { styles } from './styles';
+import { defineMessages, injectIntl } from 'react-intl';
+import Icon from '/imports/ui/components/common/icon/component';
+import Styled from './styles';
+import { ACTIONS, PANELS } from '../../../layout/enums';
 
 const propTypes = {
   intl: PropTypes.shape({
@@ -22,52 +22,61 @@ const intlMessages = defineMessages({
   },
 });
 
-class WaitingUsers extends PureComponent {
+const WaitingUsers = ({
+  intl,
+  pendingUsers,
+  sidebarContentPanel,
+  layoutContextDispatch,
+}) => {
+  const toggleWaitingPanel = () => {
+    layoutContextDispatch({
+      type: ACTIONS.SET_SIDEBAR_CONTENT_IS_OPEN,
+      value: sidebarContentPanel !== PANELS.WAITING_USERS,
+    });
+    layoutContextDispatch({
+      type: ACTIONS.SET_SIDEBAR_CONTENT_PANEL,
+      value: sidebarContentPanel === PANELS.WAITING_USERS
+        ? PANELS.NONE
+        : PANELS.WAITING_USERS,
+    });
+  };
 
-  static toggleWaitingPanel() {
-    Session.set(
-      'openPanel',
-      Session.get('openPanel') === 'waitingUsersPanel'
-        ? 'userlist'
-        : 'waitingUsersPanel',
-    );
-  }
-
-  render() {
-    const {
-      intl,
-      pendingUsers,
-    } = this.props;
-
-    
-    return (
-      <div className={styles.messages}>
-        {
-          <h2 className={styles.smallTitle}>
-            {intl.formatMessage(intlMessages.waitingUsersTitle)}
-          </h2>
-        }
-        <div className={styles.scrollableList}>
-          <div
-            role='button'
+  return (
+    <Styled.Messages>
+      <Styled.Container>
+        <Styled.SmallTitle>
+          {intl.formatMessage(intlMessages.waitingUsersTitle)}
+        </Styled.SmallTitle>
+      </Styled.Container>
+      <Styled.ScrollableList>
+        <Styled.List>
+          <Styled.ListItem
+            role="button"
+            data-test="waitingUsersBtn"
             tabIndex={0}
-            className={styles.noteLink}
-            onClick={WaitingUsers.toggleWaitingPanel}
+            onClick={toggleWaitingPanel}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                toggleWaitingPanel();
+              }
+            }}
           >
-            <Icon iconName="user" className={styles.icon} />
-            <span className={styles.label}>{intl.formatMessage(intlMessages.title)}</span>
-            <div className={styles.waitingUsersWarn}>
-              <div className={styles.waitingUsersWarnText}>
-                {pendingUsers.length}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-}
+            <Icon iconName="user" />
+            <span>{intl.formatMessage(intlMessages.title)}</span>
+            {pendingUsers.length > 0 && (
+              <Styled.UnreadMessages>
+                <Styled.UnreadMessagesText>
+                  {pendingUsers.length}
+                </Styled.UnreadMessagesText>
+              </Styled.UnreadMessages>
+            )}
+          </Styled.ListItem>
+        </Styled.List>
+      </Styled.ScrollableList>
+    </Styled.Messages>
+  );
+};
 
 WaitingUsers.propTypes = propTypes;
 
-export default WaitingUsers;
+export default injectIntl(WaitingUsers);

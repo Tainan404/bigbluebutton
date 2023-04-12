@@ -1,19 +1,28 @@
-import React from 'react';
+import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, injectIntl } from 'react-intl';
 import { Meteor } from 'meteor/meteor';
-import Button from '/imports/ui/components/button/component';
-import logoutRouteHandler from '/imports/utils/logoutRouteHandler';
 import { Session } from 'meteor/session';
-import { styles } from './styles';
+import AudioManager from '/imports/ui/services/audio-manager';
+import logger from '/imports/startup/client/logger';
+import Styled from './styles';
 
 const intlMessages = defineMessages({
+  503: {
+    id: 'app.error.503',
+  },
   500: {
     id: 'app.error.500',
-    defaultMessage: 'Ops, something went wrong',
+    defaultMessage: 'Oops, something went wrong',
   },
   410: {
     id: 'app.error.410',
+  },
+  409: {
+    id: 'app.error.409',
+  },
+  408: {
+    id: 'app.error.408',
   },
   404: {
     id: 'app.error.404',
@@ -28,9 +37,41 @@ const intlMessages = defineMessages({
   400: {
     id: 'app.error.400',
   },
-  leave: {
-    id: 'app.error.leaveLabel',
-    description: 'aria-label for leaving',
+  meeting_ended: {
+    id: 'app.meeting.endedMessage',
+  },
+  user_logged_out_reason: {
+    id: 'app.error.userLoggedOut',
+  },
+  validate_token_failed_eject_reason: {
+    id: 'app.error.ejectedUser',
+  },
+  banned_user_rejoining_reason: {
+    id: 'app.error.userBanned',
+  },
+  joined_another_window_reason: {
+    id: 'app.error.joinedAnotherWindow',
+  },
+  user_inactivity_eject_reason: {
+    id: 'app.meeting.logout.userInactivityEjectReason',
+  },
+  user_requested_eject_reason: {
+    id: 'app.meeting.logout.ejectedFromMeeting',
+  },
+  max_participants_reason: {
+    id: 'app.meeting.logout.maxParticipantsReached',
+  },
+  guest_deny: {
+    id: 'app.guest.guestDeny',
+  },
+  duplicate_user_in_meeting_eject_reason: {
+    id: 'app.meeting.logout.duplicateUserEjectReason',
+  },
+  not_enough_permission_eject_reason: {
+    id: 'app.meeting.logout.permissionEjectReason',
+  },
+  able_to_rejoin_user_disconnected_reason: {
+    id: 'app.error.disconnected.rejoin',
   },
 });
 
@@ -42,12 +83,19 @@ const propTypes = {
 };
 
 const defaultProps = {
-  code: 500,
+  code: '500',
+  callback: async () => {},
 };
 
-class ErrorScreen extends React.PureComponent {
+class ErrorScreen extends PureComponent {
   componentDidMount() {
-    Meteor.disconnect();
+    const { code, callback } = this.props;
+    const log = code === '403' ? 'warn' : 'error';
+    AudioManager.exitAudio();
+    callback().finally(() => {
+      Meteor.disconnect();
+    });
+    logger[log]({ logCode: 'startup_client_usercouldnotlogin_error' }, `User could not log in HTML5, hit ${code}`);
   }
 
   render() {
@@ -63,34 +111,34 @@ class ErrorScreen extends React.PureComponent {
       formatedMessage = intl.formatMessage(intlMessages[code]);
     }
 
+    let errorMessageDescription = Session.get('errorMessageDescription');
+
+    if (errorMessageDescription in intlMessages) {
+      errorMessageDescription = intl.formatMessage(intlMessages[errorMessageDescription]);
+    }
+
     return (
-      <div className={styles.background}>
-        <h1 className={styles.codeError}>
-          {code}
-        </h1>
-        <h1 className={styles.message}>
+      <Styled.Background>
+        <Styled.Message data-test="errorScreenMessage">
           {formatedMessage}
-        </h1>
-        <div className={styles.separator} />
+        </Styled.Message>
+        {
+          !errorMessageDescription
+          || formatedMessage === errorMessageDescription
+          || (
+            <Styled.SessionMessage>
+              {errorMessageDescription}
+            </Styled.SessionMessage>
+          )
+        }
+        <Styled.Separator />
+        <Styled.CodeError>
+          {code}
+        </Styled.CodeError>
         <div>
           {children}
         </div>
-        {
-          !Session.get('errorMessageDescription') || (
-          <div className={styles.sessionMessage}>
-            {Session.get('errorMessageDescription')}
-          </div>)
-        }
-        <div>
-          <Button
-            size="sm"
-            color="primary"
-            className={styles.button}
-            onClick={logoutRouteHandler}
-            label={intl.formatMessage(intlMessages.leave)}
-          />
-        </div>
-      </div>
+      </Styled.Background>
     );
   }
 }

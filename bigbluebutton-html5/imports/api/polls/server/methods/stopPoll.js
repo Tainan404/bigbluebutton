@@ -1,20 +1,21 @@
 import RedisPubSub from '/imports/startup/server/redis';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 import { check } from 'meteor/check';
+import Logger from '/imports/startup/server/logger';
 
-export default function stopPoll(credentials) {
-  const { meetingId, requesterUserId } = credentials;
+export default function stopPoll() {
   const REDIS_CONFIG = Meteor.settings.private.redis;
   const CHANNEL = REDIS_CONFIG.channels.toAkkaApps;
   const EVENT_NAME = 'StopPollReqMsg';
 
-  check(meetingId, String);
-  check(requesterUserId, String);
+  try {
+    const { meetingId, requesterUserId: requesterId } = extractCredentials(this.userId);
 
-  return RedisPubSub.publishUserMessage(
-    CHANNEL,
-    EVENT_NAME,
-    meetingId,
-    requesterUserId,
-    ({ requesterId: requesterUserId }),
-  );
+    check(meetingId, String);
+    check(requesterId, String);
+
+    RedisPubSub.publishUserMessage(CHANNEL, EVENT_NAME, meetingId, requesterId, ({ requesterId }));
+  } catch (err) {
+    Logger.error(`Exception while invoking method stopPoll ${err.stack}`);
+  }
 }

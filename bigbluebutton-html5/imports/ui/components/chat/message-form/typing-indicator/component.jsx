@@ -1,14 +1,12 @@
 import React, { PureComponent } from 'react';
 import {
-  defineMessages, injectIntl, intlShape, FormattedMessage,
+  defineMessages, injectIntl, FormattedMessage,
 } from 'react-intl';
-import browser from 'browser-detect';
 import PropTypes from 'prop-types';
-import cx from 'classnames';
-import { styles } from '../styles.scss';
+import Styled from './styles';
 
 const propTypes = {
-  intl: intlShape.isRequired,
+  intl: PropTypes.object.isRequired,
   typingUsers: PropTypes.arrayOf(Object).isRequired,
 };
 
@@ -23,8 +21,6 @@ class TypingIndicator extends PureComponent {
   constructor(props) {
     super(props);
 
-    this.BROWSER_RESULTS = browser();
-
     this.renderTypingElement = this.renderTypingElement.bind(this);
   }
 
@@ -38,7 +34,7 @@ class TypingIndicator extends PureComponent {
     const { length } = typingUsers;
     const isSingleTyper = length === 1;
     const isCoupleTyper = length === 2;
-    const isMuiltiTypers = length > 2;
+    const isMultiTypers = length > 2;
 
     let element = null;
 
@@ -49,10 +45,10 @@ class TypingIndicator extends PureComponent {
           id="app.chat.one.typing"
           description="label used when one user is typing"
           values={{
-            0: <span className={styles.singleTyper}>
+            0: <Styled.SingleTyper>
               {`${name}`}
 &nbsp;
-            </span>,
+            </Styled.SingleTyper>,
           }}
         />
       );
@@ -66,21 +62,21 @@ class TypingIndicator extends PureComponent {
           id="app.chat.two.typing"
           description="label used when two users are typing"
           values={{
-            0: <span className={styles.coupleTyper}>
+            0: <Styled.CoupleTyper>
               {`${name}`}
 &nbsp;
-            </span>,
-            1: <span className={styles.coupleTyper}>
+            </Styled.CoupleTyper>,
+            1: <Styled.CoupleTyper>
 &nbsp;
               {`${name2}`}
 &nbsp;
-            </span>,
+            </Styled.CoupleTyper>,
           }}
         />
       );
     }
 
-    if (isMuiltiTypers) {
+    if (isMultiTypers) {
       element = (
         <span>
           {`${intl.formatMessage(messages.severalPeople)}`}
@@ -94,17 +90,19 @@ class TypingIndicator extends PureComponent {
   render() {
     const {
       error,
+      indicatorEnabled,
     } = this.props;
 
-    const style = {};
-    style[styles.error] = !!error;
-    style[styles.info] = !error;
-    style[styles.spacer] = !!this.renderTypingElement();
+    const typingElement = indicatorEnabled ? this.renderTypingElement() : null;
 
     return (
-      <div className={cx(style)}>
-        <span className={styles.typingIndicator}>{error || this.renderTypingElement()}</span>
-      </div>
+      <Styled.TypingIndicatorWrapper
+        error={!!error}
+        info={!error}
+        spacer={!!typingElement}
+      >
+        <Styled.TypingIndicator data-test="typingIndicator">{error || typingElement}</Styled.TypingIndicator>
+      </Styled.TypingIndicatorWrapper>
     );
   }
 }

@@ -1,8 +1,16 @@
-import WhiteboardMultiUser from '/imports/api/whiteboard-multi-user/';
 import Users from '/imports/api/users';
+import Logger from '/imports/startup/server/logger';
 
 const MSG_DIRECT_TYPE = 'DIRECT';
 const NODE_USER = 'nodeJSapp';
+
+export const spokeTimeoutHandles = {};
+export const clearSpokeTimeout = (meetingId, userId) => {
+  if (spokeTimeoutHandles[`${meetingId}-${userId}`]) {
+    Meteor.clearTimeout(spokeTimeoutHandles[`${meetingId}-${userId}`]);
+    delete spokeTimeoutHandles[`${meetingId}-${userId}`];
+  }
+};
 
 export const indexOf = [].indexOf || function (item) {
   for (let i = 0, l = this.length; i < l; i += 1) {
@@ -14,7 +22,7 @@ export const indexOf = [].indexOf || function (item) {
   return -1;
 };
 
-export const processForHTML5ServerOnly = fn => (message, ...args) => {
+export const processForHTML5ServerOnly = (fn) => async (message, ...args) => {
   const { envelope } = message;
   const { routing } = envelope;
   const { msgType, meetingId, userId } = routing;
@@ -24,46 +32,38 @@ export const processForHTML5ServerOnly = fn => (message, ...args) => {
     meetingId,
   };
 
-  const user = Users.findOne(selector);
+  const user = await Users.findOneAsync(selector);
 
   const shouldSkip = user && msgType === MSG_DIRECT_TYPE && userId !== NODE_USER && user.clientType !== 'HTML5';
   if (shouldSkip) return () => { };
   return fn(message, ...args);
 };
 
-
-export const getMultiUserStatus = (meetingId, whiteboardId) => {
-  const data = WhiteboardMultiUser.findOne({ meetingId, whiteboardId });
-
-  if (data) {
-    return data.multiUser;
-  }
-
-  return false;
+export const extractCredentials = (credentials) => {
+  if (!credentials) return {};
+  const credentialsArray = credentials.split('--');
+  const meetingId = credentialsArray[0];
+  const requesterUserId = credentialsArray[1];
+  return { meetingId, requesterUserId };
 };
 
-/**
- * Calculate a 32 bit FNV-1a hash
- * Found here: https://gist.github.com/vaiorabbit/5657561
- * Ref.: http://isthe.com/chongo/tech/comp/fnv/
- *
- * @param {string} str the input value
- * @param {boolean} [asString=false] set to true to return the hash value as
- *     8-digit hex string instead of an integer
- * @param {integer} [seed] optionally pass the hash of the previous chunk
- * @returns {integer | string}
- */
-/* eslint-disable */
-export const hashFNV32a = (str, asString, seed) => {
-  let hval = (seed === undefined) ? 0x811c9dc5 : seed;
+// Creates a background job to periodically check the result of the provided function.
+// The provided function is publication-specific and must check the "survival condition" of the publication.
+export const publicationSafeGuard = function (fn, self) {
+  let stopped = false;
+  const periodicCheck = async function () {
+    if (stopped) return;
+    const result = await fn();
+    if (!result) {
+      self.added(self._name, 'publication-stop-marker', { id: 'publication-stop-marker', stopped: true });
+      self.stop();
+    } else Meteor.setTimeout(periodicCheck, 1000);
+  };
 
-  for (let i = 0, l = str.length; i < l; i++) {
-    hval ^= str.charCodeAt(i);
-    hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
-  }
-  if (asString) {
-    return (`0000000${(hval >>> 0).toString(16)}`).substr(-8);
-  }
-  return hval >>> 0;
+  self.onStop(() => {
+    stopped = true;
+    Logger.info(`Publication ${self._name} has stopped in server side`);
+  });
+
+  periodicCheck();
 };
-/* eslint-enable */

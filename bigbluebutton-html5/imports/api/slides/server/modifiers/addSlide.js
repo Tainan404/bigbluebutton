@@ -11,7 +11,7 @@ import addSlidePositions from './addSlidePositions';
 
 const loadSlidesFromHttpAlways = Meteor.settings.private.app.loadSlidesFromHttpAlways || false;
 
-const requestWhiteboardHistory = (meetingId, slideId) => {
+const requestWhiteboardHistory = async (meetingId, slideId) => {
   const REDIS_CONFIG = Meteor.settings.private.redis;
   const CHANNEL = REDIS_CONFIG.channels.toAkkaApps;
   const EVENT_NAME = 'GetWhiteboardAnnotationsReqMsg';
@@ -26,7 +26,7 @@ const requestWhiteboardHistory = (meetingId, slideId) => {
 
 const SUPPORTED_TYPES = [SVG, PNG];
 
-const fetchImageSizes = imageUri => probe(imageUri)
+const fetchImageSizes = (imageUri) => probe(imageUri)
   .then((result) => {
     if (!SUPPORTED_TYPES.includes(result.mime)) {
       throw new Meteor.Error('invalid-image-type', `received ${result.mime} expecting ${SUPPORTED_TYPES.join()}`);
@@ -42,7 +42,7 @@ const fetchImageSizes = imageUri => probe(imageUri)
     return reason;
   });
 
-export default function addSlide(meetingId, podId, presentationId, slide) {
+export default async function addSlide(meetingId, podId, presentationId, slide) {
   check(podId, String);
   check(presentationId, String);
 
@@ -50,7 +50,6 @@ export default function addSlide(meetingId, podId, presentationId, slide) {
     id: String,
     num: Number,
     thumbUri: String,
-    swfUri: String,
     txtUri: String,
     svgUri: String,
     current: Boolean,
@@ -91,26 +90,10 @@ export default function addSlide(meetingId, podId, presentationId, slide) {
     ),
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      return Logger.error(`Adding slide to collection: ${err}`);
-    }
-
-    const { insertedId } = numChanged;
-
-    requestWhiteboardHistory(meetingId, slideId);
-
-    if (insertedId) {
-      return Logger.info(`Added slide id=${slideId} pod=${podId} presentation=${presentationId}`);
-    }
-
-    return Logger.info(`Upserted slide id=${slideId} pod=${podId} presentation=${presentationId}`);
-  };
-
   const imageSizeUri = (loadSlidesFromHttpAlways ? imageUri.replace(/^https/i, 'http') : imageUri);
 
   return fetchImageSizes(imageSizeUri)
-    .then(({ width, height }) => {
+    .then(async ({ width, height }) => {
       // there is a rare case when for a very long not-active meeting the presentation
       // files just disappear and width/height can't be retrieved
       if (width && height) {
@@ -126,10 +109,22 @@ export default function addSlide(meetingId, podId, presentationId, slide) {
         };
         const slidePosition = calculateSlideData(slideData);
 
-        addSlidePositions(meetingId, podId, presentationId, slideId, slidePosition);
+        await addSlidePositions(meetingId, podId, presentationId, slideId, slidePosition);
       }
 
-      return Slides.upsert(selector, modifier, cb);
+      try {
+        const { insertedId, numberAffected } = await Slides.upsertAsync(selector, modifier);
+
+        await requestWhiteboardHistory(meetingId, slideId);
+
+        if (insertedId) {
+          Logger.info(`Added slide id=${slideId} pod=${podId} presentation=${presentationId}`);
+        } else if (numberAffected) {
+          Logger.info(`Upserted slide id=${slideId} pod=${podId} presentation=${presentationId}`);
+        }
+      } catch (err) {
+        Logger.error(`Error on adding slide to collection: ${err}`);
+      }
     })
-    .catch(reason => Logger.error(`Error parsing image size. ${reason}. slide=${slideId} uri=${imageUri}`));
+    .catch((reason) => Logger.error(`Error parsing image size. ${reason}. slide=${slideId} uri=${imageUri}`));
 }

@@ -1,121 +1,123 @@
 import React, { PureComponent } from 'react';
-import cx from 'classnames';
-import { styles } from './styles.scss';
-import DesktopShare from './desktop-share/component';
-import ActionsDropdown from './actions-dropdown/component';
-import QuickPollDropdown from './quick-poll-dropdown/component';
+import CaptionsButtonContainer from '/imports/ui/components/captions/button/container';
+import deviceInfo from '/imports/utils/deviceInfo';
+import Styled from './styles';
+import ActionsDropdown from './actions-dropdown/container';
+import AudioCaptionsButtonContainer from '/imports/ui/components/audio/captions/button/container';
+import ScreenshareButtonContainer from '/imports/ui/components/actions-bar/screenshare/container';
 import AudioControlsContainer from '../audio/audio-controls/container';
 import JoinVideoOptionsContainer from '../video-provider/video-button/container';
-import CaptionsButtonContainer from '/imports/ui/components/actions-bar/captions/container';
 import PresentationOptionsContainer from './presentation-options/component';
+import RaiseHandDropdownContainer from './raise-hand/container';
+import { isPresentationEnabled } from '/imports/ui/services/features';
 
 class ActionsBar extends PureComponent {
-
   render() {
     const {
       amIPresenter,
-      handleExitVideo,
-      handleJoinVideo,
-      handleShareScreen,
-      handleUnshareScreen,
-      isVideoBroadcasting,
       amIModerator,
-      screenSharingCheck,
       enableVideo,
-      isLayoutSwapped,
-      toggleSwapLayout,
+      presentationIsOpen,
+      setPresentationIsOpen,
       handleTakePresenter,
       intl,
-      currentSlidHasContent,
-      parseCurrentSlideContent,
       isSharingVideo,
-      screenShareEndAlert,
+      isSharedNotesPinned,
+      hasScreenshare,
       stopExternalVideoShare,
-      screenshareDataSavingSetting,
       isCaptionsAvailable,
       isMeteorConnected,
       isPollingEnabled,
+      isSelectRandomUserEnabled,
+      isRaiseHandButtonEnabled,
       isThereCurrentPresentation,
       allowExternalVideo,
+      setEmojiStatus,
+      currentUser,
+      layoutContextDispatch,
+      actionsBarStyle,
+      setMeetingLayout,
+      showPushLayout,
+      setPushLayout,
     } = this.props;
 
-    const actionBarClasses = {};
-
-    actionBarClasses[styles.centerWithActions] = amIPresenter;
-    actionBarClasses[styles.center] = true;
-
+    const shouldShowOptionsButton = (isPresentationEnabled() && isThereCurrentPresentation) 
+                                    || isSharingVideo || hasScreenshare || isSharedNotesPinned;
     return (
-      <div className={styles.actionsbar}>
-        <div className={styles.left}>
+      <Styled.ActionsBar
+        style={
+          {
+            height: actionsBarStyle.innerHeight,
+          }
+        }
+      >
+        <Styled.Left>
           <ActionsDropdown {...{
             amIPresenter,
             amIModerator,
             isPollingEnabled,
+            isSelectRandomUserEnabled,
             allowExternalVideo,
             handleTakePresenter,
             intl,
             isSharingVideo,
             stopExternalVideoShare,
             isMeteorConnected,
+            setMeetingLayout,
+            setPushLayout,
+            presentationIsOpen,
+            showPushLayout,
           }}
           />
-          {isPollingEnabled
-            ? (
-              <QuickPollDropdown
-                {...{
-                  currentSlidHasContent,
-                  intl,
-                  amIPresenter,
-                  parseCurrentSlideContent,
-                }}
-              />
-            ) : null
-          }
           {isCaptionsAvailable
             ? (
               <CaptionsButtonContainer {...{ intl }} />
             )
-            : null
-          }
-        </div>
-        <div
-          className={
-            amIPresenter ? cx(styles.centerWithActions, actionBarClasses) : styles.center
-          }
-        >
+            : null}
+          { !deviceInfo.isMobile
+            ? (
+              <AudioCaptionsButtonContainer />
+            )
+            : null }
+        </Styled.Left>
+        <Styled.Center>
           <AudioControlsContainer />
           {enableVideo
             ? (
-              <JoinVideoOptionsContainer
-                handleJoinVideo={handleJoinVideo}
-                handleCloseVideo={handleExitVideo}
-              />
+              <JoinVideoOptionsContainer />
             )
             : null}
-          <DesktopShare {...{
-            handleShareScreen,
-            handleUnshareScreen,
-            isVideoBroadcasting,
+          <ScreenshareButtonContainer {...{
             amIPresenter,
-            screenSharingCheck,
-            screenShareEndAlert,
             isMeteorConnected,
-            screenshareDataSavingSetting,
           }}
           />
-        </div>
-        <div className={styles.right}>
-          {isLayoutSwapped
-            ? (
-              <PresentationOptionsContainer
-                toggleSwapLayout={toggleSwapLayout}
-                isThereCurrentPresentation={isThereCurrentPresentation}
-              />
-            )
+        </Styled.Center>
+        <Styled.Right>
+          { shouldShowOptionsButton ?
+            <PresentationOptionsContainer
+              presentationIsOpen={presentationIsOpen}
+              setPresentationIsOpen={setPresentationIsOpen}
+              layoutContextDispatch={layoutContextDispatch}
+              hasPresentation={isThereCurrentPresentation}
+              hasExternalVideo={isSharingVideo}
+              hasScreenshare={hasScreenshare}
+              hasPinnedSharedNotes={isSharedNotesPinned}
+            />
             : null
           }
-        </div>
-      </div>
+          {isRaiseHandButtonEnabled
+            ? (
+              <RaiseHandDropdownContainer {...{
+                setEmojiStatus,
+                currentUser,
+                intl,
+              }
+              }
+              />
+            ) : null}
+        </Styled.Right>
+      </Styled.ActionsBar>
     );
   }
 }

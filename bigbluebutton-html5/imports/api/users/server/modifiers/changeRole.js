@@ -1,7 +1,8 @@
 import Logger from '/imports/startup/server/logger';
+import updateRole from '/imports/api/users-persistent-data/server/modifiers/updateRole';
 import Users from '/imports/api/users';
 
-export default function changeRole(role, userId, meetingId, changedBy) {
+export default async function changeRole(role, userId, meetingId, changedBy) {
   const selector = {
     meetingId,
     userId,
@@ -13,18 +14,15 @@ export default function changeRole(role, userId, meetingId, changedBy) {
     },
   };
 
-  const cb = (err, numChanged) => {
-    if (err) {
-      return Logger.error(`Changed user role: ${err}`);
+  try {
+    const numberAffected = await Users.updateAsync(selector, modifier);
+
+    if (numberAffected) {
+      await updateRole(userId, meetingId, role);
+      Logger.info(`Changed user role=${role} id=${userId} meeting=${meetingId}`
+        + `${changedBy ? ` changedBy=${changedBy}` : ''}`);
     }
-
-    if (numChanged) {
-      return Logger.info(`Changed user role=${role} id=${userId} meeting=${meetingId}`
-      + `${changedBy ? ` changedBy=${changedBy}` : ''}`);
-    }
-
-    return null;
-  };
-
-  return Users.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Changed user role: ${err}`);
+  }
 }

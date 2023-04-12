@@ -1,52 +1,81 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, injectIntl } from 'react-intl';
-import { Session } from 'meteor/session';
-import Icon from '/imports/ui/components/icon/component';
-import { styles } from './styles';
+import Icon from '/imports/ui/components/common/icon/component';
+import Styled from './styles';
+import { ACTIONS, PANELS } from '../../../layout/enums';
+import MeetingRemainingTime from '../../../notifications-bar/meeting-remaining-time/container';
 
 const intlMessages = defineMessages({
   breakoutTitle: {
     id: 'app.createBreakoutRoom.title',
     description: 'breakout title',
   },
+  breakoutTimeRemaining: {
+    id: 'app.createBreakoutRoom.duration',
+    description: 'Message that tells how much time is remaining for the breakout room',
+  },
 });
-const toggleBreakoutPanel = () => {
-  Session.set(
-    'openPanel',
-    Session.get('openPanel') === 'breakoutroom'
-      ? 'userlist'
-      : 'breakoutroom',
-  );
-};
 
 const BreakoutRoomItem = ({
   hasBreakoutRoom,
+  breakoutRoom,
+  sidebarContentPanel,
+  layoutContextDispatch,
   intl,
 }) => {
+  const toggleBreakoutPanel = () => {
+    layoutContextDispatch({
+      type: ACTIONS.SET_SIDEBAR_CONTENT_IS_OPEN,
+      value: sidebarContentPanel !== PANELS.BREAKOUT,
+    });
+    layoutContextDispatch({
+      type: ACTIONS.SET_SIDEBAR_CONTENT_PANEL,
+      value: sidebarContentPanel === PANELS.BREAKOUT
+        ? PANELS.NONE
+        : PANELS.BREAKOUT,
+    });
+  };
+
   if (hasBreakoutRoom) {
     return (
-      <div>
-        <h2 className={styles.smallTitle}>
-          {intl.formatMessage(intlMessages.breakoutTitle).toUpperCase()}
-        </h2>
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={toggleBreakoutPanel}
-          className={styles.BreakoutRoomsItem}
-          aria-label={intl.formatMessage(intlMessages.breakoutTitle)}
-        >
-          <div className={styles.BreakoutRoomsContents} aria-hidden>
-            <div className={styles.BreakoutRoomsIcon}>
+      <Styled.Messages>
+        <Styled.Container>
+          <Styled.SmallTitle>
+            {intl.formatMessage(intlMessages.breakoutTitle)}
+          </Styled.SmallTitle>
+        </Styled.Container>
+        <Styled.ScrollableList>
+          <Styled.List>
+            <Styled.ListItem
+              role="button"
+              tabIndex={0}
+              onClick={toggleBreakoutPanel}
+              data-test="breakoutRoomsItem"
+              aria-label={intl.formatMessage(intlMessages.breakoutTitle)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  toggleBreakoutPanel();
+                }
+              }}
+            >
               <Icon iconName="rooms" />
-            </div>
-            <span className={styles.BreakoutRoomsText}>
-              {intl.formatMessage(intlMessages.breakoutTitle)}
-            </span>
-          </div>
-        </div>
-      </div>
+              <div aria-hidden>
+                <Styled.BreakoutTitle>
+                  {intl.formatMessage(intlMessages.breakoutTitle)}
+                </Styled.BreakoutTitle>
+                <Styled.BreakoutDuration>
+                  <MeetingRemainingTime
+                    messageDuration={intlMessages.breakoutTimeRemaining}
+                    breakoutRoom={breakoutRoom}
+                  />
+                </Styled.BreakoutDuration>
+              </div>
+            </Styled.ListItem>
+          </Styled.List>
+        </Styled.ScrollableList>
+      </Styled.Messages>
     );
   }
   return <span />;

@@ -1,11 +1,12 @@
-import WhiteboardMultiUser from '/imports/api/whiteboard-multi-user/';
-import PresentationPods from '/imports/api/presentation-pods';
 import Presentations from '/imports/api/presentations';
 import { Slides, SlidePositions } from '/imports/api/slides';
-import Users from '/imports/api/users';
-import Auth from '/imports/ui/services/auth';
+import PollService from '/imports/ui/components/poll/service';
+import { safeMatch } from '/imports/utils/string-utils';
 
-const getCurrentPresentation = podId => Presentations.findOne({
+const POLL_SETTINGS = Meteor.settings.public.poll;
+const MAX_CUSTOM_FIELDS = POLL_SETTINGS.maxCustom;
+
+const getCurrentPresentation = (podId) => Presentations.findOne({
   podId,
   current: true,
 });
@@ -16,9 +17,12 @@ const downloadPresentationUri = (podId) => {
     return null;
   }
 
-  const uri = `https://${window.document.location.hostname}/bigbluebutton/presentation/download/`
+  const presentationFileName = `${currentPresentation.id}.${currentPresentation.name.split('.').pop()}`;
+
+  const APP = Meteor.settings.public.app;
+  const uri = `${APP.bbbWebBase}/presentation/download/`
     + `${currentPresentation.meetingId}/${currentPresentation.id}`
-    + `?presFilename=${encodeURIComponent(currentPresentation.name)}`;
+    + `?presFilename=${encodeURIComponent(presentationFileName)}`;
 
   return uri;
 };
@@ -47,7 +51,6 @@ const getCurrentSlide = (podId) => {
     fields: {
       meetingId: 0,
       thumbUri: 0,
-      swfUri: 0,
       txtUri: 0,
     },
   });
@@ -70,27 +73,50 @@ const currentSlidHasContent = () => {
   return !!content.length;
 };
 
-const parseCurrentSlideContent = (yesValue, noValue, trueValue, falseValue) => {
+const parseCurrentSlideContent = (yesValue, noValue, abstentionValue, trueValue, falseValue) => {
+  const { pollTypes } = PollService;
   const currentSlide = getCurrentSlide('DEFAULT_PRESENTATION_POD');
   const quickPollOptions = [];
   if (!currentSlide) return quickPollOptions;
 
-  const {
+  let {
     content,
   } = currentSlide;
 
-  const pollRegex = /[1-6A-Fa-f][.)].*/g;
-  let optionsPoll = content.match(pollRegex) || [];
-  if (optionsPoll) optionsPoll = optionsPoll.map(opt => `\r${opt[0]}.`);
+  const questionRegex = /.*?\?/gm;
+  const question = safeMatch(questionRegex, content, '');
 
-  const excludePatt = '[^.)]';
-  const ynPollString = `(${excludePatt}${yesValue}\\s*\\/\\s*${noValue})|(${excludePatt}${noValue}\\s*\\/\\s*${yesValue})`;
-  const ynOptionsRegex = new RegExp(ynPollString, 'gi');
-  const ynPoll = content.match(ynOptionsRegex) || [];
+  if (question?.length > 0) {
+    const urlRegex = /\bhttps?:\/\/\S+\b/g;
+    const hasUrl = safeMatch(urlRegex, question[0], '');
+    if (hasUrl.length > 0) question.pop();
+  }
 
-  const tfPollString = `(${excludePatt}${trueValue}\\s*\\/\\s*${falseValue})|(${excludePatt}${falseValue}\\s*\\/\\s*${trueValue})`;
-  const tgOptionsRegex = new RegExp(tfPollString, 'gi');
-  const tfPoll = content.match(tgOptionsRegex) || [];
+  const doubleQuestionRegex = /\?{2}/gm;
+  const doubleQuestion = safeMatch(doubleQuestionRegex, content, false);
+
+  const yesNoPatt = /.*(yes\/no|no\/yes).*/gm;
+  const hasYN = safeMatch(yesNoPatt, content, false);
+
+  const trueFalsePatt = /.*(true\/false|false\/true).*/gm;
+  const hasTF = safeMatch(trueFalsePatt, content, false);
+
+  const pollRegex = /\b[1-9A-Ia-i][.)] .*/g;
+  let optionsPoll = safeMatch(pollRegex, content, []);
+  const optionsWithLabels = [];
+
+  if (hasYN) {
+    optionsPoll = ['yes', 'no'];
+  }
+
+  if (optionsPoll) {
+    optionsPoll = optionsPoll.map((opt) => {
+      const MAX_CHAR_LIMIT = 30;
+      const formattedOpt = opt.substring(0, MAX_CHAR_LIMIT);
+      optionsWithLabels.push(formattedOpt);
+      return `\r${opt[0]}.`;
+    });
+  }
 
   optionsPoll.reduce((acc, currentValue) => {
     const lastElement = acc[acc.length - 1];
@@ -127,65 +153,72 @@ const parseCurrentSlideContent = (yesValue, noValue, trueValue, falseValue) => {
     return acc;
   }, []).filter(({
     options,
-  }) => options.length > 1 && options.length < 7).forEach(poll => quickPollOptions.push({
-    type: `A-${poll.options.length}`,
+  }) => options.length > 1 && options.length < 10).forEach((p) => {
+    const poll = p;
+    if (doubleQuestion) poll.multiResp = true;
+    if (poll.options.length <= 5 || MAX_CUSTOM_FIELDS <= 5) {
+      const maxAnswer = poll.options.length > MAX_CUSTOM_FIELDS
+        ? MAX_CUSTOM_FIELDS
+        : poll.options.length;
+      quickPollOptions.push({
+        type: `${pollTypes.Letter}${maxAnswer}`,
+        poll,
+      });
+    } else {
+      quickPollOptions.push({
+        type: pollTypes.Custom,
+        poll,
+      });
+    }
+  });
+
+  if (question.length > 0 && optionsPoll.length === 0 && !doubleQuestion && !hasYN && !hasTF) {
+    quickPollOptions.push({
+      type: 'R-',
+      poll: {
+        question: question[0],
+      },
+    });
+  }
+
+  if (quickPollOptions.length > 0) {
+    content = content.replace(new RegExp(pollRegex), '');
+  }
+
+  const ynPoll = PollService.matchYesNoPoll(yesValue, noValue, content);
+  const ynaPoll = PollService.matchYesNoAbstentionPoll(yesValue, noValue, abstentionValue, content);
+  const tfPoll = PollService.matchTrueFalsePoll(trueValue, falseValue, content);
+
+  ynPoll.forEach((poll) => quickPollOptions.push({
+    type: pollTypes.YesNo,
     poll,
   }));
 
-  ynPoll.forEach(poll => quickPollOptions.push({
-    type: 'YN',
+  ynaPoll.forEach((poll) => quickPollOptions.push({
+    type: pollTypes.YesNoAbstention,
     poll,
   }));
 
-  tfPoll.forEach(poll => quickPollOptions.push({
-    type: 'TF',
+  tfPoll.forEach((poll) => quickPollOptions.push({
+    type: pollTypes.TrueFalse,
     poll,
   }));
+
+  const pollQuestion = (question?.length > 0 && question[0]?.replace(/ *\([^)]*\) */g, '')) || '';
 
   return {
     slideId: currentSlide.id,
     quickPollOptions,
+    optionsWithLabels,
+    pollQuestion,
   };
-};
-
-const isPresenter = (podId) => {
-  // a main presenter in the meeting always owns a default pod
-  if (podId === 'DEFAULT_PRESENTATION_POD') {
-    const options = {
-      filter: {
-        presenter: 1,
-      },
-    };
-    const currentUser = Users.findOne({
-      userId: Auth.userID,
-    }, options);
-    return currentUser ? currentUser.presenter : false;
-  }
-
-  // if a pod is not default, then we check whether this user owns a current pod
-  const selector = {
-    meetingId: Auth.meetingID,
-    podId,
-  };
-  const pod = PresentationPods.findOne(selector);
-  return pod.currentPresenterId === Auth.userID;
-};
-
-const getMultiUserStatus = (whiteboardId) => {
-  const data = WhiteboardMultiUser.findOne({
-    meetingId: Auth.meetingID,
-    whiteboardId,
-  });
-  return data ? data.multiUser : false;
 };
 
 export default {
   getCurrentSlide,
   getSlidePosition,
-  isPresenter,
   isPresentationDownloadable,
   downloadPresentationUri,
-  getMultiUserStatus,
   currentSlidHasContent,
   parseCurrentSlideContent,
   getCurrentPresentation,

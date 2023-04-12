@@ -1,21 +1,18 @@
 import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, injectIntl } from 'react-intl';
-import _ from 'lodash';
-import { withModalMounter } from '/imports/ui/components/modal/service';
-import Button from '/imports/ui/components/button/component';
-import Dropdown from '/imports/ui/components/dropdown/component';
-import DropdownTrigger from '/imports/ui/components/dropdown/trigger/component';
-import DropdownContent from '/imports/ui/components/dropdown/content/component';
-import DropdownList from '/imports/ui/components/dropdown/list/component';
-import DropdownListItem from '/imports/ui/components/dropdown/list/item/component';
+import { withModalMounter } from '/imports/ui/components/common/modal/service';
 import LockViewersContainer from '/imports/ui/components/lock-viewers/container';
+import GuestPolicyContainer from '/imports/ui/components/waiting-users/guest-policy/container';
 import BreakoutRoom from '/imports/ui/components/actions-bar/create-breakout-room/container';
 import CaptionsService from '/imports/ui/components/captions/service';
 import CaptionsWriterMenu from '/imports/ui/components/captions/writer-menu/container';
-import DropdownListSeparator from '/imports/ui/components/dropdown/list/separator/component';
-import { styles } from './styles';
+import BBBMenu from '/imports/ui/components/common/menu/component';
+import Styled from './styles';
 import { getUserNamesLink } from '/imports/ui/components/user-list/service';
+import Settings from '/imports/ui/services/settings';
+import { isBreakoutRoomsEnabled, isLearningDashboardEnabled } from '/imports/ui/services/features';
+import { uniqueId } from '/imports/utils/string-utils';
 
 const propTypes = {
   intl: PropTypes.shape({
@@ -27,10 +24,11 @@ const propTypes = {
   toggleStatus: PropTypes.func.isRequired,
   mountModal: PropTypes.func.isRequired,
   users: PropTypes.arrayOf(Object).isRequired,
+  guestPolicy: PropTypes.string.isRequired,
   meetingIsBreakout: PropTypes.bool.isRequired,
   hasBreakoutRoom: PropTypes.bool.isRequired,
-  isBreakoutEnabled: PropTypes.bool.isRequired,
   isBreakoutRecordable: PropTypes.bool.isRequired,
+  dynamicGuestPolicy: PropTypes.bool.isRequired,
 };
 
 const intlMessages = defineMessages({
@@ -70,6 +68,14 @@ const intlMessages = defineMessages({
     id: 'app.userList.userOptions.lockViewersDesc',
     description: 'Lock viewers description',
   },
+  guestPolicyLabel: {
+    id: 'app.userList.userOptions.guestPolicyLabel',
+    description: 'Guest policy label',
+  },
+  guestPolicyDesc: {
+    id: 'app.userList.userOptions.guestPolicyDesc',
+    description: 'Guest policy description',
+  },
   muteAllExceptPresenterLabel: {
     id: 'app.userList.userOptions.muteAllExceptPresenterLabel',
     description: 'Mute all except presenter label',
@@ -86,9 +92,13 @@ const intlMessages = defineMessages({
     id: 'app.actionsBar.actionsDropdown.createBreakoutRoomDesc',
     description: 'Description of create breakout room option',
   },
-  invitationItem: {
-    id: 'app.invitation.title',
-    description: 'invitation to breakout title',
+  learningDashboardLabel: {
+    id: 'app.learning-dashboard.label',
+    description: 'Activity Report label',
+  },
+  learningDashboardDesc: {
+    id: 'app.learning-dashboard.description',
+    description: 'Activity Report description',
   },
   saveUserNames: {
     id: 'app.actionsBar.actionsDropdown.saveUserNames',
@@ -102,26 +112,38 @@ const intlMessages = defineMessages({
     id: 'app.actionsBar.actionsDropdown.captionsDesc',
     description: 'Captions menu toggle description',
   },
+  savedNamesListTitle: {
+    id: 'app.userList.userOptions.savedNames.title',
+    description: '',
+  },
+  sortedFirstNameHeading: {
+    id: 'app.userList.userOptions.sortedFirstName.heading',
+    description: '',
+  },
+  sortedLastNameHeading: {
+    id: 'app.userList.userOptions.sortedLastName.heading',
+    description: '',
+  },
+  newTab: {
+    id: 'app.modal.newTab',
+    description: 'label used in aria description',
+  }
 });
 
 class UserOptions extends PureComponent {
   constructor(props) {
     super(props);
 
-    this.state = {
-      isUserOptionsOpen: false,
-    };
+    this.clearStatusId = uniqueId('list-item-');
+    this.muteId = uniqueId('list-item-');
+    this.muteAllId = uniqueId('list-item-');
+    this.lockId = uniqueId('list-item-');
+    this.guestPolicyId = uniqueId('list-item-');
+    this.createBreakoutId = uniqueId('list-item-');
+    this.learningDashboardId = uniqueId('list-item-');
+    this.saveUsersNameId = uniqueId('list-item-');
+    this.captionsId = uniqueId('list-item-');
 
-    this.clearStatusId = _.uniqueId('list-item-');
-    this.muteId = _.uniqueId('list-item-');
-    this.muteAllId = _.uniqueId('list-item-');
-    this.lockId = _.uniqueId('list-item-');
-    this.createBreakoutId = _.uniqueId('list-item-');
-    this.saveUsersNameId = _.uniqueId('list-item-');
-    this.captionsId = _.uniqueId('list-item-');
-
-    this.onActionsShow = this.onActionsShow.bind(this);
-    this.onActionsHide = this.onActionsHide.bind(this);
     this.handleCreateBreakoutRoomClick = this.handleCreateBreakoutRoomClick.bind(this);
     this.handleCaptionsClick = this.handleCaptionsClick.bind(this);
     this.onCreateBreakouts = this.onCreateBreakouts.bind(this);
@@ -131,20 +153,23 @@ class UserOptions extends PureComponent {
   }
 
   onSaveUserNames() {
-    getUserNamesLink().dispatchEvent(new MouseEvent('click',
+    const { intl, meetingName } = this.props;
+    const lang = Settings.application.locale;
+    const date = new Date();
+
+    const dateString = lang ? date.toLocaleDateString(lang) : date.toLocaleDateString();
+    const timeString = lang ? date.toLocaleTimeString(lang) : date.toLocaleTimeString();
+
+    getUserNamesLink(
+      intl.formatMessage(intlMessages.savedNamesListTitle,
+        {
+          0: meetingName,
+          1: `${dateString}:${timeString}`,
+        }),
+      intl.formatMessage(intlMessages.sortedFirstNameHeading),
+      intl.formatMessage(intlMessages.sortedLastNameHeading),
+    ).dispatchEvent(new MouseEvent('click',
       { bubbles: true, cancelable: true, view: window }));
-  }
-
-  onActionsShow() {
-    this.setState({
-      isUserOptionsOpen: true,
-    });
-  }
-
-  onActionsHide() {
-    this.setState({
-      isUserOptionsOpen: false,
-    });
   }
 
   onCreateBreakouts() {
@@ -186,140 +211,154 @@ class UserOptions extends PureComponent {
       toggleMuteAllUsersExceptPresenter,
       meetingIsBreakout,
       hasBreakoutRoom,
-      isBreakoutEnabled,
-      getUsersNotAssigned,
+      openLearningDashboardUrl,
       amIModerator,
       users,
       isMeteorConnected,
+      dynamicGuestPolicy,
     } = this.props;
 
     const canCreateBreakout = amIModerator
       && !meetingIsBreakout
       && !hasBreakoutRoom
-      && isBreakoutEnabled;
+      && isBreakoutRoomsEnabled();
 
-    const canInviteUsers = amIModerator
-      && !meetingIsBreakout
-      && hasBreakoutRoom
-      && getUsersNotAssigned(users).length;
+    const { locale } = intl;
 
-    this.menuItems = _.compact([
-      (isMeteorConnected ? (
-        <DropdownListItem
-          key={this.clearStatusId}
-          icon="clear_status"
-          label={intl.formatMessage(intlMessages.clearAllLabel)}
-          description={intl.formatMessage(intlMessages.clearAllDesc)}
-          onClick={toggleStatus}
-        />) : null
-      ),
-      (isMeteorConnected ? (
-        <DropdownListItem
-          key={this.muteAllId}
-          icon={isMeetingMuted ? 'unmute' : 'mute'}
-          label={intl.formatMessage(intlMessages[isMeetingMuted ? 'unmuteAllLabel' : 'muteAllLabel'])}
-          description={intl.formatMessage(intlMessages[isMeetingMuted ? 'unmuteAllDesc' : 'muteAllDesc'])}
-          onClick={toggleMuteAllUsers}
-        />) : null
-      ),
-      (!isMeetingMuted && isMeteorConnected ? (
-        <DropdownListItem
-          key={this.muteId}
-          icon="mute"
-          label={intl.formatMessage(intlMessages.muteAllExceptPresenterLabel)}
-          description={intl.formatMessage(intlMessages.muteAllExceptPresenterDesc)}
-          onClick={toggleMuteAllUsersExceptPresenter}
-        />) : null
-      ),
-      (amIModerator
-        ? (
-          <DropdownListItem
-            icon="download"
-            label={intl.formatMessage(intlMessages.saveUserNames)}
-            key={this.saveUsersNameId}
-            onClick={this.onSaveUserNames}
-          />)
-        : null
-      ),
-      (isMeteorConnected ? (
-        <DropdownListItem
-          key={this.lockId}
-          icon="lock"
-          label={intl.formatMessage(intlMessages.lockViewersLabel)}
-          description={intl.formatMessage(intlMessages.lockViewersDesc)}
-          onClick={() => mountModal(<LockViewersContainer />)}
-        />) : null
-      ),
-      (isMeteorConnected ? <DropdownListSeparator key={_.uniqueId('list-separator-')} /> : null),
-      (canCreateBreakout && isMeteorConnected ? (
-        <DropdownListItem
-          key={this.createBreakoutId}
-          icon="rooms"
-          label={intl.formatMessage(intlMessages.createBreakoutRoom)}
-          description={intl.formatMessage(intlMessages.createBreakoutRoomDesc)}
-          onClick={this.onCreateBreakouts}
-        />) : null
-      ),
-      (canInviteUsers && isMeteorConnected ? (
-        <DropdownListItem
-          icon="rooms"
-          label={intl.formatMessage(intlMessages.invitationItem)}
-          key={this.createBreakoutId}
-          onClick={this.onInvitationUsers}
-        />) : null
-      ),
-      (amIModerator && CaptionsService.isCaptionsEnabled() && isMeteorConnected
-        ? (
-          <DropdownListItem
-            icon="closed_caption"
-            label={intl.formatMessage(intlMessages.captionsLabel)}
-            description={intl.formatMessage(intlMessages.captionsDesc)}
-            key={this.captionsId}
-            onClick={this.handleCaptionsClick}
-          />
-        )
-        : null),
-    ]);
+    this.menuItems = [];
+
+    if (isMeteorConnected) {
+      if (!meetingIsBreakout) {
+        this.menuItems.push({
+          key: this.muteAllId,
+          label: intl.formatMessage(intlMessages[isMeetingMuted ? 'unmuteAllLabel' : 'muteAllLabel']),
+          description: intl.formatMessage(intlMessages[isMeetingMuted ? 'unmuteAllDesc' : 'muteAllDesc']),
+          onClick: toggleMuteAllUsers,
+          icon: isMeetingMuted ? 'unmute' : 'mute',
+          dataTest: 'muteAll',
+        });
+
+        if (!isMeetingMuted) {
+          this.menuItems.push({
+            key: this.muteId,
+            label: intl.formatMessage(intlMessages.muteAllExceptPresenterLabel),
+            description: intl.formatMessage(intlMessages.muteAllExceptPresenterDesc),
+            onClick: toggleMuteAllUsersExceptPresenter,
+            icon: 'mute',
+            dataTest: 'muteAllExceptPresenter',
+          });
+        }
+
+        this.menuItems.push({
+          key: this.lockId,
+          label: intl.formatMessage(intlMessages.lockViewersLabel),
+          description: intl.formatMessage(intlMessages.lockViewersDesc),
+          onClick: () => mountModal(<LockViewersContainer />),
+          icon: 'lock',
+          dataTest: 'lockViewersButton',
+        });
+
+        if (dynamicGuestPolicy) {
+          this.menuItems.push({
+            key: this.guestPolicyId,
+            icon: 'user',
+            label: intl.formatMessage(intlMessages.guestPolicyLabel),
+            description: intl.formatMessage(intlMessages.guestPolicyDesc),
+            onClick: () => mountModal(<GuestPolicyContainer />),
+            dataTest: 'guestPolicyLabel',
+          });
+        }
+      }
+
+      if (amIModerator) {
+        this.menuItems.push({
+          key: this.saveUsersNameId,
+          label: intl.formatMessage(intlMessages.saveUserNames),
+          // description: ,
+          onClick: this.onSaveUserNames,
+          icon: 'download',
+          dataTest: 'downloadUserNamesList',
+        });
+      }
+
+      this.menuItems.push({
+        key: this.clearStatusId,
+        label: intl.formatMessage(intlMessages.clearAllLabel),
+        description: intl.formatMessage(intlMessages.clearAllDesc),
+        onClick: toggleStatus,
+        icon: 'clear_status',
+        divider: true,
+      });
+
+      if (canCreateBreakout) {
+        this.menuItems.push({
+          key: this.createBreakoutId,
+          icon: 'rooms',
+          label: intl.formatMessage(intlMessages.createBreakoutRoom),
+          description: intl.formatMessage(intlMessages.createBreakoutRoomDesc),
+          onClick: this.onCreateBreakouts,
+          dataTest: 'createBreakoutRooms',
+        });
+      }
+
+      if (amIModerator && CaptionsService.isCaptionsEnabled()) {
+        this.menuItems.push({
+          icon: 'closed_caption',
+          label: intl.formatMessage(intlMessages.captionsLabel),
+          description: intl.formatMessage(intlMessages.captionsDesc),
+          key: this.captionsId,
+          onClick: this.handleCaptionsClick,
+          dataTest: 'writeClosedCaptions',
+        });
+      }
+      if (amIModerator) {
+        if (isLearningDashboardEnabled()) {
+          this.menuItems.push({
+            icon: 'multi_whiteboard',
+            iconRight: 'popout_window',
+            label: intl.formatMessage(intlMessages.learningDashboardLabel),
+            description: `${intl.formatMessage(intlMessages.learningDashboardDesc)} ${intl.formatMessage(intlMessages.newTab)}`,
+            key: this.learningDashboardId,
+            onClick: () => { openLearningDashboardUrl(locale); },
+            dividerTop: true,
+            dataTest: 'learningDashboard'
+          });
+        }
+      }
+    }
 
     return this.menuItems;
   }
 
   render() {
-    const { isUserOptionsOpen } = this.state;
-    const { intl } = this.props;
+    const { intl, isRTL } = this.props;
 
     return (
-      <Dropdown
-        ref={(ref) => { this.dropdown = ref; }}
-        autoFocus={false}
-        isOpen={isUserOptionsOpen}
-        onShow={this.onActionsShow}
-        onHide={this.onActionsHide}
-        className={styles.dropdown}
-      >
-        <DropdownTrigger tabIndex={0}>
-          <Button
+      <BBBMenu
+        trigger={(
+          <Styled.OptionsButton
             label={intl.formatMessage(intlMessages.optionsLabel)}
+            data-test="manageUsers"
             icon="settings"
-            ghost
-            color="primary"
+            color="light"
             hideLabel
-            className={styles.optionsButton}
-            size="sm"
+            size="md"
+            circle
             onClick={() => null}
           />
-        </DropdownTrigger>
-        <DropdownContent
-          className={styles.dropdownContent}
-          placement="right top"
-        >
-          <DropdownList>
-            {
-              this.renderMenuItems()
-            }
-          </DropdownList>
-        </DropdownContent>
-      </Dropdown>
+        )}
+        actions={this.renderMenuItems()}
+        opts={{
+          id: "user-options-dropdown-menu",
+          keepMounted: true,
+          transitionDuration: 0,
+          elevation: 3,
+          getContentAnchorEl: null,
+          fullwidth: "true",
+          anchorOrigin: { vertical: 'bottom', horizontal: isRTL ? 'right' : 'left' },
+          transformOrigin: { vertical: 'top', horizontal: isRTL ? 'right' : 'left' },
+        }}
+      />
     );
   }
 }

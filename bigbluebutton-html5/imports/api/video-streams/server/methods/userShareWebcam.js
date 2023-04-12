@@ -2,30 +2,33 @@ import { Meteor } from 'meteor/meteor';
 import { check } from 'meteor/check';
 import Logger from '/imports/startup/server/logger';
 import RedisPubSub from '/imports/startup/server/redis';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 
-export default function userShareWebcam(credentials, stream) {
-  const REDIS_CONFIG = Meteor.settings.private.redis;
-  const CHANNEL = REDIS_CONFIG.channels.toAkkaApps;
-  const EVENT_NAME = 'UserBroadcastCamStartMsg';
+export default function userShareWebcam(stream) {
+  try {
+    const REDIS_CONFIG = Meteor.settings.private.redis;
+    const CHANNEL = REDIS_CONFIG.channels.toAkkaApps;
+    const EVENT_NAME = 'UserBroadcastCamStartMsg';
+    const { meetingId, requesterUserId } = extractCredentials(this.userId);
 
-  const { meetingId, requesterUserId, requesterToken } = credentials;
+    check(meetingId, String);
+    check(requesterUserId, String);
+    check(stream, String);
 
-  Logger.info(' user sharing webcam: ', credentials);
+    Logger.info(`user sharing webcam: ${meetingId} ${requesterUserId}`);
 
-  check(meetingId, String);
-  check(requesterUserId, String);
-  check(requesterToken, String);
-  check(stream, String);
+    // const actionName = 'joinVideo';
+    /* TODO throw an error if user has no permission to share webcam
+    if (!isAllowedTo(actionName, credentials)) {
+      throw new Meteor.Error('not-allowed', `You are not allowed to share webcam`);
+    } */
 
-  // const actionName = 'joinVideo';
-  /* TODO throw an error if user has no permission to share webcam
-  if (!isAllowedTo(actionName, credentials)) {
-    throw new Meteor.Error('not-allowed', `You are not allowed to share webcam`);
-  } */
+    const payload = {
+      stream,
+    };
 
-  const payload = {
-    stream,
-  };
-
-  return RedisPubSub.publishUserMessage(CHANNEL, EVENT_NAME, meetingId, requesterUserId, payload);
+    RedisPubSub.publishUserMessage(CHANNEL, EVENT_NAME, meetingId, requesterUserId, payload);
+  } catch (err) {
+    Logger.error(`Exception while invoking method userShareWebcam ${err.stack}`);
+  }
 }

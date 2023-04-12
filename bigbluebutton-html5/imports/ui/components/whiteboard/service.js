@@ -1,81 +1,41 @@
 import Users from '/imports/api/users';
 import Auth from '/imports/ui/services/auth';
-import WhiteboardMultiUser from '/imports/api/whiteboard-multi-user/';
-import { AnnotationsStreamer } from '/imports/api/annotations';
+import WhiteboardMultiUser from '/imports/api/whiteboard-multi-user';
 import addAnnotationQuery from '/imports/api/annotations/addAnnotation';
-import logger from '/imports/startup/client/logger';
+import { Slides } from '/imports/api/slides';
 import { makeCall } from '/imports/ui/services/api';
-import { isEqual } from 'lodash';
+import PresentationService from '/imports/ui/components/presentation/service';
+import PollService from '/imports/ui/components/poll/service';
+import logger from '/imports/startup/client/logger';
+import { defineMessages } from 'react-intl';
+import { notify } from '/imports/ui/services/notification';
+import caseInsensitiveReducer from '/imports/utils/caseInsensitiveReducer';
+import { getTextSize } from './utils';
 
 const Annotations = new Mongo.Collection(null);
-const ANNOTATION_CONFIG = Meteor.settings.public.whiteboard.annotations;
-const DRAW_START = ANNOTATION_CONFIG.status.start;
-const DRAW_END = ANNOTATION_CONFIG.status.end;
-const discardedList = [];
 
-export function addAnnotationToDiscardedList(annotation) {
-  if (!discardedList.includes(annotation)) discardedList.push(annotation);
-}
+const intlMessages = defineMessages({
+  notifyNotAllowedChange: {
+    id: 'app.whiteboard.annotations.notAllowed',
+    description: 'Label shown in toast when the user make a change on a shape he doesnt have permission',
+  },
+  shapeNumberExceeded: {
+    id: 'app.whiteboard.annotations.numberExceeded',
+    description: 'Label shown in toast when the user tries to add more shapes than the limit',
+  },
+});
 
-function clearFakeAnnotations() {
-  Annotations.remove({ id: /-fake/g });
-}
+let annotationsStreamListener = null;
 
-function handleAddedAnnotation({
-  meetingId, whiteboardId, userId, annotation,
+async function handleAddedAnnotation({
+  meetingId,
+  whiteboardId,
+  userId,
+  annotation,
 }) {
-  const isOwn = Auth.meetingID === meetingId && Auth.userID === userId;
-  const query = addAnnotationQuery(meetingId, whiteboardId, userId, annotation);
+  const query = await addAnnotationQuery(meetingId, whiteboardId, userId, annotation, Annotations);
 
-  if (!isOwn) {
-    Annotations.upsert(query.selector, query.modifier);
-    return;
-  }
-
-  const fakeAnnotation = Annotations.findOne({ id: `${annotation.id}-fake` });
-  let fakePoints;
-
-  if (fakeAnnotation) {
-    fakePoints = fakeAnnotation.annotationInfo.points;
-    const { points: lastPoints } = annotation.annotationInfo;
-
-    if (annotation.annotationType !== 'pencil') {
-      Annotations.update(fakeAnnotation._id, {
-        $set: {
-          position: annotation.position,
-          'annotationInfo.color': isEqual(fakePoints, lastPoints) || annotation.status === DRAW_END
-            ? annotation.annotationInfo.color : fakeAnnotation.annotationInfo.color,
-        },
-        $inc: { version: 1 }, // TODO: Remove all this version stuff
-      });
-      return;
-    }
-  }
-
-  Annotations.upsert(query.selector, query.modifier, (err) => {
-    if (err) {
-      logger.error({
-        logCode: 'whiteboard_annotation_upsert_error',
-        extraInfo: { error: err },
-      }, 'Error on adding an annotation');
-      return;
-    }
-
-    // Remove fake annotation for pencil on draw end
-    if (annotation.status === DRAW_END) {
-      Annotations.remove({ id: `${annotation.id}-fake` });
-      return;
-    }
-
-    if (annotation.status === DRAW_START) {
-      Annotations.update(fakeAnnotation._id, {
-        $set: {
-          position: annotation.position - 1,
-        },
-        $inc: { version: 1 }, // TODO: Remove all this version stuff
-      });
-    }
-  });
+  Annotations.upsert(query.selector, query.modifier);
 }
 
 function handleRemovedAnnotation({
@@ -83,47 +43,56 @@ function handleRemovedAnnotation({
 }) {
   const query = { meetingId, whiteboardId };
 
-  addAnnotationToDiscardedList(shapeId);
-
   if (userId) {
     query.userId = userId;
   }
 
   if (shapeId) {
-    query.id = { $in: [shapeId, `${shapeId}-fake`] };
+    query.id = shapeId;
   }
-
   Annotations.remove(query);
 }
 
-AnnotationsStreamer.on('removed', handleRemovedAnnotation);
+export function initAnnotationsStreamListener() {
+  logger.info(
+    { logCode: 'init_annotations_stream_listener' },
+    'initAnnotationsStreamListener called',
+  );
+  /**
+   * We create a promise to add the handlers after a ddp subscription stop.
+   * The problem was caused because we add handlers to stream before the onStop event happens,
+   * which set the handlers to undefined.
+   */
+  annotationsStreamListener = new Meteor.Streamer(
+    `annotations-${Auth.meetingID}`,
+    { retransmit: false },
+  );
 
-AnnotationsStreamer.on('added', ({ annotations }) => {
-  // Call handleAddedAnnotation when this annotation is not in discardedList
-  annotations
-    .filter(({ annotation }) => !discardedList.includes(annotation.id))
-    .forEach(annotation => handleAddedAnnotation(annotation));
-});
+  const startStreamHandlersPromise = new Promise((resolve) => {
+    const checkStreamHandlersInterval = setInterval(() => {
+      const streamHandlersSize = Object.values(
+        Meteor.StreamerCentral.instances[`annotations-${Auth.meetingID}`]
+          .handlers,
+      ).filter((el) => el !== undefined).length;
 
-function increaseBrightness(realHex, percent) {
-  let hex = parseInt(realHex, 10).toString(16).padStart(6, 0);
-  // strip the leading # if it's there
-  hex = hex.replace(/^\s*#|\s*$/g, '');
+      if (!streamHandlersSize) {
+        resolve(clearInterval(checkStreamHandlersInterval));
+      }
+    }, 250);
+  });
 
-  // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
-  if (hex.length === 3) {
-    hex = hex.replace(/(.)/g, '$1$1');
-  }
+  startStreamHandlersPromise.then(() => {
+    logger.debug(
+      { logCode: 'annotations_stream_handler_attach' },
+      'Attaching handlers for annotations stream',
+    );
 
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
+    annotationsStreamListener.on('removed', handleRemovedAnnotation);
 
-  /* eslint-disable no-bitwise, no-mixed-operators */
-  return parseInt(((0 | (1 << 8) + r + ((256 - r) * percent) / 100).toString(16)).substr(1)
-     + ((0 | (1 << 8) + g + ((256 - g) * percent) / 100).toString(16)).substr(1)
-     + ((0 | (1 << 8) + b + ((256 - b) * percent) / 100).toString(16)).substr(1), 16);
-  /* eslint-enable no-bitwise, no-mixed-operators */
+    annotationsStreamListener.on('added', ({ annotations }) => {
+      annotations.forEach((annotation) => handleAddedAnnotation(annotation));
+    });
+  });
 }
 
 const annotationsQueue = [];
@@ -133,6 +102,9 @@ const annotationsMaxDelayQueueSize = 60;
 const annotationsBufferTimeMin = 30;
 // Maximum bufferTime
 const annotationsBufferTimeMax = 200;
+// Time before running 'sendBulkAnnotations' again if user is offline
+const annotationsRetryDelay = 1000;
+
 let annotationsSenderIsRunning = false;
 
 const proccessAnnotationsQueue = async () => {
@@ -146,51 +118,274 @@ const proccessAnnotationsQueue = async () => {
 
   const annotations = annotationsQueue.splice(0, queueSize);
 
-  // console.log('annotationQueue.length', annotationsQueue, annotationsQueue.length);
-  await makeCall('sendBulkAnnotations', annotations.filter(({ id }) => !discardedList.includes(id)));
+  const isAnnotationSent = await makeCall('sendBulkAnnotations', annotations);
 
-  // ask tiago
-  const delayPerc = Math.min(annotationsMaxDelayQueueSize, queueSize) / annotationsMaxDelayQueueSize;
-  const delayDelta = annotationsBufferTimeMax - annotationsBufferTimeMin;
-  const delayTime = annotationsBufferTimeMin + (delayDelta * delayPerc);
-  setTimeout(proccessAnnotationsQueue, delayTime);
+  if (!isAnnotationSent) {
+    // undo splice
+    annotationsQueue.splice(0, 0, ...annotations);
+    setTimeout(proccessAnnotationsQueue, annotationsRetryDelay);
+  } else {
+    // ask tiago
+    const delayPerc = Math.min(
+      annotationsMaxDelayQueueSize, queueSize,
+    ) / annotationsMaxDelayQueueSize;
+    const delayDelta = annotationsBufferTimeMax - annotationsBufferTimeMin;
+    const delayTime = annotationsBufferTimeMin + delayDelta * delayPerc;
+    setTimeout(proccessAnnotationsQueue, delayTime);
+  }
 };
 
-export function sendAnnotation(annotation) {
+const sendAnnotation = (annotation) => {
   // Prevent sending annotations while disconnected
+  // TODO: Change this to add the annotation, but delay the send until we're
+  // reconnected. With this it will miss things
   if (!Meteor.status().connected) return;
 
-  annotationsQueue.push(annotation);
+  const index = annotationsQueue.findIndex((ann) => ann.id === annotation.id);
+  if (index !== -1) {
+    annotationsQueue[index] = annotation;
+  } else {
+    annotationsQueue.push(annotation);
+  }
   if (!annotationsSenderIsRunning) setTimeout(proccessAnnotationsQueue, annotationsBufferTimeMin);
+};
 
-  // skip optimistic for draw end since the smoothing is done in akka
-  if (annotation.status === DRAW_END) return;
-
-  const { position, ...relevantAnotation } = annotation;
-  const queryFake = addAnnotationQuery(
-    Auth.meetingID, annotation.wbId, Auth.userID,
+const getMultiUser = (whiteboardId) => {
+  const data = WhiteboardMultiUser.findOne(
     {
-      ...relevantAnotation,
-      id: `${annotation.id}-fake`,
-      position: Number.MAX_SAFE_INTEGER,
-      annotationInfo: {
-        ...annotation.annotationInfo,
-        color: increaseBrightness(annotation.annotationInfo.color, 40),
-      },
+      meetingId: Auth.meetingID,
+      whiteboardId,
     },
+    { fields: { multiUser: 1 } },
   );
 
-  Annotations.upsert(queryFake.selector, queryFake.modifier);
-}
+  if (!data || !data.multiUser || !Array.isArray(data.multiUser)) return [];
 
-WhiteboardMultiUser.find({ meetingId: Auth.meetingID }).observeChanges({
-  changed: clearFakeAnnotations,
-});
+  return data.multiUser;
+};
 
-Users.find({ userId: Auth.userID }, { fields: { presenter: 1 } }).observeChanges({
-  changed(id, { presenter }) {
-    if (presenter === false) clearFakeAnnotations();
-  },
-});
+const getMultiUserSize = (whiteboardId) => {
+  const multiUser = getMultiUser(whiteboardId);
 
-export default Annotations;
+  if (multiUser.length === 0) return 0;
+
+  // Individual whiteboard access is controlled by an array of userIds.
+  // When an user leaves the meeting or the presenter role moves from an
+  // user to another we applying a filter at the whiteboard collection.
+  // Ideally this should change to something more cohese but this would
+  // require extra changes at multiple backend modules.
+  const multiUserSize = Users.find(
+    {
+      meetingId: Auth.meetingID,
+      $or: [
+        {
+          userId: { $in: multiUser },
+          presenter: false,
+        },
+        { presenter: true },
+      ],
+    },
+    { fields: { userId: 1 } },
+  ).fetch();
+
+  return multiUserSize.length;
+};
+
+const getCurrentWhiteboardId = () => {
+  const podId = 'DEFAULT_PRESENTATION_POD';
+  const currentPresentation = PresentationService.getCurrentPresentation(podId);
+
+  if (!currentPresentation) return null;
+
+  const currentSlide = Slides.findOne(
+    {
+      podId,
+      presentationId: currentPresentation.id,
+      current: true,
+    },
+    { fields: { id: 1 } },
+  );
+
+  return currentSlide && currentSlide.id;
+};
+
+const isMultiUserActive = (whiteboardId) => {
+  const multiUser = getMultiUser(whiteboardId);
+
+  return multiUser.length !== 0;
+};
+
+const hasMultiUserAccess = (whiteboardId, userId) => {
+  const multiUser = getMultiUser(whiteboardId);
+
+  return multiUser.includes(userId);
+};
+
+const addGlobalAccess = (whiteboardId) => {
+  makeCall('addGlobalAccess', whiteboardId);
+};
+
+const addIndividualAccess = (whiteboardId, userId) => {
+  makeCall('addIndividualAccess', whiteboardId, userId);
+};
+
+const removeGlobalAccess = (whiteboardId) => {
+  makeCall('removeGlobalAccess', whiteboardId);
+};
+
+const removeIndividualAccess = (whiteboardId, userId) => {
+  makeCall('removeIndividualAccess', whiteboardId, userId);
+};
+
+const changeWhiteboardAccess = (userId, access) => {
+  const whiteboardId = getCurrentWhiteboardId();
+
+  if (!whiteboardId) return;
+
+  if (access) {
+    addIndividualAccess(whiteboardId, userId);
+  } else {
+    removeIndividualAccess(whiteboardId, userId);
+  }
+};
+
+const persistShape = (shape, whiteboardId) => {
+  const annotation = {
+    id: shape.id,
+    annotationInfo: shape,
+    wbId: whiteboardId,
+    userId: Auth.userID,
+  };
+
+  sendAnnotation(annotation);
+};
+
+const removeShapes = (shapes, whiteboardId) => makeCall('deleteAnnotations', shapes, whiteboardId);
+
+const changeCurrentSlide = (s) => {
+  makeCall('changeCurrentSlide', s);
+};
+
+const getShapes = (whiteboardId, curPageId, intl) => {
+  const annotations = Annotations.find(
+    {
+      whiteboardId,
+    },
+    {
+      fields: { annotationInfo: 1, userId: 1 },
+    },
+  ).fetch();
+
+  const result = {};
+
+  annotations.forEach((annotation) => {
+    if (annotation.annotationInfo.questionType) {
+      const modAnnotation = annotation;
+      // poll result, convert it to text and create tldraw shape
+      modAnnotation.annotationInfo.answers = annotation.annotationInfo.answers.reduce(
+        caseInsensitiveReducer, [],
+      );
+      let pollResult = PollService.getPollResultString(annotation.annotationInfo, intl)
+        .split('<br/>').join('\n').replace(/(<([^>]+)>)/ig, '');
+
+      const lines = pollResult.split('\n');
+      const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '').length;
+
+      // add empty spaces before first | in each of the lines to make them all the same length
+      pollResult = lines.map((line) => {
+        if (!line.includes('|') || line.length === longestLine) return line;
+
+        const splitLine = line.split(' |');
+        const spaces = ' '.repeat(longestLine - line.length);
+        return `${splitLine[0]} ${spaces}|${splitLine[1]}`;
+      }).join('\n');
+
+      const style = {
+        color: 'white',
+        dash: 'solid',
+        font: 'mono',
+        isFilled: true,
+        size: 'small',
+        scale: 1,
+      };
+
+      const textSize = getTextSize(pollResult, style, padding = 20);
+
+      modAnnotation.annotationInfo = {
+        childIndex: 0,
+        id: annotation.annotationInfo.id,
+        name: `poll-result-${annotation.annotationInfo.id}`,
+        type: 'rectangle',
+        label: pollResult,
+        labelPoint: [0.5, 0.5],
+        parentId: `${curPageId}`,
+        point: [0, 0],
+        size: textSize,
+        style,
+      };
+      modAnnotation.annotationInfo.questionType = false;
+    }
+    result[annotation.annotationInfo.id] = annotation.annotationInfo;
+  });
+  return result;
+};
+
+const getCurrentPres = () => {
+  const podId = 'DEFAULT_PRESENTATION_POD';
+  return PresentationService.getCurrentPresentation(podId);
+};
+
+const initDefaultPages = (count = 1) => {
+  const pages = {};
+  const pageStates = {};
+  let i = 0;
+  while (i < count + 1) {
+    pages[`${i}`] = {
+      id: `${i}`,
+      name: `Slide ${i}`,
+      shapes: {},
+      bindings: {},
+    };
+    pageStates[`${i}`] = {
+      id: `${i}`,
+      selectedIds: [],
+      camera: {
+        point: [0, 0],
+        zoom: 1,
+      },
+    };
+    i += 1;
+  }
+  return { pages, pageStates };
+};
+
+const notifyNotAllowedChange = (intl) => {
+  if (intl) notify(intl.formatMessage(intlMessages.notifyNotAllowedChange), 'warning', 'whiteboard');
+};
+
+const notifyShapeNumberExceeded = (intl, limit) => {
+  if (intl) notify(intl.formatMessage(intlMessages.shapeNumberExceeded, { 0: limit }), 'warning', 'whiteboard');
+};
+
+export {
+  initDefaultPages,
+  Annotations,
+  sendAnnotation,
+  getMultiUser,
+  getMultiUserSize,
+  getCurrentWhiteboardId,
+  isMultiUserActive,
+  hasMultiUserAccess,
+  changeWhiteboardAccess,
+  addGlobalAccess,
+  addIndividualAccess,
+  removeGlobalAccess,
+  removeIndividualAccess,
+  persistShape,
+  getShapes,
+  getCurrentPres,
+  removeShapes,
+  changeCurrentSlide,
+  notifyNotAllowedChange,
+  notifyShapeNumberExceeded,
+};

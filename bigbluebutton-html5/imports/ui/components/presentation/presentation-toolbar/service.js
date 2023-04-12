@@ -1,7 +1,7 @@
 import Auth from '/imports/ui/services/auth';
 import Presentations from '/imports/api/presentations';
 import { makeCall } from '/imports/ui/services/api';
-import { throttle } from 'lodash';
+import { throttle } from '/imports/utils/throttle';
 
 const PAN_ZOOM_INTERVAL = Meteor.settings.public.presentation.panZoomInterval || 200;
 
@@ -14,7 +14,7 @@ const getNumberOfSlides = (podId, presentationId) => {
     id: presentationId,
   });
 
-  return presentation ? presentation.pages.length : 0;
+  return presentation && presentation.pages ? presentation.pages.length : 0;
 };
 
 const previousSlide = (currentSlideNum, podId) => {

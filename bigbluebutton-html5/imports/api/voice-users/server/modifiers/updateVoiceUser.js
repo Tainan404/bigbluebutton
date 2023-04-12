@@ -2,8 +2,11 @@ import { Match, check } from 'meteor/check';
 import Logger from '/imports/startup/server/logger';
 import VoiceUsers from '/imports/api/voice-users';
 import flat from 'flat';
+import { spokeTimeoutHandles, clearSpokeTimeout } from '/imports/api/common/server/helpers';
 
-export default function updateVoiceUser(meetingId, voiceUser) {
+const TALKING_TIMEOUT = 6000;
+
+export default async function updateVoiceUser(meetingId, voiceUser) {
   check(meetingId, String);
   check(voiceUser, {
     intId: String,
@@ -12,6 +15,8 @@ export default function updateVoiceUser(meetingId, voiceUser) {
     muted: Match.Maybe(Boolean),
     voiceConf: String,
     joined: Match.Maybe(Boolean),
+    floor: Match.Maybe(Boolean),
+    lastFloorTime: Match.Maybe(String),
   });
 
   const { intId } = voiceUser;
@@ -23,18 +28,61 @@ export default function updateVoiceUser(meetingId, voiceUser) {
 
   const modifier = {
     $set: Object.assign(
-      { meetingId },
       flat(voiceUser),
     ),
   };
 
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Update voiceUser=${intId}: ${err}`);
+  if (voiceUser.talking) {
+    const user = await VoiceUsers.findOneAsync({ meetingId, intId }, {
+      fields: {
+        startTime: 1,
+      },
+    });
+
+    if (user && !user.startTime) modifier.$set.startTime = Date.now();
+    modifier.$set.spoke = true;
+    modifier.$set.endTime = null;
+    clearSpokeTimeout(meetingId, intId);
+  }
+
+  if (!voiceUser.talking) {
+    const timeoutHandle = Meteor.setTimeout(async () => {
+      const user = await VoiceUsers.findOneAsync({ meetingId, intId }, {
+        fields: {
+          endTime: 1,
+          talking: 1,
+        },
+      });
+
+      if (user) {
+        const { endTime, talking } = user;
+        const spokeDelay = ((Date.now() - endTime) < TALKING_TIMEOUT);
+        if (talking || spokeDelay) return;
+        modifier.$set.spoke = false;
+        modifier.$set.startTime = null;
+        try {
+          const numberAffected = await VoiceUsers.updateAsync(selector, modifier);
+
+          if (numberAffected) {
+            Logger.debug('Update voiceUser', { voiceUser: intId, meetingId });
+          }
+        } catch (err) {
+          Logger.error(`Update voiceUser=${intId}: ${err}`);
+        }
+      }
+    }, TALKING_TIMEOUT);
+
+    spokeTimeoutHandles[`${meetingId}-${intId}`] = timeoutHandle;
+    modifier.$set.endTime = Date.now();
+  }
+
+  try {
+    const numberAffected = await VoiceUsers.updateAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.debug('Update voiceUser', { voiceUser: intId, meetingId });
     }
-
-    return Logger.debug(`Update voiceUser=${intId} meeting=${meetingId}`);
-  };
-
-  return VoiceUsers.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Update voiceUser=${intId}: ${err}`);
+  }
 }

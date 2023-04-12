@@ -2,12 +2,12 @@ import { check } from 'meteor/check';
 import Polls from '/imports/api/polls';
 import Logger from '/imports/startup/server/logger';
 
-export default function userResponded({ body }) {
-  const { pollId, userId, answerId } = body;
+export default async function userResponded({ body }) {
+  const { pollId, userId, answerIds } = body;
 
   check(pollId, String);
   check(userId, String);
-  check(answerId, Number);
+  check(answerIds, Array);
 
   const selector = {
     id: pollId,
@@ -18,18 +18,17 @@ export default function userResponded({ body }) {
       users: userId,
     },
     $push: {
-      responses: { userId, answerId },
+      responses: { userId, answerIds },
     },
   };
 
-  const cb = (err) => {
-    if (err) {
-      return Logger.error(`Updating Poll responses: ${err}`);
+  try {
+    const numberAffected = await Polls.updateAsync(selector, modifier);
+
+    if (numberAffected) {
+      Logger.info(`Updating Poll response (userId: ${userId}, response: ${JSON.stringify(answerIds)}, pollId: ${pollId})`);
     }
-
-    return Logger.info(`Updating Poll response (userId: ${userId},`
-      + `response: ${answerId}, pollId: ${pollId})`);
-  };
-
-  return Polls.update(selector, modifier, cb);
+  } catch (err) {
+    Logger.error(`Updating Poll responses: ${err}`);
+  }
 }

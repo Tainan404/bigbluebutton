@@ -1,8 +1,10 @@
 import { Meteor } from 'meteor/meteor';
-import Users from '/imports/api/users';
 
-const Annotations = new Mongo.Collection('annotations');
-const Streamer = new Meteor.Streamer('annotations', { retransmit: false });
+const collectionOptions = Meteor.isClient ? {
+  connection: null,
+} : {};
+
+const Annotations = new Mongo.Collection('annotations', collectionOptions);
 
 if (Meteor.isServer) {
   // types of queries for the annotations  (Total):
@@ -14,36 +16,8 @@ if (Meteor.isServer) {
   // 6. meetingId, whiteboardId, userId     ( 1 )
   // These 2 indexes seem to cover all of the cases
 
-  Annotations._ensureIndex({ id: 1 });
-  Annotations._ensureIndex({ meetingId: 1, whiteboardId: 1, userId: 1 });
-
-  Streamer.allowRead(function (eventName, ...args) {
-    return true;
-  });
-
-  Streamer.allowEmit(function (eventName, { meetingId }) {
-    return this.userId && this.userId.includes(meetingId);
-  });
-
-  Streamer.allowWrite(function (eventName, { credentials }) {
-    if (!this.userId || !credentials) return false;
-
-    const { meetingId, requesterUserId: userId, requesterToken: authToken } = credentials;
-
-    const user = Users.findOne({
-      meetingId,
-      userId,
-      authToken,
-      connectionId: this.connection.id,
-      validated: true,
-      connectionStatus: 'online',
-    });
-
-    if (!user) return false;
-
-    return true;
-  });
+  Annotations.createIndexAsync({ id: 1 });
+  Annotations.createIndexAsync({ meetingId: 1, whiteboardId: 1, userId: 1 });
 }
 
 export default Annotations;
-export const AnnotationsStreamer = Streamer;
