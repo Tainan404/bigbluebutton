@@ -1,5 +1,7 @@
 package org.bigbluebutton.core.models
 
+import org.bigbluebutton.core.db.MeetingUsersPoliciesDAO
+
 object GuestsWaiting {
   def findWithIntId(guests: GuestsWaiting, intId: String): Option[GuestWaiting] = {
     guests.toVector find (u => u.intId == intId)
@@ -20,8 +22,9 @@ object GuestsWaiting {
     guest.guestPolicy
   }
 
-  def setGuestPolicy(guests: GuestsWaiting, policy: GuestPolicy): Unit = {
+  def setGuestPolicy(meetingId: String, guests: GuestsWaiting, policy: GuestPolicy): Unit = {
     guests.setGuestPolicy(policy)
+    MeetingUsersPoliciesDAO.update(meetingId, policy)
   }
 
   def setGuestLobbyMessage(guests: GuestsWaiting, message: String): Unit = {
@@ -68,7 +71,7 @@ class GuestsWaiting {
   }
 }
 
-case class GuestWaiting(intId: String, name: String, role: String, guest: Boolean, avatar: String, authenticated: Boolean, registeredOn: Long)
+case class GuestWaiting(intId: String, name: String, role: String, guest: Boolean, avatar: String, color: String, authenticated: Boolean, registeredOn: Long)
 case class GuestPolicy(policy: String, setBy: String)
 
 object GuestPolicyType {

@@ -13,7 +13,9 @@ import org.bigbluebutton.SystemConfiguration
 
 import java.util.concurrent.TimeUnit
 import org.bigbluebutton.common2.msgs._
+import org.bigbluebutton.core.db.{ MeetingDAO, UserDAO }
 import org.bigbluebutton.core.running.RunningMeeting
+import org.bigbluebutton.core.util.ColorPicker
 import org.bigbluebutton.core2.RunningMeetings
 import org.bigbluebutton.core2.message.senders.MsgBuilder
 import org.bigbluebutton.service.HealthzService
@@ -183,6 +185,13 @@ class BigBlueButtonActor(
         // Stop the meeting actor.
         context.stop(m.actorRef)
       }
+
+      MeetingDAO.delete(msg.meetingId)
+      //      Removing the meeting is enough, all other tables has "ON DELETE CASCADE"
+      //      UserDAO.deleteAllFromMeeting(msg.meetingId)
+
+      //Remove ColorPicker idx of the meeting
+      ColorPicker.reset(m.props.meetingProp.intId)
     }
   }
 
