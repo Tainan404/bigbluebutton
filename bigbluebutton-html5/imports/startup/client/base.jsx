@@ -391,10 +391,10 @@ export default withTracker(() => {
     BBBStorage.setItem(USER_WAS_EJECTED, ejected);
   }
 
-  if (currentConnectionId && currentConnectionId !== connectionID && connectionIdUpdateTime > connectionAuthTime) {
-    Session.set('codeError', '409');
-    Session.set('errorMessageDescription', 'joined_another_window_reason')
-  }
+  // if (currentConnectionId && currentConnectionId !== connectionID && connectionIdUpdateTime > connectionAuthTime) {
+  //   Session.set('codeError', '409');
+  //   Session.set('errorMessageDescription', 'joined_another_window_reason')
+  // }
 
   let userSubscriptionHandler;
 

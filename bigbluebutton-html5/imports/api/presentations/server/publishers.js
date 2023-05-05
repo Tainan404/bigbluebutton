@@ -2,10 +2,12 @@ import { Meteor } from 'meteor/meteor';
 import Presentations from '/imports/api/presentations';
 import Logger from '/imports/startup/server/logger';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 
 async function presentations() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing Presentation was requested by unauth connection ${this.connection.id}`);

@@ -7,16 +7,15 @@ import AuthTokenValidation, {
   ValidationStates,
 } from '/imports/api/auth-token-validation';
 import { DDPServer } from 'meteor/ddp-server';
-import { publicationSafeGuard } from '/imports/api/common/server/helpers';
+import { publicationSafeGuard, extractCredentials } from '/imports/api/common/server/helpers';
 
 Meteor.server.setPublicationStrategy('polls', DDPServer.publicationStrategies.NO_MERGE);
 
 async function currentPoll(secretPoll) {
   check(secretPoll, Boolean);
-  const tokenValidation = await AuthTokenValidation.findOneAsync({
-    connectionId: this.connection.id,
-  });
-
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
   if (
     !tokenValidation
     || tokenValidation.validationStatus !== ValidationStates.VALIDATED
@@ -71,9 +70,9 @@ function publishCurrentPoll(...args) {
 Meteor.publish('current-poll', publishCurrentPoll);
 
 async function polls() {
-  const tokenValidation = await AuthTokenValidation.findOneAsync({
-    connectionId: this.connection.id,
-  });
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (
     !tokenValidation

@@ -2,10 +2,12 @@ import { Meteor } from 'meteor/meteor';
 import Logger from '/imports/startup/server/logger';
 import Pads, { PadsSessions, PadsUpdates } from '/imports/api/pads';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 
 async function pads() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing Pads was requested by unauth connection ${this.connection.id}`);
@@ -26,8 +28,9 @@ async function pads() {
 }
 
 async function padsSessions() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing PadsSessions was requested by unauth connection ${this.connection.id}`);
@@ -42,8 +45,9 @@ async function padsSessions() {
 }
 
 async function padsUpdates() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing PadsUpdates was requested by unauth connection ${this.connection.id}`);

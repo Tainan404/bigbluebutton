@@ -12,7 +12,7 @@ export default async function stopDictation(locale) {
     check(requesterUserId, String);
     check(locale, String);
 
-    const captions = await Captions.findOne({
+    const captions = await Captions.findOneAsync({
       meetingId,
       ownerId: requesterUserId,
       locale,

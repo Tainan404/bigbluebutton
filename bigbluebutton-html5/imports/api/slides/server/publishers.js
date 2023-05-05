@@ -2,10 +2,12 @@ import { Slides, SlidePositions } from '/imports/api/slides';
 import { Meteor } from 'meteor/meteor';
 import Logger from '/imports/startup/server/logger';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 
 async function slides() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing Slides was requested by unauth connection ${this.connection.id}`);
@@ -27,8 +29,9 @@ function publish(...args) {
 Meteor.publish('slides', publish);
 
 async function slidePositions() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing SlidePositions was requested by unauth connection ${this.connection.id}`);

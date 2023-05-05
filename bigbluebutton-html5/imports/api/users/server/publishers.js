@@ -41,8 +41,9 @@ function publishCurrentUser(...args) {
 Meteor.publish('current-user', publishCurrentUser);
 
 async function users() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing Users was requested by unauth connection ${this.connection.id}`);

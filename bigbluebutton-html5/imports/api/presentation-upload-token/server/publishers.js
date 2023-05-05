@@ -3,10 +3,12 @@ import { check } from 'meteor/check';
 import PresentationUploadToken from '/imports/api/presentation-upload-token';
 import Logger from '/imports/startup/server/logger';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 
 async function presentationUploadToken(podId, filename, temporaryPresentationId) {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing PresentationUploadToken was requested by unauth connection ${this.connection.id}`);

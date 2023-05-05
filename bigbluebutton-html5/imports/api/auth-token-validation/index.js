@@ -5,6 +5,7 @@ const collectionOptions = Meteor.isClient ? {
 } : {};
 
 const AuthTokenValidation = new Mongo.Collection('auth-token-validation', collectionOptions);
+export const PendingAuthentications = new Mongo.Collection('pending-authentications', collectionOptions);
 
 if (Meteor.isServer) {
   AuthTokenValidation.createIndexAsync({ connectionId: 1 });

@@ -5,20 +5,21 @@ import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-v
 import Logger from '/imports/startup/server/logger';
 import Meetings from '/imports/api/meetings';
 import Users from '/imports/api/users';
-import { publicationSafeGuard } from '/imports/api/common/server/helpers';
+import { publicationSafeGuard, extractCredentials } from '/imports/api/common/server/helpers';
 
 const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
 
 async function breakoutsHistory() {
+  const { meetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing Meetings-history was requested by unauth connection ${this.connection.id}`);
     return Meetings.find({ meetingId: '' });
   }
 
-  const { meetingId, userId } = tokenValidation;
+  const { userId } = tokenValidation;
   Logger.debug('Publishing Breakouts-History', { meetingId, userId });
 
   const User = await Users.findOneAsync({ userId, meetingId }, { fields: { userId: 1, role: 1 } });

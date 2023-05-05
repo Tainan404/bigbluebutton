@@ -5,17 +5,15 @@ export default async function upsertValidationState(
   meetingId,
   userId,
   validationStatus,
-  connectionId,
   reason = null,
 ) {
   const selector = {
-    meetingId, userId, connectionId,
+    meetingId, userId,
   };
   const modifier = {
     $set: {
       meetingId,
       userId,
-      connectionId,
       validationStatus,
       updatedAt: new Date().getTime(),
       reason,
@@ -24,7 +22,7 @@ export default async function upsertValidationState(
 
   try {
     await AuthTokenValidation
-      .removeAsync({ meetingId, userId, connectionId: { $ne: connectionId } });
+      .removeAsync({ meetingId, userId });
     const { numberAffected } = AuthTokenValidation.upsertAsync(selector, modifier);
 
     if (numberAffected) {

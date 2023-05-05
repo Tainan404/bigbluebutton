@@ -2,17 +2,37 @@ import { Meteor } from 'meteor/meteor';
 import RedisPubSub from '/imports/startup/server/redis';
 import Logger from '/imports/startup/server/logger';
 import upsertValidationState from '/imports/api/auth-token-validation/server/modifiers/upsertValidationState';
-import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
-import pendingAuthenticationsStore from '../store/pendingAuthentications';
+import AuthTokenValidation, { ValidationStates, PendingAuthentications } from '/imports/api/auth-token-validation';
+import Users from '/imports/api/users';
+import createDummyUser from '../modifiers/createDummyUser';
+import updateUserConnectionId from '../modifiers/updateUserConnectionId';
+import ClientConnections from '/imports/startup/server/ClientConnections';
+import { log } from 'winston';
 
 const AUTH_TIMEOUT = 120000;
 
 async function validateAuthToken(meetingId, requesterUserId, requesterToken, externalId) {
   let setTimeoutRef = null;
   const userValidation = await new Promise(async (res, rej) => {
-    const observeFunc = (obj) => {
+    const observeFunc = async (obj) => {
       if (obj.validationStatus === ValidationStates.VALIDATED) {
         clearTimeout(setTimeoutRef);
+        /// code from handleValidateAuthToken
+        const sessionId = `${meetingId}--${requesterUserId}`;
+        this.setUserId(sessionId);
+
+        const User = await Users.findOneAsync({
+          meetingId,
+          userId: requesterUserId,
+        });
+        if (!User) {
+          await createDummyUser(meetingId, requesterUserId, requesterToken);
+        } else {
+          await updateUserConnectionId(meetingId, requesterUserId, this.connection.id);
+        }
+
+        ClientConnections.add(sessionId, this.connection);
+        /// end code from handleValidateAuthToken
         return res(obj);
       }
       if (obj.validationStatus === ValidationStates.INVALID) {
@@ -21,7 +41,7 @@ async function validateAuthToken(meetingId, requesterUserId, requesterToken, ext
       }
     };
     const authTokenValidationObserver = AuthTokenValidation.find({
-      connectionId: this.connection.id,
+      meetingId, userId: requesterUserId,
     }).observe({
       added: observeFunc,
       changed: observeFunc,
@@ -41,8 +61,12 @@ async function validateAuthToken(meetingId, requesterUserId, requesterToken, ext
 
       if (!meetingId) return false;
 
-      // Store reference of methodInvocationObject ( to postpone the connection userId definition )
-      pendingAuthenticationsStore.add(meetingId, requesterUserId, requesterToken, this);
+      await PendingAuthentications.insert({
+        meetingId,
+        userId: requesterUserId,
+        authToken: requesterToken,
+      });
+
       await upsertValidationState(
         meetingId,
         requesterUserId,
@@ -67,7 +91,7 @@ async function validateAuthToken(meetingId, requesterUserId, requesterToken, ext
     } catch (err) {
       const errMsg = `Exception while invoking method validateAuthToken ${err}`;
       Logger.error(errMsg);
-      rej(errMsg);
+      // rej(errMsg);
       clearTimeout(setTimeoutRef);
       authTokenValidationObserver.stop();
     }

@@ -2,13 +2,9 @@ import { check } from 'meteor/check';
 import Logger from '/imports/startup/server/logger';
 import Users from '/imports/api/users';
 import userJoin from './userJoin';
-import pendingAuthenticationsStore from '../store/pendingAuthentications';
-import createDummyUser from '../modifiers/createDummyUser';
-import updateUserConnectionId from '../modifiers/updateUserConnectionId';
-import ClientConnections from '/imports/startup/server/ClientConnections';
 
 import upsertValidationState from '/imports/api/auth-token-validation/server/modifiers/upsertValidationState';
-import { ValidationStates } from '/imports/api/auth-token-validation';
+import { PendingAuthentications, ValidationStates } from '/imports/api/auth-token-validation';
 
 const clearOtherSessions = (sessionUserId, current = false) => {
   const serverSessions = Meteor.server.sessions;
@@ -37,22 +33,21 @@ export default async function handleValidateAuthToken({ body }, meetingId) {
   check(authTokenValidatedOn, Number);
   check(reasonCode, String);
 
-  const pendingAuths = pendingAuthenticationsStore.take(meetingId, userId, authToken);
+  const pendingAuths = await PendingAuthentications.find({
+    meetingId,
+    userId,
+    authToken,
+  }).fetchAsync();
   Logger.info(`PendingAuths length [${pendingAuths.length}]`);
   if (pendingAuths.length === 0) return;
-
   if (!valid) {
     await Promise.all(pendingAuths.map(
       async (pendingAuth) => {
         try {
-          const { methodInvocationObject } = pendingAuth;
-          const connectionId = methodInvocationObject.connection.id;
-
           await upsertValidationState(
             meetingId,
             userId,
             ValidationStates.INVALID,
-            connectionId,
             reasonCode,
           );
 
@@ -74,37 +69,15 @@ export default async function handleValidateAuthToken({ body }, meetingId) {
     return;
   }
 
-  // Define user ID on connections
   await Promise.all(pendingAuths.map(
     async (pendingAuth) => {
-      const { methodInvocationObject } = pendingAuth;
+      await PendingAuthentications.removeAsync(pendingAuth.userId, pendingAuth.authToken);
 
-      /* Logic migrated from validateAuthToken method
-      ( postponed to only run in case of success response ) - Begin */
-      const sessionId = `${meetingId}--${userId}`;
-
-      methodInvocationObject.setUserId(sessionId);
-
-      const User = await Users.findOneAsync({
-        meetingId,
-        userId,
-      });
-
-      if (!User) {
-        await createDummyUser(meetingId, userId, authToken);
-      } else {
-        await updateUserConnectionId(meetingId, userId, methodInvocationObject.connection.id);
-      }
-
-      ClientConnections.add(sessionId, methodInvocationObject.connection);
       await upsertValidationState(
         meetingId,
         userId,
         ValidationStates.VALIDATED,
-        methodInvocationObject.connection.id,
       );
-
-      /* End of logic migrated from validateAuthToken */
     },
   ));
 

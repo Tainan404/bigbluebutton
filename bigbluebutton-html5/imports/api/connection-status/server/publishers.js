@@ -4,13 +4,14 @@ import Logger from '/imports/startup/server/logger';
 import ConnectionStatus from '/imports/api/connection-status';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
 import Users from '/imports/api/users';
-import { publicationSafeGuard } from '/imports/api/common/server/helpers';
+import { publicationSafeGuard, extractCredentials } from '/imports/api/common/server/helpers';
 
 const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
 
 async function connectionStatus() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing ConnectionStatus was requested by unauth connection ${this.connection.id}`);

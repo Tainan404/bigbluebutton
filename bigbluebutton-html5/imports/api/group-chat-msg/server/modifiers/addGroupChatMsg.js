@@ -35,7 +35,7 @@ export default async function addGroupChatMsg(meetingId, chatId, msg) {
     ...restMsg
   } = msg;
 
-  const groupChat = GroupChat.findOne({ meetingId, chatId });
+  const groupChat = await GroupChat.findOneAsync({ meetingId, chatId });
 
   const msgDocument = {
     ...restMsg,

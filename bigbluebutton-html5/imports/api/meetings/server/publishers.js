@@ -8,14 +8,16 @@ import Meetings, {
 } from '/imports/api/meetings';
 import Users from '/imports/api/users';
 import Logger from '/imports/startup/server/logger';
-import { publicationSafeGuard } from '/imports/api/common/server/helpers';
+import { publicationSafeGuard, extractCredentials } from '/imports/api/common/server/helpers';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
 import notificationEmitter from '../notificationEmitter';
 
 const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
 
-function meetings() {
-  const tokenValidation = AuthTokenValidation.findOne({ connectionId: this.connection.id });
+async function meetings() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing Meetings was requested by unauth connection ${this.connection.id}`);
@@ -32,15 +34,15 @@ function meetings() {
     ],
   };
 
-  const User = Users.findOne({ userId, meetingId }, { fields: { userId: 1, role: 1 } });
+  const User = await Users.findOneAsync({ userId, meetingId }, { fields: { userId: 1, role: 1 } });
   if (!!User && User.role === ROLE_MODERATOR) {
     selector.$or.push({
       'meetingProp.isBreakout': true,
       'breakoutProps.parentId': meetingId,
     });
     // Monitor this publication and stop it when user is not a moderator anymore
-    const comparisonFunc = () => {
-      const user = Users.findOne({ userId, meetingId }, { fields: { role: 1, userId: 1 } });
+    const comparisonFunc = async () => {
+      const user = Users.findOneAsync({ userId, meetingId }, { fields: { role: 1, userId: 1 } });
       const condition = user.role === ROLE_MODERATOR;
 
       if (!condition) {
@@ -73,8 +75,10 @@ function publish(...args) {
 
 Meteor.publish('meetings', publish);
 
-function recordMeetings() {
-  const tokenValidation = AuthTokenValidation.findOne({ connectionId: this.connection.id });
+async function recordMeetings() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing RecordMeetings was requested by unauth connection ${this.connection.id}`);
@@ -94,8 +98,10 @@ function recordPublish(...args) {
 
 Meteor.publish('record-meetings', recordPublish);
 
-function layoutMeetings() {
-  const tokenValidation = AuthTokenValidation.findOne({ connectionId: this.connection.id });
+async function layoutMeetings() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing LayoutMeetings was requested by unauth connection ${this.connection.id}`);
@@ -116,8 +122,10 @@ function layoutPublish(...args) {
 
 Meteor.publish('layout-meetings', layoutPublish);
 
-function externalVideoMeetings() {
-  const tokenValidation = AuthTokenValidation.findOne({ connectionId: this.connection.id });
+async function externalVideoMeetings() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing ExternalVideoMeetings was requested by unauth connection ${this.connection.id}`);
@@ -138,8 +146,10 @@ function externalVideoPublish(...args) {
 
 Meteor.publish('external-video-meetings', externalVideoPublish);
 
-function meetingTimeRemaining() {
-  const tokenValidation = AuthTokenValidation.findOne({ connectionId: this.connection.id });
+async function meetingTimeRemaining() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing MeetingTimeRemaining was requested by unauth connection ${this.connection.id}`);
@@ -158,10 +168,12 @@ function timeRemainingPublish(...args) {
 
 Meteor.publish('meeting-time-remaining', timeRemainingPublish);
 
-function notifications() {
-  const tokenValidation = AuthTokenValidation.findOne({ connectionId: this.connection.id });
+async function notifications() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
+  const tokenValidation = await AuthTokenValidation
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
   if (tokenValidation && tokenValidation.validationStatus === ValidationStates.VALIDATED) {
-    notificationEmitter.on('notification', (notification) => {
+    notificationEmitter.on('notification', async (notification) => {
       const { meetingId, userId } = tokenValidation;
       switch (notification.type) {
         case 'notifyAllInMeeting':
@@ -171,7 +183,8 @@ function notifications() {
           if (notification.meetingId === meetingId && notification.userId === userId) this.added('notifications', Random.id(), notification);
           break;
         case 'NotifyRoleInMeeting': {
-          const user = Users.findOne({ userId, meetingId }, { fields: { role: 1, userId: 1 } });
+          const user = await Users
+            .findOneAsync({ userId, meetingId }, { fields: { role: 1, userId: 1 } });
           if (notification.meetingId === meetingId && notification.role === user.role) this.added('notifications', Random.id(), notification);
           break;
         }

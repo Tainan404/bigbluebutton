@@ -3,17 +3,19 @@ import { Meteor } from 'meteor/meteor';
 import Logger from '/imports/startup/server/logger';
 import AuthTokenValidation, { ValidationStates } from '/imports/api/auth-token-validation';
 import ejectUserFromVoice from './methods/ejectUserFromVoice';
+import { extractCredentials } from '/imports/api/common/server/helpers';
 
 async function voiceUser() {
+  const { meetingId: creadentialMeetingId, requesterUserId } = extractCredentials(this.userId);
   const tokenValidation = await AuthTokenValidation
-    .findOneAsync({ connectionId: this.connection.id });
+    .findOneAsync({ meetingId: creadentialMeetingId, userId: requesterUserId });
 
   if (!tokenValidation || tokenValidation.validationStatus !== ValidationStates.VALIDATED) {
     Logger.warn(`Publishing VoiceUsers was requested by unauth connection ${this.connection.id}`);
     return VoiceUsers.find({ meetingId: '' });
   }
 
-  const { meetingId, userId: requesterUserId } = tokenValidation;
+  const { meetingId, userId } = tokenValidation;
 
   const onCloseConnection = Meteor.bindEnvironment(async () => {
     try {

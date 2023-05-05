@@ -25,17 +25,21 @@ export default async function addBulkGroupChatMsgs(msgs) {
         senderRole: sender.role,
       };
     })
-    .map((el) => flat(el, { safe: true }))
-    .map((msg)=>{
-      const groupChat = GroupChat.findOne({ meetingId: msg.meetingId, chatId: msg.chatId });
+    .map((el) => flat(el, { safe: true }));
+
+  const addParticipants = Promise.all(
+    mappedMsgs.map(async (msg) => {
+      const groupChat = await GroupChat
+        .findOneAsync({ meetingId: msg.meetingId, chatId: msg.chatId });
       return {
         ...msg,
         participants: [...groupChat.users],
       };
-    });
+    }),
+  );
 
   try {
-    const { insertedCount } = await GroupChatMsg.rawCollection().insertMany(mappedMsgs);
+    const { insertedCount } = await GroupChatMsg.rawCollection().insertMany(addParticipants);
     msgs.length = 0;
 
     if (insertedCount) {
