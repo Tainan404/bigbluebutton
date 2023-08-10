@@ -2,28 +2,28 @@ package org.bigbluebutton.core.running
 
 import org.bigbluebutton.SystemConfiguration
 import org.bigbluebutton.common2.msgs._
-import org.bigbluebutton.core.api.{ BreakoutRoomEndedInternalMsg, DestroyMeetingInternalMsg, EndBreakoutRoomInternalMsg }
+import org.bigbluebutton.core.api.{BreakoutRoomEndedInternalMsg, DestroyMeetingInternalMsg, EndBreakoutRoomInternalMsg}
 import org.bigbluebutton.core.apps.groupchats.GroupChatApp
 import org.bigbluebutton.core.apps.users.UsersApp
 import org.bigbluebutton.core.apps.voice.VoiceApp
-import org.bigbluebutton.core.bus.{ BigBlueButtonEvent, InternalEventBus }
-import org.bigbluebutton.core.db.UserBreakoutRoomDAO
-import org.bigbluebutton.core.domain.MeetingState2x
+import org.bigbluebutton.core.bus.{BigBlueButtonEvent, InternalEventBus}
+import org.bigbluebutton.core.db.{BreakoutRoomUserDAO, MeetingRecordingDAO, UserBreakoutRoomDAO}
+import org.bigbluebutton.core.domain.{MeetingEndReason, MeetingState2x}
 import org.bigbluebutton.core.models._
 import org.bigbluebutton.core2.MeetingStatus2x
-import org.bigbluebutton.core2.message.senders.{ MsgBuilder, UserJoinedMeetingEvtMsgBuilder }
+import org.bigbluebutton.core2.message.senders.{MsgBuilder, UserJoinedMeetingEvtMsgBuilder}
 import org.bigbluebutton.core.util.TimeUtil
 
 trait HandlerHelpers extends SystemConfiguration {
 
   def trackUserJoin(
-      outGW:       OutMsgRouter,
       liveMeeting: LiveMeeting,
-      regUser:     RegisteredUser
+      regUser:     RegisteredUser,
   ): Unit = {
     if (!regUser.joined) {
-      RegisteredUsers.updateUserJoin(liveMeeting.registeredUsers, regUser)
+      RegisteredUsers.updateUserJoin(liveMeeting.registeredUsers, regUser, joined = true)
     }
+
   }
 
   def sendUserLeftFlagUpdatedEvtMsg(
@@ -46,7 +46,7 @@ trait HandlerHelpers extends SystemConfiguration {
     val nu = for {
       regUser <- RegisteredUsers.findWithToken(authToken, liveMeeting.registeredUsers)
     } yield {
-      trackUserJoin(outGW, liveMeeting, regUser)
+      trackUserJoin(liveMeeting, regUser)
 
       // Flag that an authed user had joined the meeting in case
       // we need to end meeting when all authed users have left.
@@ -63,6 +63,9 @@ trait HandlerHelpers extends SystemConfiguration {
         authed = regUser.authed,
         guestStatus = regUser.guestStatus,
         emoji = "none",
+        reactionEmoji = "none",
+        raiseHand = false,
+        away = false,
         pin = false,
         mobile = false,
         presenter = false,
@@ -119,6 +122,7 @@ trait HandlerHelpers extends SystemConfiguration {
       liveMeeting.props.recordProp.autoStartRecording && Users2x.numUsers(liveMeeting.users2x) == 1) {
 
       MeetingStatus2x.recordingStarted(liveMeeting.status)
+      MeetingRecordingDAO.insertRecording(liveMeeting.props.meetingProp.intId, "")
 
       val tracker = state.recordingTracker.startTimer(TimeUtil.timeNowInMs())
 
@@ -148,6 +152,7 @@ trait HandlerHelpers extends SystemConfiguration {
       liveMeeting.props.recordProp.autoStartRecording && Users2x.numUsers(liveMeeting.users2x) == 0) {
 
       MeetingStatus2x.recordingStopped(liveMeeting.status)
+      MeetingRecordingDAO.updateStopped(liveMeeting.props.meetingProp.intId, "")
 
       val tracker = state.recordingTracker.pauseTimer(TimeUtil.timeNowInMs())
 

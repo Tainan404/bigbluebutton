@@ -2,13 +2,11 @@ import React from "react";
 import PropTypes from "prop-types";
 import { defineMessages, injectIntl } from "react-intl";
 
-import Menu from "@material-ui/core/Menu";
-import { Divider } from "@material-ui/core";
+import Menu from "@mui/material/Menu";
+import { Divider } from "@mui/material";
 import Icon from "/imports/ui/components/common/icon/component";
 import { SMALL_VIEWPORT_BREAKPOINT } from '/imports/ui/components/layout/enums';
 import KEY_CODES from '/imports/utils/keyCodes';
-
-import { ENTER } from "/imports/utils/keyCodes";
 
 import Styled from './styles';
 
@@ -131,7 +129,7 @@ class BBBMenu extends React.Component {
           style={customStyles}
           onClick={(event) => {
             onClick();
-            const close = !key.includes('setstatus') && !key.includes('back');
+            const close = !key?.includes('setstatus') && !key?.includes('back');
             // prevent menu close for sub menu actions
             if (close) this.handleClose(event);
             event.stopPropagation();
@@ -145,15 +143,28 @@ class BBBMenu extends React.Component {
         </Styled.BBBMenuItem>,
         a.divider && <Divider disabled />
       ];
-    });
+    }) ?? [];
   }
 
   render() {
     const { anchorEl } = this.state;
-    const { trigger, intl, customStyles, dataTest, opts, accessKey } = this.props;
+    const {
+      trigger,
+      intl,
+      customStyles,
+      dataTest,
+      opts,
+      accessKey,
+      open,
+      renderOtherComponents,
+      customAnchorEl,
+      hasRoundedCorners,
+      overrideMobileStyles,
+    } = this.props;
     const actionsItems = this.makeMenuItems();
 
-    let menuStyles = { zIndex: 9999 };
+    const roundedCornersStyles = { borderRadius: '1.8rem' };
+    let menuStyles = { zIndex: 999 };
 
     if (customStyles) {
       menuStyles = { ...menuStyles, ...customStyles };
@@ -172,11 +183,13 @@ class BBBMenu extends React.Component {
           }}
           onKeyPress={(e) => {
             e.persist();
-            if (e.which !== ENTER) return null;
+            if (e.which !== KEY_CODES.ENTER) return null;
             this.handleClick(e);
           }}
           accessKey={accessKey}
           ref={(ref) => this.anchorElRef = ref}
+          role="button"
+          tabIndex={-1}
         >
           {trigger}
         </div>
@@ -184,15 +197,20 @@ class BBBMenu extends React.Component {
         <Menu
           {...opts}
           {...this.optsToMerge}
-          anchorEl={anchorEl}
+          anchorEl={customAnchorEl ? customAnchorEl : anchorEl}
           open={Boolean(anchorEl)}
           onClose={this.handleClose}
           style={menuStyles}
           data-test={dataTest}
           onKeyDownCapture={this.handleKeyDown}
+          PaperProps={{
+            style: hasRoundedCorners ? roundedCornersStyles : {},
+            className: overrideMobileStyles ? 'override-mobile-styles' : 'MuiPaper-root-mobile',
+          }}
         >
           {actionsItems}
-          {anchorEl && window.innerWidth < SMALL_VIEWPORT_BREAKPOINT &&
+          {renderOtherComponents}
+          {!overrideMobileStyles && anchorEl && window.innerWidth < SMALL_VIEWPORT_BREAKPOINT &&
             <Styled.CloseButton
               label={intl.formatMessage(intlMessages.close)}
               size="lg"
@@ -206,8 +224,6 @@ class BBBMenu extends React.Component {
   }
 }
 
-export default injectIntl(BBBMenu);
-
 BBBMenu.defaultProps = {
   opts: {
     id: "default-dropdown-menu",
@@ -215,12 +231,13 @@ BBBMenu.defaultProps = {
     keepMounted: true,
     transitionDuration: 0,
     elevation: 3,
-    getContentAnchorEl: null,
+    getcontentanchorel: null,
     fullwidth: "true",
     anchorOrigin: { vertical: 'top', horizontal: 'right' },
     transformorigin: { vertical: 'top', horizontal: 'right' },
   },
   onCloseCallback: () => { },
+  dataTest: '',
 };
 
 BBBMenu.propTypes = {
@@ -230,19 +247,14 @@ BBBMenu.propTypes = {
 
   trigger: PropTypes.element.isRequired,
 
-  actions: PropTypes.arrayOf(PropTypes.shape({
-    key: PropTypes.string.isRequired,
-    label: PropTypes.string.isRequired,
-    onClick: PropTypes.func,
-    icon: PropTypes.string,
-    iconRight: PropTypes.string,
-    disabled: PropTypes.bool,
-    divider: PropTypes.bool,
-    dividerTop: PropTypes.bool,
-    accessKey: PropTypes.string,
-    dataTest: PropTypes.string,
-  })).isRequired,
+  actions: PropTypes.array.isRequired,
 
   onCloseCallback: PropTypes.func,
   dataTest: PropTypes.string,
+  open: PropTypes.bool,
+  customStyles: PropTypes.object,
+  opts: PropTypes.object,
+  accessKey: PropTypes.string,
 };
+
+export default injectIntl(BBBMenu);

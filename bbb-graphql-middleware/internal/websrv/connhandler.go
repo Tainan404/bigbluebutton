@@ -3,16 +3,16 @@ package websrv
 import (
 	"context"
 	"fmt"
+	"github.com/iMDT/bbb-graphql-middleware/internal/common"
+	"github.com/iMDT/bbb-graphql-middleware/internal/hascli"
+	"github.com/iMDT/bbb-graphql-middleware/internal/msgpatch"
 	"github.com/iMDT/bbb-graphql-middleware/internal/websrv/reader"
 	"github.com/iMDT/bbb-graphql-middleware/internal/websrv/writer"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"nhooyr.io/websocket"
 	"sync"
 	"time"
-
-	"github.com/iMDT/bbb-graphql-middleware/internal/common"
-	"github.com/iMDT/bbb-graphql-middleware/internal/hascli"
-	"nhooyr.io/websocket"
 )
 
 var lastBrowserConnectionId int
@@ -22,7 +22,7 @@ var bufferSize = 100
 
 // active browser connections
 var BrowserConnections = make(map[string]*common.BrowserConnection)
-var BrowserConnectionsMutex = &sync.Mutex{}
+var BrowserConnectionsMutex = &sync.RWMutex{}
 
 // Handle client connection
 // This is the connection that comes from browser
@@ -59,6 +59,7 @@ func ConnectionHandler(w http.ResponseWriter, r *http.Request) {
 	BrowserConnectionsMutex.Unlock()
 
 	defer func() {
+		msgpatch.RemoveConnCacheDir(browserConnectionId)
 		BrowserConnectionsMutex.Lock()
 		delete(BrowserConnections, browserConnectionId)
 		BrowserConnectionsMutex.Unlock()
@@ -84,9 +85,9 @@ func ConnectionHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				{
 					log.Printf("creating hasura client")
-					BrowserConnectionsMutex.Lock()
+					BrowserConnectionsMutex.RLock()
 					thisBrowserConnection := BrowserConnections[browserConnectionId]
-					BrowserConnectionsMutex.Unlock()
+					BrowserConnectionsMutex.RUnlock()
 					if thisBrowserConnection != nil {
 						hascli.HasuraClient(thisBrowserConnection, r.Cookies(), fromBrowserChannel1, toBrowserChannel)
 					}

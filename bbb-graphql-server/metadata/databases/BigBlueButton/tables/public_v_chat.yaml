@@ -21,12 +21,12 @@ select_permissions:
     permission:
       columns:
         - chatId
-        - meetingId
-        - visible
+        - lastSeenAt
         - participantId
         - public
         - totalMessages
         - totalUnread
+        - visible
       filter:
         _and:
           - meetingId:

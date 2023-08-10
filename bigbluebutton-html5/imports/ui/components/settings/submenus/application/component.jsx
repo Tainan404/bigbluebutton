@@ -6,6 +6,7 @@ import { defineMessages, injectIntl } from 'react-intl';
 import BaseMenu from '../base/component';
 import Styled from './styles';
 import VideoService from '/imports/ui/components/video-provider/service';
+import WakeLockService from '/imports/ui/components/wake-lock/service';
 import { ACTIONS } from '/imports/ui/components/layout/enums';
 import Settings from '/imports/ui/services/settings';
 
@@ -77,6 +78,10 @@ const intlMessages = defineMessages({
     id: 'app.submenu.application.wbToolbarsAutoHideLabel',
     description: 'enable/disable auto hiding of whitebord toolbars',
   },
+  wakeLockEnabledLabel: {
+    id: 'app.submenu.application.wakeLockEnabledLabel',
+    description: 'enable/disable wake lock',
+  },
   layoutOptionLabel: {
     id: 'app.submenu.application.layoutOptionLabel',
     description: 'layout options',
@@ -117,6 +122,9 @@ const intlMessages = defineMessages({
     id: 'app.layout.style.customPush',
     description: 'label for custom layout style (push to all)',
   },
+  disableLabel: {
+    id: 'app.videoDock.webcamDisableLabel',
+  }
 });
 
 class ApplicationMenu extends BaseMenu {
@@ -366,6 +374,38 @@ class ApplicationMenu extends BaseMenu {
     );
   }
 
+  renderWakeLockToggle() {
+    if (!WakeLockService.isSupported()) return null;
+
+    const { intl, showToggleLabel, displaySettingsStatus } = this.props;
+    const { settings } = this.state;
+
+    return (
+      <Styled.Row>
+        <Styled.Col>
+          <Styled.FormElement>
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <Styled.Label>
+              {intl.formatMessage(intlMessages.wakeLockEnabledLabel)}
+            </Styled.Label>
+          </Styled.FormElement>
+        </Styled.Col>
+        <Styled.Col>
+          <Styled.FormElementRight>
+            {displaySettingsStatus(settings.wakeLock)}
+            <Toggle
+              icons={false}
+              defaultChecked={settings.wakeLock}
+              onChange={() => this.handleToggle('wakeLock')}
+              ariaLabel={intl.formatMessage(intlMessages.wakeLockEnabledLabel)}
+              showToggleLabel={showToggleLabel}
+            />
+          </Styled.FormElementRight>
+        </Styled.Col>
+      </Styled.Row>
+    );
+  }
+
   render() {
     const {
       allLocales, intl, showToggleLabel, displaySettingsStatus,
@@ -423,6 +463,7 @@ class ApplicationMenu extends BaseMenu {
           {this.renderAudioFilters()}
           {this.renderPaginationToggle()}
           {this.renderDarkThemeToggle()}
+          {this.renderWakeLockToggle()}
 
           <Styled.Row>
             <Styled.Col aria-hidden="true">
@@ -441,6 +482,28 @@ class ApplicationMenu extends BaseMenu {
                   defaultChecked={settings.whiteboardToolbarAutoHide}
                   onChange={() => this.handleToggle('whiteboardToolbarAutoHide')}
                   ariaLabel={`${intl.formatMessage(intlMessages.wbToolbarsAutoHideLabel)} - ${displaySettingsStatus(settings.whiteboardToolbarAutoHide, true)}`}
+                  showToggleLabel={showToggleLabel}
+                />
+              </Styled.FormElementRight>
+            </Styled.Col>
+          </Styled.Row>
+
+          <Styled.Row>
+            <Styled.Col aria-hidden="true">
+              <Styled.FormElement>
+                <Styled.Label>
+                  {intl.formatMessage(intlMessages.disableLabel)}
+                </Styled.Label>
+              </Styled.FormElement>
+            </Styled.Col>
+            <Styled.Col>
+              <Styled.FormElementRight>
+                {displaySettingsStatus(settings.selfViewDisable)}
+                <Toggle
+                  icons={false}
+                  defaultChecked={settings.selfViewDisable}
+                  onChange={() => this.handleToggle('selfViewDisable')}
+                  ariaLabel={`${intl.formatMessage(intlMessages.disableLabel)} - ${displaySettingsStatus(settings.selfViewDisable, false)}`}
                   showToggleLabel={showToggleLabel}
                 />
               </Styled.FormElementRight>

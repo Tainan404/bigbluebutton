@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { Session } from 'meteor/session';
 import PresentationToolbarContainer from './presentation-toolbar/container';
 import PresentationMenu from './presentation-menu/container';
+import DownloadPresentationButton from './download-presentation-button/component';
 import Styled from './styles';
 import FullscreenService from '/imports/ui/components/common/fullscreen-button/service';
 import Icon from '/imports/ui/components/common/icon/component';
@@ -18,6 +19,7 @@ import { colorContentBackground } from '/imports/ui/stylesheets/styled-component
 import browserInfo from '/imports/utils/browserInfo';
 import { addNewAlert } from '../screenreader-alert/service';
 import { clearCursors } from '/imports/ui/components/whiteboard/cursors/service';
+import { debounce } from 'radash';
 
 const intlMessages = defineMessages({
   presentationLabel: {
@@ -77,19 +79,20 @@ class Presentation extends PureComponent {
       isPanning: false,
       tldrawIsMounting: true,
       isToolbarVisible: true,
+      hadPresentation: false,
     };
 
     this.currentPresentationToastId = null;
 
     this.getSvgRef = this.getSvgRef.bind(this);
     this.setFitToWidth = this.setFitToWidth.bind(this);
-    this.zoomChanger = this.zoomChanger.bind(this);
+    this.zoomChanger = debounce({ delay: 200 }, this.zoomChanger.bind(this));
     this.updateLocalPosition = this.updateLocalPosition.bind(this);
     this.panAndZoomChanger = this.panAndZoomChanger.bind(this);
     this.fitToWidthHandler = this.fitToWidthHandler.bind(this);
     this.onFullscreenChange = this.onFullscreenChange.bind(this);
     this.getPresentationSizesAvailable = this.getPresentationSizesAvailable.bind(this);
-    this.handleResize = this.handleResize.bind(this);
+    this.handleResize = debounce({ delay: 200 }, this.handleResize.bind(this));
     this.setTldrawAPI = this.setTldrawAPI.bind(this);
     this.setIsPanning = this.setIsPanning.bind(this);
     this.setIsToolbarVisible = this.setIsToolbarVisible.bind(this);
@@ -136,8 +139,14 @@ class Presentation extends PureComponent {
     window.addEventListener('resize', this.onResize, false);
 
     const {
-      currentSlide, slidePosition, numPages, layoutContextDispatch,
+      currentSlide, slidePosition, numPages, layoutContextDispatch, currentPresentationId,
     } = this.props;
+
+    if (currentPresentationId) {
+      this.setState({
+        hadPresentation: true
+      });
+    }
 
     if (currentSlide) {
       layoutContextDispatch({
@@ -154,7 +163,7 @@ class Presentation extends PureComponent {
       layoutContextDispatch({
         type: ACTIONS.SET_PRESENTATION_SLIDES_LENGTH,
         value: numPages,
-      })
+      });
     }
   }
 
@@ -174,10 +183,11 @@ class Presentation extends PureComponent {
       intl,
       multiUser,
       numPages,
+      currentPresentationId,
     } = this.props;
 
     const {
-      presentationWidth, presentationHeight, zoom, isPanning, fitToWidth,
+      presentationWidth, presentationHeight, zoom, isPanning, fitToWidth, presentationId, hadPresentation,
     } = this.state;
     const {
       numCameras: prevNumCameras,
@@ -197,7 +207,7 @@ class Presentation extends PureComponent {
       layoutContextDispatch({
         type: ACTIONS.SET_PRESENTATION_SLIDES_LENGTH,
         value: numPages,
-      })
+      });
     }
 
     if (
@@ -256,16 +266,26 @@ class Presentation extends PureComponent {
           },
         });
       }
+      const presentationChanged = presentationId !== currentPresentationId;
 
-      if (!presentationIsOpen && restoreOnUpdate && currentSlide) {
+      const isInitialPresentation = currentPresentation.isInitialPresentation;
+
+      if (!presentationIsOpen && restoreOnUpdate && (currentSlide || presentationChanged)) {
         const slideChanged = currentSlide.id !== prevProps.currentSlide.id;
         const positionChanged = slidePosition
           .viewBoxHeight !== prevProps.slidePosition.viewBoxHeight
           || slidePosition.viewBoxWidth !== prevProps.slidePosition.viewBoxWidth;
         const pollPublished = publishedPoll && !prevProps.publishedPoll;
-        if (slideChanged || positionChanged || pollPublished) {
+        if (slideChanged || positionChanged || pollPublished || (presentationChanged && (hadPresentation || !isInitialPresentation))) {
           setPresentationIsOpen(layoutContextDispatch, !presentationIsOpen);
         }
+      }
+
+      if (presentationChanged) {
+        this.setState({
+          presentationId: currentPresentationId,
+          hadPresentation: true
+        });
       }
 
       if ((presentationBounds !== prevPresentationBounds)
@@ -611,6 +631,23 @@ class Presentation extends PureComponent {
     );
   }
 
+  renderPresentationDownload() {
+    const { presentationIsDownloadable, downloadPresentationUri } = this.props;
+
+    if (!presentationIsDownloadable || !downloadPresentationUri) return null;
+
+    const handleDownloadPresentation = () => {
+      window.open(downloadPresentationUri);
+    };
+
+    return (
+      <DownloadPresentationButton
+        handleDownloadPresentation={handleDownloadPresentation}
+        dark
+      />
+    );
+  }
+
   renderPresentationMenu() {
     const {
       intl,
@@ -650,6 +687,7 @@ class Presentation extends PureComponent {
       layoutContextDispatch,
       presentationIsOpen,
       darkTheme,
+      isViewersAnnotationsLocked,
     } = this.props;
 
     const {
@@ -701,6 +739,9 @@ class Presentation extends PureComponent {
     ${currentSlide.content}
     ${intl.formatMessage(intlMessages.slideContentEnd)}` : intl.formatMessage(intlMessages.noSlideContent);
 
+    const isVideoFocus = layoutType === LAYOUT_TYPE.VIDEO_FOCUS;
+    const presentationZIndex = fullscreenContext ? presentationBounds.zIndex : undefined;
+
     return (
       <>
         <Styled.PresentationContainer
@@ -715,9 +756,9 @@ class Presentation extends PureComponent {
             height: presentationBounds.height,
             display: !presentationIsOpen ? 'none' : 'flex',
             overflow: 'hidden',
-            zIndex: fullscreenContext ? presentationBounds.zIndex : undefined,
+            zIndex: !isVideoFocus ? presentationZIndex : 0,
             background:
-              layoutType === LAYOUT_TYPE.VIDEO_FOCUS && numCameras > 0 && !fullscreenContext
+              layoutType === isVideoFocus && !fullscreenContext
                 ? colorContentBackground
                 : null,
           }}
@@ -736,8 +777,9 @@ class Presentation extends PureComponent {
                   textAlign: 'center',
                   display: !presentationIsOpen ? 'none' : 'block',
                 }}
-                id={"presentationInnerWrapper"}
+                id="presentationInnerWrapper"
               >
+                {this.renderPresentationDownload()}
                 <Styled.VisuallyHidden id="currentSlideText">{slideContent}</Styled.VisuallyHidden>
                 {!tldrawIsMounting && currentSlide && this.renderPresentationMenu()}
                 <WhiteboardContainer
@@ -768,6 +810,7 @@ class Presentation extends PureComponent {
                   presentationId={currentPresentation?.id}
                   darkTheme={darkTheme}
                   isToolbarVisible={isToolbarVisible}
+                  isViewersAnnotationsLocked={isViewersAnnotationsLocked}
                 />
                 {isFullscreen && <PollingContainer />}
               </div>

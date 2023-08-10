@@ -70,11 +70,11 @@ class ConnectionController {
       Boolean allowRequestsWithoutSession = meetingService.getAllowRequestsWithoutSession(sessionToken)
       Boolean isSessionTokenInvalid = !session[sessionToken] && !allowRequestsWithoutSession
 
-      User u = meetingService.getMeeting(userSession.meetingID).getUserById(userSession.internalUserId)
-
       response.addHeader("Cache-Control", "no-cache")
 
       if (userSession != null && !isSessionTokenInvalid) {
+        User u = meetingService.getMeeting(userSession.meetingID).getUserById(userSession.internalUserId)
+
         response.setStatus(200)
         withFormat {
           json {
@@ -85,6 +85,7 @@ class ConnectionController {
               "X-Hasura-Locked" u.locked ? "true" : "false"
               "X-Hasura-LockedInMeeting" u.locked ? userSession.meetingID : ""
               "X-Hasura-ModeratorInMeeting" u.isModerator() ? userSession.meetingID : ""
+              "X-Hasura-PresenterInMeeting" u.isPresenter() ? userSession.meetingID : ""
               "X-Hasura-UserId" userSession.internalUserId
               "X-Hasura-MeetingId" userSession.meetingID
             }

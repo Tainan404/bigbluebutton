@@ -1,5 +1,6 @@
-import {useSubscription, gql, useMutation} from '@apollo/client';
+import {gql} from '@apollo/client';
  import React, { useState } from "react";
+import usePatchedSubscription from "./usePatchedSubscription";
 
 const ParentOfUserList = ({userId}) => {
   const [shouldRender, setShouldRender] = useState(true);
@@ -18,47 +19,9 @@ const ParentOfUserList = ({userId}) => {
 }
 
 function UserList({userId}) {
-
-    //example specifying where and time (new Date().toISOString())
-    //but its not necessary
-    // const [updateConnectionAliveAt] = useMutation(gql`
-    //   mutation UpdateConnectionAliveAt($userId: String, $connectionAliveAt: timestamp) {
-    //     update_user_connectionStatus(
-    //         where: { userId: { _eq: $userId } },
-    //         _set: { connectionAliveAt: $connectionAliveAt }
-    //       ) {
-    //         affected_rows
-    //       }
-    //   }
-    // `);
-
-    //where is not necessary once user can update only its own status
-    //Hasura accepts "now()" as value to timestamp fields
-    const [updateConnectionAliveAtToMeAsNow] = useMutation(gql`
-      mutation UpdateConnectionAliveAt($userId: String, $connectionAliveAt: timestamp) {
-        update_user_connectionStatus(
-            where: {},
-            _set: { connectionAliveAt: "now()" }
-          ) {
-            affected_rows
-          }
-      }
-    `);
-
-    const handleUpdateConnectionAliveAt = (userId) => {
-        // updateConnectionAliveAt({
-        //     variables: {
-        //         userId,
-        //         connectionAliveAt: new Date().toISOString()
-        //     },
-        // });
-
-        updateConnectionAliveAtToMeAsNow();
-    };
-
-  const { loading, error, data } = useSubscription(
+  const { loading, error, data } = usePatchedSubscription(
     gql`subscription {
-      user(limit: 200, order_by: [
+      user(limit: 50, order_by: [
                 {role: asc}, 
                 {emojiTime: asc_nulls_last}, 
                 {isDialIn: desc}, 
@@ -130,7 +93,7 @@ function UserList({userId}) {
         </tr>
       </thead>
       <tbody>
-        {data.user.map((user) => {
+        {data.map((user) => {
             console.log('user', user);
           return (
               <tr key={user.userId} style={{ color: user.color }}>
@@ -155,13 +118,7 @@ function UserList({userId}) {
                   <td style={{backgroundColor: user.lastBreakoutRoom?.currentlyInRoom === true ? '#A0DAA9' : ''}}>
                       {user.lastBreakoutRoom?.shortName}{user.lastBreakoutRoom?.currentlyInRoom === true ? ' (Online)' : ''}
                   </td>
-                  <td>
-                      {user?.connectionStatus?.connectionAliveAt}
-                      <br />
-                      { user?.userId === userId ? <button onClick={() => handleUpdateConnectionAliveAt(user.userId)}>Update now!</button>
-                       : ''
-                      }
-                  </td>
+                  <td>{user?.connectionStatus?.connectionAliveAt}</td>
                   <td style={{backgroundColor: user.disconnected === true ? '#A0DAA9' : ''}}>{user.disconnected === true ? 'Yes' : 'No'}</td>
                   <td style={{backgroundColor: user.loggedOut === true ? '#A0DAA9' : ''}}>{user.loggedOut === true ? 'Yes' : 'No'}</td>
               </tr>

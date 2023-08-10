@@ -8,7 +8,7 @@ const { checkTextContent, checkElementLengthEqualTo } = require('../core/util');
 const { checkAvatarIcon, checkIsPresenter, checkMutedUsers } = require('./util');
 const { getNotesLocator } = require('../sharednotes/util');
 const { getSettings } = require('../core/settings');
-const { ELEMENT_WAIT_TIME, ELEMENT_WAIT_LONGER_TIME } = require('../core/constants');
+const { ELEMENT_WAIT_TIME } = require('../core/constants');
 
 class MultiUsers {
   constructor(browser, context) {
@@ -81,17 +81,6 @@ class MultiUsers {
     await this.userPage2.init(false, shouldCloseAudioModal, options);
   }
 
-  async muteAnotherUser() {
-    await this.userPage.joinMicrophone();
-    await this.modPage.hasElement(e.joinAudio);
-    await this.modPage.waitAndClick(e.isTalking);
-    await this.userPage.hasElement(e.unmuteMicButton);
-    await this.modPage.hasElement(e.wasTalking);
-    await this.userPage.hasElement(e.wasTalking);
-    await this.userPage.wasRemoved(e.talkingIndicator, ELEMENT_WAIT_LONGER_TIME);
-    await this.modPage.wasRemoved(e.talkingIndicator);
-  }
-
   async userPresence() {
     await this.modPage.checkElementCount(e.currentUser, 1);
     await this.modPage.checkElementCount(e.userListItem, 1);
@@ -147,30 +136,43 @@ class MultiUsers {
   }
 
   async raiseAndLowerHand() {
-    const { raiseHandButton } = getSettings();
-    test.fail(!raiseHandButton, 'Raise/lower hand button is disabled');
+    const { reactionsButton } = getSettings();
+    if (!reactionsButton) {
+      await this.modPage.waitForSelector(e.whiteboard);
+      await this.modPage.hasElement(e.joinAudio);
+      await this.modPage.wasRemoved(e.reactionsButton);
+      return;
+    }
 
-    await waitAndClearDefaultPresentationNotification(this.modPage);
     await this.initUserPage();
+    await this.userPage.waitAndClick(e.reactionsButton);
     await this.userPage.waitAndClick(e.raiseHandBtn);
-    await sleep(1000);
     await this.userPage.hasElement(e.lowerHandBtn);
     await this.modPage.comparingSelectorsBackgroundColor(e.avatarsWrapperAvatar, `${e.userListItem} > div ${e.userAvatar}`);
+    await sleep(1000);
     await this.userPage.waitAndClick(e.lowerHandBtn);
     await this.userPage.hasElement(e.raiseHandBtn);
   }
 
   async raiseHandRejected() {
-    const { raiseHandButton } = getSettings();
-    test.fail(!raiseHandButton, 'Raise/lower hand button is disabled');
+    const { reactionsButton } = getSettings();
+    if (!reactionsButton) {
+      console.log('=== inside')
+      await this.modPage.waitForSelector(e.whiteboard);
+      await this.modPage.hasElement(e.joinAudio);
+      await this.modPage.wasRemoved(e.reactionsButton);
+      return
+    }
 
     await waitAndClearDefaultPresentationNotification(this.modPage);
     await this.initUserPage();
+    await this.userPage.waitAndClick(e.reactionsButton);
     await this.userPage.waitAndClick(e.raiseHandBtn);
-    await sleep(1000);
     await this.userPage.hasElement(e.lowerHandBtn);
+    await this.userPage.press('Escape');
     await this.modPage.comparingSelectorsBackgroundColor(e.avatarsWrapperAvatar, `${e.userListItem} > div ${e.userAvatar}`);
     await this.modPage.waitAndClick(e.raiseHandRejection);
+    await this.userPage.waitAndClick(e.reactionsButton);
     await this.userPage.hasElement(e.raiseHandBtn);
   }
 

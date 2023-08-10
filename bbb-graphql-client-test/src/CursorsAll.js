@@ -1,13 +1,13 @@
 import {useSubscription, gql, useQuery} from '@apollo/client';
  import React, { useState } from "react";
+import usePatchedSubscription from "./usePatchedSubscription";
 
 export default function CursorsAll() {
-  const { loading, error, data } = useSubscription(
+  const { loading, error, data } = usePatchedSubscription(
     gql`subscription {
       pres_page_cursor(where: {isCurrentPage: {_eq: true}}) {
             isCurrentPage
             lastUpdatedAt
-            meetingId
             pageId
             presentationId
             userId
@@ -34,7 +34,7 @@ export default function CursorsAll() {
         </tr>
       </thead>
       <tbody>
-        {data.pres_page_cursor.map((curr) => {
+        {data.map((curr) => {
             console.log('cursor', curr);
           return (
               <tr key={curr.userId}>

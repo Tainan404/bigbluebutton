@@ -1,7 +1,8 @@
 import { GroupChatMsg } from '/imports/api/group-chat-msg';
+import GroupChat from '/imports/api/group-chat';
 import Logger from '/imports/startup/server/logger';
 import flat from 'flat';
-import { parseMessage } from './addGroupChatMsg';
+import { parseMessage } from '/imports/api/common/server/helpers';
 
 export default async function addBulkGroupChatMsgs(msgs) {
   if (!msgs.length) return;
@@ -24,7 +25,14 @@ export default async function addBulkGroupChatMsgs(msgs) {
         senderRole: sender.role,
       };
     })
-    .map((el) => flat(el, { safe: true }));
+    .map((el) => flat(el, { safe: true }))
+    .map((msg)=>{
+      const groupChat = GroupChat.findOne({ meetingId: msg.meetingId, chatId: msg.chatId });
+      return {
+        ...msg,
+        participants: [...groupChat.users],
+      };
+    });
 
   try {
     const { insertedCount } = await GroupChatMsg.rawCollection().insertMany(mappedMsgs);

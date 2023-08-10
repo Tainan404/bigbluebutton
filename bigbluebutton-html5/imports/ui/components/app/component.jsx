@@ -13,18 +13,19 @@ import BreakoutRoomInvitation from '/imports/ui/components/breakout-room/invitat
 import { Meteor } from 'meteor/meteor';
 import ToastContainer from '/imports/ui/components/common/toast/container';
 import PadsSessionsContainer from '/imports/ui/components/pads/sessions/container';
+import WakeLockContainer from '../wake-lock/container';
 import NotificationsBarContainer from '../notifications-bar/container';
 import AudioContainer from '../audio/container';
 import ChatAlertContainer from '../chat/alert/container';
 import BannerBarContainer from '/imports/ui/components/banner-bar/container';
-import StatusNotifier from '/imports/ui/components/status-notifier/container';
+import RaiseHandNotifier from '/imports/ui/components/raisehand-notifier/container';
 import ManyWebcamsNotifier from '/imports/ui/components/video-provider/many-users-notify/container';
 import AudioCaptionsSpeechContainer from '/imports/ui/components/audio/captions/speech/container';
 import UploaderContainer from '/imports/ui/components/presentation/presentation-uploader/container';
 import CaptionsSpeechContainer from '/imports/ui/components/captions/speech/container';
 import RandomUserSelectContainer from '/imports/ui/components/common/modal/random-user/container';
 import ScreenReaderAlertContainer from '../screenreader-alert/container';
-import NewWebcamContainer from '../webcam/container';
+import WebcamContainer from '../webcam/container';
 import PresentationAreaContainer from '../presentation/presentation-area/container';
 import ScreenshareContainer from '../screenshare/container';
 import ExternalVideoContainer from '../external-video-player/container';
@@ -49,6 +50,7 @@ import AudioService from '/imports/ui/components/audio/service';
 import NotesContainer from '/imports/ui/components/notes/container';
 import DEFAULT_VALUES from '../layout/defaultValues';
 import AppService from '/imports/ui/components/app/service';
+import TimerService from '/imports/ui/components/timer/service';
 
 const MOBILE_MEDIA = 'only screen and (max-width: 40em)';
 const APP_CONFIG = Meteor.settings.public.app;
@@ -70,13 +72,13 @@ const intlMessages = defineMessages({
     id: 'app.actionsBar.label',
     description: 'Aria-label for ActionsBar Section',
   },
-  iOSWarning: {
-    id: 'app.iOSWarning.label',
-    description: 'message indicating to upgrade ios version',
-  },
   clearedEmoji: {
     id: 'app.toast.clearedEmoji.label',
     description: 'message for cleared emoji status',
+  },
+  clearedReaction: {
+    id: 'app.toast.clearedReactions.label',
+    description: 'message for cleared reactions',
   },
   setEmoji: {
     id: 'app.toast.setEmoji.label',
@@ -89,6 +91,14 @@ const intlMessages = defineMessages({
   loweredHand: {
     id: 'app.toast.setEmoji.lowerHand',
     description: 'toast message for lowered hand notification',
+  },
+  away: {
+    id: 'app.toast.setEmoji.away',
+    description: 'toast message for set away notification',
+  },
+  notAway: {
+    id: 'app.toast.setEmoji.notAway',
+    description: 'toast message for remove away notification',
   },
   meetingMuteOn: {
     id: 'app.toast.meetingMuteOn.label',
@@ -139,6 +149,9 @@ class App extends Component {
       isVideoPreviewModalOpen: false,
     };
 
+    this.isTimerEnabled = TimerService.isEnabled();
+    this.timeOffsetInterval = null;
+
     this.handleWindowResize = throttle(this.handleWindowResize).bind(this);
     this.shouldAriaHide = this.shouldAriaHide.bind(this);
     this.setAudioModalIsOpen = this.setAudioModalIsOpen.bind(this);
@@ -153,7 +166,6 @@ class App extends Component {
     const {
       notify,
       intl,
-      validIOSVersion,
       layoutContextDispatch,
       isRTL,
     } = this.props;
@@ -186,12 +198,6 @@ class App extends Component {
 
     body.classList.add(`os-${osName.split(' ').shift().toLowerCase()}`);
 
-    if (!validIOSVersion()) {
-      notify(
-        intl.formatMessage(intlMessages.iOSWarning), 'error', 'warning',
-      );
-    }
-
     this.handleWindowResize();
     window.addEventListener('resize', this.handleWindowResize, false);
     window.addEventListener('localeChanged', () => {
@@ -217,6 +223,12 @@ class App extends Component {
 
     ConnectionStatusService.startRoundTripTime();
 
+    if (this.isTimerEnabled) {
+      TimerService.fetchTimeOffset();
+      this.timeOffsetInterval = setInterval(TimerService.fetchTimeOffset,
+        TimerService.OFFSET_INTERVAL);
+    }
+
     logger.info({ logCode: 'app_component_componentdidmount' }, 'Client loaded successfully');
   }
 
@@ -224,6 +236,8 @@ class App extends Component {
     const {
       notify,
       currentUserEmoji,
+      currentUserAway,
+      currentUserRaiseHand,
       intl,
       deviceType,
       mountRandomUserModal,
@@ -238,30 +252,42 @@ class App extends Component {
 
     if (mountRandomUserModal) this.setRandomUserSelectModalIsOpen(true);
 
-    if (prevProps.currentUserEmoji.status !== currentUserEmoji.status) {
+    if (prevProps.currentUserEmoji.status !== currentUserEmoji.status
+        && currentUserEmoji.status !== 'raiseHand'
+        && currentUserEmoji.status !== 'away'
+    ) {
       const formattedEmojiStatus = intl.formatMessage({ id: `app.actionsBar.emojiMenu.${currentUserEmoji.status}Label` })
         || currentUserEmoji.status;
 
-      const raisedHand = currentUserEmoji.status === 'raiseHand';
-
-      let statusLabel = '';
       if (currentUserEmoji.status === 'none') {
-        statusLabel = prevProps.currentUserEmoji.status === 'raiseHand'
-          ? intl.formatMessage(intlMessages.loweredHand)
-          : intl.formatMessage(intlMessages.clearedEmoji);
+        notify(
+          intl.formatMessage(intlMessages.clearedEmoji),
+          'info',
+          'clear_status',
+        );
       } else {
-        statusLabel = raisedHand
-          ? intl.formatMessage(intlMessages.raisedHand)
-          : intl.formatMessage(intlMessages.setEmoji, ({ 0: formattedEmojiStatus }));
+        notify(
+          intl.formatMessage(intlMessages.setEmoji, ({ 0: formattedEmojiStatus })),
+          'info',
+          'user',
+        );
       }
+    }
 
-      notify(
-        statusLabel,
-        'info',
-        currentUserEmoji.status === 'none'
-          ? 'clear_status'
-          : 'user',
-      );
+    if (prevProps.currentUserAway !== currentUserAway) {
+      if (currentUserAway === true) {
+        notify(intl.formatMessage(intlMessages.away), 'info', 'user');
+      } else {
+        notify(intl.formatMessage(intlMessages.notAway), 'info', 'clear_status');
+      }
+    }
+
+    if (prevProps.currentUserRaiseHand !== currentUserRaiseHand) {
+      if (currentUserRaiseHand === true) {
+        notify(intl.formatMessage(intlMessages.raisedHand), 'info', 'user');
+      } else {
+        notify(intl.formatMessage(intlMessages.loweredHand), 'info', 'clear_status');
+      }
     }
 
     if (deviceType === null || prevProps.deviceType !== deviceType) this.throttledDeviceType();
@@ -295,6 +321,10 @@ class App extends Component {
     window.removeEventListener('resize', this.handleWindowResize, false);
     window.onbeforeunload = null;
     ConnectionStatusService.stopRoundTripTime();
+
+    if (this.timeOffsetInterval) {
+      clearInterval(this.timeOffsetInterval);
+    }
   }
 
   handleWindowResize() {
@@ -518,7 +548,7 @@ class App extends Component {
   setAudioModalIsOpen(value) {
     this.setState({isAudioModalOpen: value});
   }
-  
+
   setVideoPreviewModalIsOpen(value) {
     this.setState({isVideoPreviewModalOpen: value});
   }
@@ -567,16 +597,16 @@ class App extends Component {
           <SidebarNavigationContainer />
           <SidebarContentContainer isSharedNotesPinned={shouldShowSharedNotes} />
           <NavBarContainer main="new" />
-          <NewWebcamContainer isLayoutSwapped={!presentationIsOpen} />
+          <WebcamContainer isLayoutSwapped={!presentationIsOpen} layoutType={selectedLayout} />
           <Styled.TextMeasure id="text-measure" />
-          {shouldShowPresentation ? <PresentationAreaContainer darkTheme={darkTheme} presentationIsOpen={presentationIsOpen} /> : null}
+          {shouldShowPresentation ? <PresentationAreaContainer darkTheme={darkTheme} presentationIsOpen={presentationIsOpen} layoutType={selectedLayout} /> : null}
           {shouldShowScreenshare ? <ScreenshareContainer isLayoutSwapped={!presentationIsOpen} /> : null}
           {
             shouldShowExternalVideo
               ? <ExternalVideoContainer isLayoutSwapped={!presentationIsOpen} isPresenter={isPresenter} />
               : null
           }
-          {shouldShowSharedNotes 
+          {shouldShowSharedNotes
             ? (
               <NotesContainer
                 area="media"
@@ -603,14 +633,15 @@ class App extends Component {
                 pushAlertEnabled={pushAlertEnabled}
               />
             )}
-          <StatusNotifier status="raiseHand" />
+          <RaiseHandNotifier />
           <ManyWebcamsNotifier />
           <PollingContainer />
           <PadsSessionsContainer />
+          <WakeLockContainer />
           {this.renderActionsBar()}
           {customStyleUrl ? <link rel="stylesheet" type="text/css" href={customStyleUrl} /> : null}
           {customStyle ? <link rel="stylesheet" type="text/css" href={`data:text/css;charset=UTF-8,${encodeURIComponent(customStyle)}`} /> : null}
-          {isRandomUserSelectModalOpen ? <RandomUserSelectContainer 
+          {isRandomUserSelectModalOpen ? <RandomUserSelectContainer
             {...{
               onRequestClose: () => this.setRandomUserSelectModalIsOpen(false),
               priority: "low",

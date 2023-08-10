@@ -1,6 +1,6 @@
 const { MultiUsers } = require("../user/multiusers");
 const e = require('../core/elements');
-const { openChat } = require('../chat/util');
+const { openPublicChat } = require('../chat/util');
 const { expect } = require("@playwright/test");
 const Page = require("../core/page");
 const { sleep } = require("../core/helpers");
@@ -26,7 +26,7 @@ class LearningDashboard extends MultiUsers {
   }
 
   async writeOnPublicChat() {
-    await openChat(this.modPage);
+    await openPublicChat(this.modPage);
     await this.modPage.checkElementCount(e.chatUserMessageText, 0);
 
     await this.modPage.type(e.chatBox, e.message);
@@ -138,6 +138,7 @@ class LearningDashboard extends MultiUsers {
   async overview() {
     await this.modPage.waitAndClick(e.joinVideo);
     await this.modPage.waitAndClick(e.startSharingWebcam);
+    await this.modPage.waitAndClick(e.reactionsButton);
     await this.modPage.waitAndClick(e.raiseHandBtn);
 
     await this.dashboardPage.reloadPage();

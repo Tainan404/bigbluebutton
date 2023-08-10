@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 public class Meeting {
 
@@ -67,6 +68,7 @@ public class Meeting {
 	private boolean record;
 	private boolean autoStartRecording = false;
 	private boolean allowStartStopRecording = false;
+	private boolean recordFullDurationMedia = false;
 	private boolean haveRecordingMarks = false;
 	private boolean webcamsOnlyForModerator = false;
 	private Integer meetingCameraCap = 0;
@@ -145,6 +147,7 @@ public class Meeting {
         record = builder.record;
         autoStartRecording = builder.autoStartRecording;
         allowStartStopRecording = builder.allowStartStopRecording;
+        recordFullDurationMedia = builder.recordFullDurationMedia;
         webcamsOnlyForModerator = builder.webcamsOnlyForModerator;
         meetingCameraCap = builder.meetingCameraCap;
         userCameraCap = builder.userCameraCap;
@@ -194,12 +197,16 @@ public class Meeting {
 		return users.isEmpty() ? Collections.<User>emptySet() : Collections.unmodifiableCollection(users.values());
 	}
 
+	public Collection<User> getOnlineUsers() {
+    	return users.isEmpty() ? Collections.emptySet() : users.values().stream().filter(user -> !user.hasLeft()).collect(Collectors.toSet());
+	}
+
 	public ConcurrentMap<String, User> getUsersMap() {
 	    return users;
 	}
 
 	public Integer countUniqueExtIds() {
-		List<String> uniqueExtIds = new ArrayList<String>();
+		List<String> uniqueExtIds = new ArrayList<>();
 		for (User user : users.values()) {
 			if(!uniqueExtIds.contains(user.getExternalUserId())) {
 				uniqueExtIds.add(user.getExternalUserId());
@@ -318,7 +325,7 @@ public class Meeting {
 	public void setCaptureSlides(Boolean capture) {
 		this.captureSlides = captureSlides;
 	}
-	
+
 	public Boolean isCaptureNotes() {
         return captureNotes;
     }
@@ -579,6 +586,10 @@ public class Meeting {
 		return allowStartStopRecording;
 	}
 
+	public boolean getRecordFullDurationMedia() {
+		return recordFullDurationMedia;
+	}
+
     public boolean getWebcamsOnlyForModerator() {
         return webcamsOnlyForModerator;
     }
@@ -809,8 +820,8 @@ public class Meeting {
     	this.meetingEndedCallbackURL = meetingEndedCallbackURL;
     }
 
-	public Map<String, Object> getUserCustomData(String userID){
-		return (Map<String, Object>) userCustomData.get(userID);
+	public Map<String, String> getUserCustomData(String userID){
+		return (Map<String, String>) userCustomData.get(userID);
 	}
 
 	public void userRegistered(RegisteredUser user) {
@@ -859,6 +870,7 @@ public class Meeting {
     	private int maxUsers;
     	private boolean record;
     	private boolean autoStartRecording;
+    	private boolean recordFullDurationMedia;
         private boolean allowStartStopRecording;
         private boolean webcamsOnlyForModerator;
         private Integer meetingCameraCap;
@@ -934,6 +946,11 @@ public class Meeting {
     		this.allowStartStopRecording = allow;
     		return this;
     	}
+
+			public Builder withRecordFullDurationMedia(boolean recordFullDurationMedia) {
+				this.recordFullDurationMedia = recordFullDurationMedia;
+				return this;
+			}
 
         public Builder withWebcamsOnlyForModerator(boolean only) {
             this.webcamsOnlyForModerator = only;

@@ -8,21 +8,21 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{ Failure, Success }
 
 case class MeetingWelcomeDbModel(
-    meetingId:          String,
-    welcomeMsgTemplate: String,
-    welcomeMsg:         String,
-    modOnlyMessage:     String
+    meetingId:               String,
+    welcomeMsgTemplate:      String,
+    welcomeMsg:              Option[String],
+    welcomeMsgForModerators: Option[String]
 )
 
 class MeetingWelcomeDbTableDef(tag: Tag) extends Table[MeetingWelcomeDbModel](tag, "meeting_welcome") {
   val meetingId = column[String]("meetingId", O.PrimaryKey)
   val welcomeMsgTemplate = column[String]("welcomeMsgTemplate")
-  val welcomeMsg = column[String]("welcomeMsg")
-  val modOnlyMessage = column[String]("modOnlyMessage")
+  val welcomeMsg = column[Option[String]]("welcomeMsg")
+  val welcomeMsgForModerators = column[Option[String]]("welcomeMsgForModerators")
 
   //  def fk_meetingId: ForeignKeyQuery[MeetingDbTableDef, MeetingDbModel] = foreignKey("fk_meetingId", meetingId, TableQuery[MeetingDbTableDef])(_.meetingId)
 
-  override def * : ProvenShape[MeetingWelcomeDbModel] = (meetingId, welcomeMsgTemplate, welcomeMsg, modOnlyMessage) <> (MeetingWelcomeDbModel.tupled, MeetingWelcomeDbModel.unapply)
+  override def * : ProvenShape[MeetingWelcomeDbModel] = (meetingId, welcomeMsgTemplate, welcomeMsg, welcomeMsgForModerators) <> (MeetingWelcomeDbModel.tupled, MeetingWelcomeDbModel.unapply)
 }
 
 object MeetingWelcomeDAO {
@@ -32,8 +32,14 @@ object MeetingWelcomeDAO {
         MeetingWelcomeDbModel(
           meetingId = meetingId,
           welcomeMsgTemplate = welcomeProp.welcomeMsgTemplate,
-          welcomeMsg = welcomeProp.welcomeMsg,
-          modOnlyMessage = welcomeProp.modOnlyMessage
+          welcomeMsg = welcomeProp.welcomeMsg match {
+            case "" => None
+            case m  => Some(m)
+          },
+          welcomeMsgForModerators = welcomeProp.modOnlyMessage match {
+            case "" => None
+            case m  => Some(m)
+          }
         )
       )
     ).onComplete {
