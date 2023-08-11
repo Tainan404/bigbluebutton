@@ -15,8 +15,13 @@ jobs:
       pull-requests: write  # for eps1lon/actions-label-merge-conflict to label PRs
     runs-on: ubuntu-latest
     steps:
-      - name: Typescript compiler
-        uses: iCrawl/action-tsc@v1
+      - name: test ts
+        working-directory: ./bigbluebutton-html5
+        run: sh -c '
+          npm ci
+          npm install typescript
+          npx tsc
+        '
 
 
 
