@@ -19,9 +19,6 @@ jobs:
       - name: run npm ci
         working-directory: ./bigbluebutton-html5
         run: npm install
-      - name: install ts
-        working-directory: ./bigbluebutton-html5
-        run: npm install typescript
       - name: run ts
         working-directory: ./bigbluebutton-html5
         run: npx tsc
