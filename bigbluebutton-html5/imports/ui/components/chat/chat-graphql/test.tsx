@@ -9,7 +9,7 @@ const Test: React.FC = () => {
       presenter: user.presenter,
     }
   });
-  console.log('render', a.);
+  console.log('render', a.userId,, a.);
   return (
     <div>
       <span>{JSON.stringify(a)}</span>
