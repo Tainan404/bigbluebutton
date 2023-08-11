@@ -1,4 +1,4 @@
-name: Test ts errors on
+name: Test ts errors
 on:
   push:
   pull_request_target:
@@ -15,14 +15,15 @@ jobs:
       pull-requests: write  # for eps1lon/actions-label-merge-conflict to label PRs
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: run npm ci
-        working-directory: bigbluebutton-html5
+        working-directory: ./bigbluebutton-html5
         run: npm ci
       - name: install ts
-        working-directory: bigbluebutton-html5
+        working-directory: ./bigbluebutton-html5
         run: npm install typescript
       - name: run ts
-        working-directory: bigbluebutton-html5
+        working-directory: ./bigbluebutton-html5
         run: npx tsc
           
           
