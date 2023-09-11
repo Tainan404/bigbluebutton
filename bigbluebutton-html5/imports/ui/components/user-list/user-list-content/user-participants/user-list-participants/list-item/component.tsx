@@ -8,7 +8,8 @@ import { EMOJI_STATUSES } from '/imports/utils/statuses';
 import TooltipContainer from '/imports/ui/components/common/tooltip/container';
 import Auth from '/imports/ui/services/auth';
 import { LockSettings } from '/imports/ui/Types/meeting';
-import _ from 'lodash';
+import { uniqueId } from '/imports/utils/string-utils';
+
 const messages = defineMessages({
   moderator: {
     id: 'app.userList.moderator',
