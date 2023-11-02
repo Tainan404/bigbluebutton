@@ -1,7 +1,7 @@
 package org.bigbluebutton.core.running
 
 import java.io.{ PrintWriter, StringWriter }
-import akka.actor.SupervisorStrategy.Resume
+import org.apache.pekko.actor.SupervisorStrategy.Resume
 import org.bigbluebutton.SystemConfiguration
 import org.bigbluebutton.core.apps.groupchats.GroupChatHdlrs
 import org.bigbluebutton.core.apps.presentationpod._
@@ -32,18 +32,18 @@ import org.bigbluebutton.common2.msgs._
 import org.bigbluebutton.core.apps.breakout._
 import org.bigbluebutton.core.apps.polls._
 import org.bigbluebutton.core.apps.voice._
-import akka.actor.Props
-import akka.actor.OneForOneStrategy
+import org.apache.pekko.actor.Props
+import org.apache.pekko.actor.OneForOneStrategy
 import org.bigbluebutton.common2.msgs
 
 import scala.concurrent.duration._
 import org.bigbluebutton.core.apps.layout.LayoutApp2x
 import org.bigbluebutton.core.apps.meeting.{ SyncGetMeetingInfoRespMsgHdlr, ValidateConnAuthTokenSysMsgHdlr }
 import org.bigbluebutton.core.apps.users.ChangeLockSettingsInMeetingCmdMsgHdlr
-import org.bigbluebutton.core.db.{ UserStateDAO }
+import org.bigbluebutton.core.db.UserStateDAO
 import org.bigbluebutton.core.models.VoiceUsers.{ findAllFreeswitchCallers, findAllListenOnlyVoiceUsers }
 import org.bigbluebutton.core.models.Webcams.findAll
-import org.bigbluebutton.core2.MeetingStatus2x.{ hasAuthedUserJoined }
+import org.bigbluebutton.core2.MeetingStatus2x.hasAuthedUserJoined
 import org.bigbluebutton.core2.message.senders.{ MsgBuilder, Sender }
 
 import java.util.concurrent.TimeUnit
@@ -481,6 +481,10 @@ class MeetingActor(
         handleGetGlobalAudioPermissionReqMsg(m)
       case m: GetMicrophonePermissionReqMsg =>
         handleGetMicrophonePermissionReqMsg(m)
+      case m: ChannelHoldChangedVoiceConfEvtMsg =>
+        handleChannelHoldChangedVoiceConfEvtMsg(m)
+      case m: ListenOnlyModeToggledInSfuEvtMsg =>
+        handleListenOnlyModeToggledInSfuEvtMsg(m)
 
       // Layout
       case m: GetCurrentLayoutReqMsg  => handleGetCurrentLayoutReqMsg(m)
@@ -536,7 +540,6 @@ class MeetingActor(
       case m: PresentationPageCountErrorSysPubMsg            => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)
       case m: PresentationUploadTokenReqMsg                  => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)
       case m: ResizeAndMovePagePubMsg                        => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)
-      case m: AddSlidePositionsPubMsg                        => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)
       case m: SlideResizedPubMsg                             => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)
       case m: PresentationPageConvertedSysMsg                => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)
       case m: PresentationPageConversionStartedSysMsg        => state = presentationPodsApp.handle(m, state, liveMeeting, msgBus)

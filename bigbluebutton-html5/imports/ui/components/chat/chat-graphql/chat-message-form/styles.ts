@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import styled from 'styled-components';
 import {
   colorBlueLight,
@@ -71,6 +72,7 @@ const Input = styled(TextareaAutosize)`
   }
 `;
 
+// @ts-ignore - as button comes from JS, we can't provide its props
 const SendButton = styled(Button)`
   margin:0 0 0 ${smPaddingX};
   align-self: center;
@@ -88,6 +90,7 @@ const SendButton = styled(Button)`
 
 const EmojiButtonWrapper = styled.div``;
 
+// @ts-ignore - as button comes from JS, we can't provide its props
 const EmojiButton = styled(Button)`
   margin:0 0 0 ${smPaddingX};
   align-self: center;
@@ -120,7 +123,6 @@ const EmojiPickerWrapper = styled.div`
     }
   }
 `;
-
 
 const Error = styled.div`
   color: ${colorDanger};

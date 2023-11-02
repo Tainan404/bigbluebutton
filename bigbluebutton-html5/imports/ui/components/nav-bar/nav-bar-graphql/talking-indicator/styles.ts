@@ -27,6 +27,8 @@ import { phoneLandscape } from '/imports/ui/stylesheets/styled-components/breakp
 import Button from '/imports/ui/components/common/button/component';
 import Icon from '/imports/ui/components/common/icon/component';
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - as button comes from JS, we can't provide its props
 const TalkingIndicatorButton = styled(Button)`
   display: flex;
   flex-direction: row;
@@ -102,8 +104,7 @@ const TalkingIndicatorButton = styled(Button)`
     }
   `}
 
-  ${({ $muted }) => $muted
-    && `
+  ${({ $muted }) => $muted && `
     cursor: default;
 
     i {
@@ -125,13 +126,12 @@ const CCIcon = styled(Icon)`
   opacity: ${({ muted, talking }) => ((muted || !talking) && `${spokeOpacity};`) || '1;'};
 `;
 
-const TalkingIndicatorWrapper = styled.div`
+const TalkingIndicatorWrapper = styled.div<{ muted?: boolean; talking?: boolean; }>`
   border-radius: ${talkerBorderRadius} ${talkerBorderRadius};
   display: flex;
   margin: 0 ${borderRadius};
   opacity: ${({ muted, talking }) => ((muted || !talking) && `${spokeOpacity};`) || '1;'};
-  background: ${({ muted, talking, floor }) =>
-    talking ? `${colorSuccess}` : `${colorBackground};`};
+  background: ${({ talking }) => (talking ? `${colorSuccess}` : `${colorBackground};`)};
 `;
 
 const Hidden = styled.div`

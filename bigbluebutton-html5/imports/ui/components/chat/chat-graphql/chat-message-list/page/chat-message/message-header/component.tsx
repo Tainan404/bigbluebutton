@@ -1,7 +1,6 @@
-import React from "react";
+import React from 'react';
+import { useIntl, defineMessages, FormattedTime } from 'react-intl';
 import Styled from './styles';
-import { useIntl, defineMessages, FormattedTime } from "react-intl";
-
 
 const intlMessages = defineMessages({
   offline: {
@@ -10,12 +9,8 @@ const intlMessages = defineMessages({
   },
 });
 
-
 interface ChatMessageHeaderProps {
   name: string;
-  avatar: string;
-  color: string;
-  isModerator: boolean;
   isOnline: boolean;
   dateTime: Date;
   sameSender: boolean;
@@ -24,9 +19,6 @@ interface ChatMessageHeaderProps {
 const ChatMessageHeader: React.FC<ChatMessageHeaderProps> = ({
   sameSender,
   name,
-  color,
-  isModerator,
-  avatar,
   isOnline,
   dateTime,
 }) => {
@@ -35,21 +27,13 @@ const ChatMessageHeader: React.FC<ChatMessageHeaderProps> = ({
 
   return (
     <Styled.HeaderContent>
-      <Styled.ChatAvatar
-        avatar={avatar}
-        color={color}
-        moderator={isModerator}
-      >
-        {name.toLowerCase().slice(0, 2) || "  "}
-      </Styled.ChatAvatar>
       <Styled.ChatHeaderText>
-        <Styled.ChatUserName>
+        <Styled.ChatUserName isOnline={isOnline}>
           {name}
         </Styled.ChatUserName>
         {
           isOnline ? null : (
-            <Styled.ChatUserOffline
-            >
+            <Styled.ChatUserOffline>
               {`(${intl.formatMessage(intlMessages.offline)})`}
             </Styled.ChatUserOffline>
           )
@@ -59,7 +43,7 @@ const ChatMessageHeader: React.FC<ChatMessageHeaderProps> = ({
         </Styled.ChatTime>
       </Styled.ChatHeaderText>
     </Styled.HeaderContent>
-  )
+  );
 };
 
 export default ChatMessageHeader;

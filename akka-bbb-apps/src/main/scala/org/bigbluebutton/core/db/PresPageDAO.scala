@@ -24,7 +24,8 @@ case class PresPageDbModel(
     viewBoxWidth:   Double,
     viewBoxHeight:  Double,
     maxImageWidth:  Int,
-    maxImageHeight: Int
+    maxImageHeight: Int,
+    converted:      Boolean
 )
 
 class PresPageDbTableDef(tag: Tag) extends Table[PresPageDbModel](tag, None, "pres_page") {
@@ -44,8 +45,9 @@ class PresPageDbTableDef(tag: Tag) extends Table[PresPageDbModel](tag, None, "pr
   val viewBoxHeight = column[Double]("viewBoxHeight")
   val maxImageWidth = column[Int]("maxImageWidth")
   val maxImageHeight = column[Int]("maxImageHeight")
+  val converted = column[Boolean]("converted")
   //  val presentation = foreignKey("presentation_fk", presentationId, Presentations)(_.presentationId, onDelete = ForeignKeyAction.Cascade)
-  def * = (pageId, presentationId, num, urls, slideRevealed, current, xOffset, yOffset, widthRatio, heightRatio, width, height, viewBoxWidth, viewBoxHeight, maxImageWidth, maxImageHeight) <> (PresPageDbModel.tupled, PresPageDbModel.unapply)
+  def * = (pageId, presentationId, num, urls, slideRevealed, current, xOffset, yOffset, widthRatio, heightRatio, width, height, viewBoxWidth, viewBoxHeight, maxImageWidth, maxImageHeight, converted) <> (PresPageDbModel.tupled, PresPageDbModel.unapply)
 }
 
 object PresPageDAO {
@@ -71,19 +73,6 @@ object PresPageDAO {
     ).onComplete {
         case Success(rowsAffected) => DatabaseConnection.logger.debug(s"$rowsAffected row(s) updated size on PresPage table")
         case Failure(e)            => DatabaseConnection.logger.debug(s"Error updating size on PresPage: $e")
-      }
-  }
-
-  def addSlidePosition(slideId: String, width: Double, height: Double,
-                       viewBoxWidth: Double, viewBoxHeight: Double) = {
-    DatabaseConnection.db.run(
-      TableQuery[PresPageDbTableDef]
-        .filter(_.pageId === slideId)
-        .map(p => (p.width, p.height, p.viewBoxWidth, p.viewBoxHeight))
-        .update((width, height, viewBoxWidth, viewBoxHeight))
-    ).onComplete {
-        case Success(rowsAffected) => DatabaseConnection.logger.debug(s"$rowsAffected row(s) added slide position on PresPage table")
-        case Failure(e)            => DatabaseConnection.logger.debug(s"Error updating slide position on PresPage: $e")
       }
   }
 

@@ -1,33 +1,38 @@
-import { useReactiveVar } from "@apollo/client";
-import React, { useCallback, useEffect, useMemo } from "react";
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+import { useReactiveVar } from '@apollo/client';
+import React, { useCallback, useEffect } from 'react';
 import deviceInfo from '/imports/utils/deviceInfo';
-import AudioManager from "/imports/ui/services/audio-manager";
-import { useCurrentUser } from "/imports/ui/core/hooks/useCurrentUser";
-import { User } from "/imports/ui/Types/user";
-import { defineMessages, useIntl } from "react-intl";
-import { useShortcutHelp } from "/imports/ui/core/hooks/useShortcutHelp";
-import BBBMenu from '/imports/ui/components/common/menu/component';
-import Styled from './styles';
+import AudioManager from '/imports/ui/services/audio-manager';
+import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
+import { User } from '/imports/ui/Types/user';
+import { defineMessages, useIntl } from 'react-intl';
 import Settings from '/imports/ui/services/settings';
-import { handleLeaveAudio, liveChangeInputDevice, liveChangeOutputDevice, notify, toggleMuteMicrophone, truncateDeviceName } from "./service";
-import { useMeeting } from "/imports/ui/core/hooks/useMeeting";
-import { Meeting } from "/imports/ui/Types/meeting";
+import {
+  handleLeaveAudio, liveChangeInputDevice, liveChangeOutputDevice, notify, toggleMuteMicrophone,
+} from './service';
+import useMeeting from '/imports/ui/core/hooks/useMeeting';
+import { Meeting } from '/imports/ui/Types/meeting';
 import logger from '/imports/startup/client/logger';
 import Auth from '/imports/ui/services/auth';
 import MutedAlert from '/imports/ui/components/muted-alert/component';
-import Mutetoggle from "./buttons/muteToggle";
-import ListenOnly from "./buttons/listenOnly";
-import LiveSelection from "./buttons/LiveSelection";
+import Mutetoggle from './buttons/muteToggle';
+import ListenOnly from './buttons/listenOnly';
+import LiveSelection from './buttons/LiveSelection';
 
+// @ts-ignore - temporary, while meteor exists in the project
+const { enableDynamicAudioDeviceSelection } = Meteor.settings.public.app;
+// @ts-ignore - temporary, while meteor exists in the project
+const MUTE_ALERT_CONFIG = Meteor.settings.public.app.mutedAlert;
 
-const enableDynamicAudioDeviceSelection = Meteor.settings.public.app.enableDynamicAudioDeviceSelection;
-const animations = Settings.application.animations;
+// @ts-ignore - temporary while settings are still in .js
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { animations } = Settings.application;
 
 const AUDIO_INPUT = 'audioinput';
 const AUDIO_OUTPUT = 'audiooutput';
 const DEFAULT_DEVICE = 'default';
-const SET_SINK_ID_SUPPORTED = 'setSinkId' in HTMLMediaElement.prototype;
-const MUTE_ALERT_CONFIG = Meteor.settings.public.app.mutedAlert;
+
 const { enabled: muteAlertEnabled } = MUTE_ALERT_CONFIG;
 
 const intlMessages = defineMessages({
@@ -57,7 +62,6 @@ const intlMessages = defineMessages({
   },
 });
 
-
 interface InputStreamLiveSelectorProps {
   isConnected: boolean;
   isPresenter: boolean;
@@ -74,7 +78,6 @@ interface InputStreamLiveSelectorProps {
   inputStream: string;
   meetingIsBreakout: boolean;
 }
-
 
 const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
   isConnected,
@@ -93,6 +96,7 @@ const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
   meetingIsBreakout,
 }) => {
   const intl = useIntl();
+  // eslint-disable-next-line no-undef
   const [inputDevices, setInputDevices] = React.useState<InputDeviceInfo[]>([]);
   const [outputDevices, setOutputDevices] = React.useState<MediaDeviceInfo[]>([]);
   const { isMobile } = deviceInfo;
@@ -120,7 +124,7 @@ const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
         meetingId: Auth.meetingID,
       },
     }, 'Current input device was removed. Fallback to default device');
-    liveChangeInputDevice(fallbackDevice.deviceId).catch((error) => {
+    liveChangeInputDevice(fallbackDevice.deviceId).catch(() => {
       notify(intl.formatMessage(intlMessages.deviceChangeFailed), true);
     });
   }, []);
@@ -134,7 +138,7 @@ const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
         meetingId: Auth.meetingID,
       },
     }, 'Current output device was removed. Fallback to default device');
-    liveChangeOutputDevice(fallbackDevice.deviceId, true).catch((error) => {
+    liveChangeOutputDevice(fallbackDevice.deviceId, true).catch(() => {
       notify(intl.formatMessage(intlMessages.deviceChangeFailed), true);
     });
   }, []);
@@ -165,9 +169,10 @@ const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
   return (
     <div>
       {inAudio && inputStream && muteAlertEnabled && !listenOnly && muted && showMute ? (
-        <MutedAlert {...{
-          muted, inputStream, isPresenter,
-        }}
+        <MutedAlert
+          {...{
+            muted, inputStream, isPresenter,
+          }}
           isViewer={!isModerator}
         />
       ) : null}
@@ -189,13 +194,15 @@ const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
           />
         ) : (
           <>
-            {(isConnected && !listenOnly) && <Mutetoggle
-              talking={talking}
-              muted={muted}
-              disabled={disabled || isAudioLocked}
-              isAudioLocked={isAudioLocked}
-              toggleMuteMicrophone={toggleMuteMicrophone}
-            />}
+            {(isConnected && !listenOnly) && (
+              <Mutetoggle
+                talking={talking}
+                muted={muted}
+                disabled={disabled || isAudioLocked}
+                isAudioLocked={isAudioLocked}
+                toggleMuteMicrophone={toggleMuteMicrophone}
+              />
+            )}
             <ListenOnly
               listenOnly={listenOnly}
               handleLeaveAudio={handleLeaveAudio}
@@ -214,8 +221,7 @@ const InputStreamLiveSelectorContainer: React.FC = () => {
       return {
         presenter: u.presenter,
         isModerator: u.isModerator,
-        voice: null
-      }
+      };
     }
 
     return {
@@ -227,39 +233,49 @@ const InputStreamLiveSelectorContainer: React.FC = () => {
         muted: u?.voice?.muted ?? false,
         listenOnly: u?.voice?.listenOnly ?? false,
         talking: u?.voice?.talking ?? false,
-      }
-    }
+      },
+    };
   });
 
   const currentMeeting: Partial<Meeting> = useMeeting((m: Partial<Meeting>) => {
     return {
       lockSettings: m?.lockSettings,
       isBreakout: m?.isBreakout,
-    }
+    };
   });
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
   const isConnected = useReactiveVar(AudioManager._isConnected.value) as boolean;
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
   const isConnecting = useReactiveVar(AudioManager._isConnecting.value) as boolean;
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
   const isHangingUp = useReactiveVar(AudioManager._isHangingUp.value) as boolean;
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
   const inputDeviceId = useReactiveVar(AudioManager._inputDeviceId.value) as string;
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
   const outputDeviceId = useReactiveVar(AudioManager._outputDeviceId.value) as string;
+  // @ts-ignore - temporary while hybrid (meteor+GraphQl)
   const inputStream = useReactiveVar(AudioManager._inputStream) as string;
-  return <InputStreamLiveSelector
-    isPresenter={currentUser?.presenter ?? false}
-    isModerator={currentUser?.isModerator ?? false}
-    isAudioLocked={(!currentUser?.isModerator && currentUser?.locked && currentMeeting?.lockSettings?.disableMic) ?? false}
-    listenOnly={currentUser?.voice?.listenOnly ?? false}
-    muted={currentUser?.voice?.muted ?? false}
-    talking={currentUser?.voice?.talking ?? false}
-    inAudio={!!currentUser?.voice ?? false}
-    showMute={(!!currentUser?.voice && !currentMeeting?.lockSettings?.disableMic) ?? false}
-    isConnected={isConnected}
-    disabled={isConnecting || isHangingUp}
-    inputDeviceId={inputDeviceId}
-    outputDeviceId={outputDeviceId}
-    inputStream={inputStream}
-    meetingIsBreakout={currentMeeting?.isBreakout ?? false}
-  />;
-};
 
+  return (
+    <InputStreamLiveSelector
+      isPresenter={currentUser?.presenter ?? false}
+      isModerator={currentUser?.isModerator ?? false}
+      isAudioLocked={(!currentUser?.isModerator && currentUser?.locked
+        && currentMeeting?.lockSettings?.disableMic) ?? false}
+      listenOnly={currentUser?.voice?.listenOnly ?? false}
+      muted={currentUser?.voice?.muted ?? false}
+      talking={currentUser?.voice?.talking ?? false}
+      inAudio={!!currentUser?.voice ?? false}
+      showMute={(!!currentUser?.voice && !currentMeeting?.lockSettings?.disableMic) ?? false}
+      isConnected={isConnected}
+      disabled={isConnecting || isHangingUp}
+      inputDeviceId={inputDeviceId}
+      outputDeviceId={outputDeviceId}
+      inputStream={inputStream}
+      meetingIsBreakout={currentMeeting?.isBreakout ?? false}
+    />
+  );
+};
 
 export default InputStreamLiveSelectorContainer;

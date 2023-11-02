@@ -7,8 +7,6 @@ import BBBMenu from '/imports/ui/components/common/menu/component';
 import PropTypes from 'prop-types';
 import Styled from './styles';
 import Auth from '/imports/ui/services/auth';
-import Settings from '/imports/ui/services/settings';
-import { updateSettings } from '/imports/ui/components/settings/service';
 
 const intlMessages = defineMessages({
   focusLabel: {
@@ -41,11 +39,17 @@ const intlMessages = defineMessages({
   unpinDesc: {
     id: 'app.videoDock.webcamUnpinDesc',
   },
-  mirrorLabel: {
-    id: 'app.videoDock.webcamMirrorLabel',
+  enableMirrorLabel: {
+    id: 'app.videoDock.webcamEnableMirrorLabel',
   },
-  mirrorDesc: {
-    id: 'app.videoDock.webcamMirrorDesc',
+  enableMirrorDesc: {
+    id: 'app.videoDock.webcamEnableMirrorDesc',
+  },
+  disableMirrorLabel: {
+    id: 'app.videoDock.webcamDisableMirrorLabel',
+  },
+  disableMirrorDesc: {
+    id: 'app.videoDock.webcamDisableMirrorDesc',
   },
   fullscreenLabel: {
     id: 'app.videoDock.webcamFullscreenLabel',
@@ -63,7 +67,7 @@ const intlMessages = defineMessages({
 const UserActions = (props) => {
   const {
     name, cameraId, numOfStreams, onHandleVideoFocus, user, focused, onHandleMirror,
-    isVideoSqueezed, videoContainer, isRTL, isStream, isSelfViewDisabled,
+    isVideoSqueezed, videoContainer, isRTL, isStream, isSelfViewDisabled, isMirrored,
   } = props;
 
   const intl = useIntl();
@@ -75,17 +79,19 @@ const UserActions = (props) => {
     const userId = user?.userId;
     const isPinnedIntlKey = !pinned ? 'pin' : 'unpin';
     const isFocusedIntlKey = !focused ? 'focus' : 'unfocus';
-    const enableSelfCamIntlKey = !isSelfViewDisabled ? 'disable' : 'enable';
+    const isMirroredIntlKey = !isMirrored ? 'enableMirror' : 'disableMirror';
+    const disabledCams = Session.get('disabledCams') || [];
+    const isCameraDisabled = disabledCams && disabledCams?.includes(cameraId);
+    const enableSelfCamIntlKey = !isCameraDisabled ? 'disable' : 'enable';
 
     const menuItems = [];
 
     const toggleDisableCam = () => {
-      const applicationValues = { ...Settings.application };
-      applicationValues.selfViewDisable = !Settings.application.selfViewDisable;
-      updateSettings({
-        ...Settings,
-        application: applicationValues,
-      });
+      if (!isCameraDisabled) {
+        Session.set('disabledCams', [...disabledCams, cameraId]);
+      } else {
+        Session.set('disabledCams', disabledCams.filter((cId) => cId !== cameraId));
+      }
     };
 
     if (isVideoSqueezed) {
@@ -108,7 +114,7 @@ const UserActions = (props) => {
         );
       }
     }
-    if (userId === Auth.userID && isStream) {
+    if (userId === Auth.userID && isStream && !isSelfViewDisabled) {
       menuItems.push({
         key: `${cameraId}-disable`,
         label: intl.formatMessage(intlMessages[`${enableSelfCamIntlKey}Label`]),
@@ -118,13 +124,15 @@ const UserActions = (props) => {
       });
     }
 
-    menuItems.push({
-      key: `${cameraId}-mirror`,
-      label: intl.formatMessage(intlMessages.mirrorLabel),
-      description: intl.formatMessage(intlMessages.mirrorDesc),
-      onClick: () => onHandleMirror(cameraId),
-      dataTest: 'mirrorWebcamBtn',
-    });
+    if (isStream) {
+      menuItems.push({
+        key: `${cameraId}-mirror`,
+        label: intl.formatMessage(intlMessages[`${isMirroredIntlKey}Label`]),
+        description: intl.formatMessage(intlMessages[`${isMirroredIntlKey}Desc`]),
+        onClick: () => onHandleMirror(cameraId),
+        dataTest: 'mirrorWebcamBtn',
+      });
+    }
 
     if (numOfStreams > 2 && isStream) {
       menuItems.push({

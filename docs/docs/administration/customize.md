@@ -380,6 +380,27 @@ This pattern can be repeated for additional recording formats. Note that it's ve
 
 After you edit the configuration file, you must restart the recording processing queue: `systemctl restart bbb-rap-resque-worker.service` in order to pick up the changes.
 
+The following script will enable the video recording format a BigBlueButton 2.6+ server.
+
+```
+!/bin/bash
+mkdir -p /etc/bigbluebutton/recording
+cat > /etc/bigbluebutton/recording/recording.yml << REC
+steps:
+  archive: "sanity"
+  sanity: "captions"
+  captions:
+    - process:presentation
+    - process:video
+  process:presentation: publish:presentation
+  process:video: publish:video
+REC
+if ! dpkg -l | grep -q bbb-playback-video; then
+  apt install -y bbb-playback-video
+  systemctl restart bbb-rap-resque-worker.service
+fi
+```
+
 #### Enable generating mp4 (H.264) video output
 
 By default, BigBlueButton generates recording videos as `.webm` files using the VP9 video codec. These are supported in most desktop web browsers, but might not work on iOS mobile devices. You can additionally enable the H.264 video codec in some recording formats (Keep in mind that the following `.yml` files mentioned ahead only exist when the respective format package is installed):
@@ -1405,6 +1426,7 @@ Useful tools for development:
 | `userdata-bbb_skip_video_preview_on_first_join=` | (Introduced in BigBlueButton 2.3) If set to `true`, the user will not see a preview of their webcam before sharing it when sharing for the first time in the session. If the user stops sharing, next time they try to share webcam the video preview will be displayed, allowing for configuration changes to be made prior to sharing | `false`       |
 | `userdata-bbb_mirror_own_webcam=`                | If set to `true`, the client will see a mirrored version of their webcam. Doesn't affect the incoming video stream for other users.                                                                                                                                                                                                     | `false`       |
 | `userdata-bbb_fullaudio_bridge=`                 | Specifies the audio bridge to be used in the client. Supported values: `sipjs`, `fullaudio`.                                                                                       | `fullaudio`   |
+| `userdata-bbb_transparent_listen_only=`          | If set to `true`, the experimental "transparent listen only" audio mode will be used                                                                                                                                                                                                                                                    | `false`       |
 
 
 #### Presentation parameters
