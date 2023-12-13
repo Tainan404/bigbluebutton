@@ -3,13 +3,16 @@ import PropTypes from 'prop-types';
 import { ACTIONS } from '/imports/ui/components/layout/enums';
 import FullscreenButtonContainer from '/imports/ui/components/common/fullscreen-button/container';
 import Styled from './styles';
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const ViewActions = (props) => {
   const {
     name, cameraId, videoContainer, isFullscreenContext, layoutContextDispatch, isStream,
   } = props;
 
-  const ALLOW_FULLSCREEN = Meteor.settings.public.app.allowFullscreen;
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings.public.app;
+  const { allowFullscreen } = appConfig;
 
   useEffect(() => () => {
     // exit fullscreen when component is unmounted
@@ -24,7 +27,7 @@ const ViewActions = (props) => {
     }
   }, []);
 
-  if (!ALLOW_FULLSCREEN || !isStream) return null;
+  if (!allowFullscreen || !isStream) return null;
 
   return (
     <Styled.FullscreenWrapper>

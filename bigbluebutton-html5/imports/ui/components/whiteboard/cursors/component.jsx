@@ -10,24 +10,6 @@ const XL_OFFSET = 85;
 const BOTTOM_CAM_HANDLE_HEIGHT = 10;
 const PRES_TOOLBAR_HEIGHT = 35;
 
-const baseName = Meteor.settings.public.app.cdn + Meteor.settings.public.app.basename;
-const makeCursorUrl = (filename) => `${baseName}/resources/images/whiteboard-cursor/${filename}`;
-
-const TOOL_CURSORS = {
-  select: 'default',
-  erase: 'crosshair',
-  arrow: 'crosshair',
-  draw: `url('${makeCursorUrl('pencil.png')}') 2 22, default`,
-  rectangle: `url('${makeCursorUrl('square.png')}'), default`,
-  ellipse: `url('${makeCursorUrl('ellipse.png')}'), default`,
-  triangle: `url('${makeCursorUrl('triangle.png')}'), default`,
-  line: `url('${makeCursorUrl('line.png')}'), default`,
-  text: `url('${makeCursorUrl('text.png')}'), default`,
-  sticky: `url('${makeCursorUrl('square.png')}'), default`,
-  pan: 'grab',
-  grabbing: 'grabbing',
-  moving: 'move',
-};
 const Cursors = (props) => {
   const cursorWrapper = React.useRef();
   const [active, setActive] = React.useState(false);
@@ -48,8 +30,25 @@ const Cursors = (props) => {
     toggleToolsAnimations,
     whiteboardToolbarAutoHide,
     application,
+    makeCursorUrl,
     whiteboardWriters,
   } = props;
+
+  const TOOL_CURSORS = {
+    select: 'default',
+    erase: 'crosshair',
+    arrow: 'crosshair',
+    draw: `url('${makeCursorUrl('pencil.png')}') 2 22, default`,
+    rectangle: `url('${makeCursorUrl('square.png')}'), default`,
+    ellipse: `url('${makeCursorUrl('ellipse.png')}'), default`,
+    triangle: `url('${makeCursorUrl('triangle.png')}'), default`,
+    line: `url('${makeCursorUrl('line.png')}'), default`,
+    text: `url('${makeCursorUrl('text.png')}'), default`,
+    sticky: `url('${makeCursorUrl('square.png')}'), default`,
+    pan: 'grab',
+    grabbing: 'grabbing',
+    moving: 'move',
+  };
 
   const [panGrabbing, setPanGrabbing] = React.useState(false);
 

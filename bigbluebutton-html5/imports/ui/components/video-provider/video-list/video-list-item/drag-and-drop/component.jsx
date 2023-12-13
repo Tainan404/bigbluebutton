@@ -7,6 +7,7 @@ import { EFFECT_TYPES } from '/imports/ui/services/virtual-background/service';
 import VirtualBgService from '/imports/ui/components/video-preview/virtual-background/service';
 import logger from '/imports/startup/client/logger';
 import withFileReader from '/imports/ui/components/common/file-reader/component';
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const { MIME_TYPES_ALLOWED, MAX_FILE_SIZE } = VirtualBgService;
 
@@ -21,10 +22,12 @@ const intlMessages = defineMessages({
   },
 });
 
-const ENABLE_WEBCAM_BACKGROUND_UPLOAD = Meteor.settings.public.virtualBackgrounds.enableVirtualBackgroundUpload;
-
 const DragAndDrop = (props) => {
   const { children, intl, readFile, onVirtualBgDrop: onAction, isStream } = props;
+
+  const [MeetingSettings] = useMeetingSettings();
+  const virtualBgsConfig = MeetingSettings.public.virtualBackgrounds;
+  const enableWebcamBackgroundUpload = virtualBgsConfig.enableVirtualBackgroundUpload;
 
   const [dragging, setDragging] = useState(false);
   const [draggingOver, setDraggingOver] = useState(false);
@@ -106,7 +109,7 @@ const DragAndDrop = (props) => {
   };
 
   const makeDragOperations = useCallback((userId) => {
-    if (!userId || Auth.userID !== userId || !ENABLE_WEBCAM_BACKGROUND_UPLOAD || !isStream) return {};
+    if (!userId || Auth.userID !== userId || !enableWebcamBackgroundUpload || !isStream) return {};
 
     const startAndSaveVirtualBackground = (file) => handleStartAndSaveVirtualBackground(file);
 

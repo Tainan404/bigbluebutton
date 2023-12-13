@@ -31,13 +31,15 @@ import deviceInfo from '/imports/utils/deviceInfo';
 import Whiteboard from './component';
 import POLL_RESULTS_SUBSCRIPTION from '/imports/ui/core/graphql/queries/pollResultsSubscription';
 import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
-
-const WHITEBOARD_CONFIG = Meteor.settings.public.whiteboard;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 let annotations = [];
 let lastUpdatedAt = null;
 
 const WhiteboardContainer = (props) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const wbConfig = MeetingSettings.public.whiteboard;
+
   const {
     intl,
     slidePosition,
@@ -134,8 +136,8 @@ const WhiteboardContainer = (props) => {
   );
   const isPresenter = currentUser?.presenter;
   const isModerator = currentUser?.isModerator;
-  const { maxStickyNoteLength, maxNumberOfAnnotations } = WHITEBOARD_CONFIG;
-  const fontFamily = WHITEBOARD_CONFIG.styles.text.family;
+  const { maxStickyNoteLength, maxNumberOfAnnotations } = wbConfig;
+  const fontFamily = wbConfig.styles.text.family;
   const handleToggleFullScreen = (ref) => FullscreenService.toggleFullScreen(ref);
   const layoutContextDispatch = layoutDispatch();
 

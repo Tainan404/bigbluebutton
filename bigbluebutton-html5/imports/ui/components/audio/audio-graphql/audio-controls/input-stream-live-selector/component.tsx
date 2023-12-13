@@ -19,11 +19,7 @@ import MutedAlert from '/imports/ui/components/muted-alert/component';
 import Mutetoggle from './buttons/muteToggle';
 import ListenOnly from './buttons/listenOnly';
 import LiveSelection from './buttons/LiveSelection';
-
-// @ts-ignore - temporary, while meteor exists in the project
-const { enableDynamicAudioDeviceSelection } = Meteor.settings.public.app;
-// @ts-ignore - temporary, while meteor exists in the project
-const MUTE_ALERT_CONFIG = Meteor.settings.public.app.mutedAlert;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 // @ts-ignore - temporary while settings are still in .js
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -32,8 +28,6 @@ const { animations } = Settings.application;
 const AUDIO_INPUT = 'audioinput';
 const AUDIO_OUTPUT = 'audiooutput';
 const DEFAULT_DEVICE = 'default';
-
-const { enabled: muteAlertEnabled } = MUTE_ALERT_CONFIG;
 
 const intlMessages = defineMessages({
   changeAudioDevice: {
@@ -95,9 +89,15 @@ const InputStreamLiveSelector: React.FC<InputStreamLiveSelectorProps> = ({
   inputStream,
   meetingIsBreakout,
 }) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings.public.app;
+  const muteAlertConfig = appConfig.mutedAlert;
+  const { enableDynamicAudioDeviceSelection } = appConfig;
+  const { enabled: muteAlertEnabled } = muteAlertConfig;
+
   const intl = useIntl();
   // eslint-disable-next-line no-undef
-  const [inputDevices, setInputDevices] = React.useState<InputDeviceInfo[]>([]);
+  const [inputDevices, setInputDevices] = React.useState<MediaDeviceInfo[]>([]);
   const [outputDevices, setOutputDevices] = React.useState<MediaDeviceInfo[]>([]);
   const { isMobile } = deviceInfo;
 

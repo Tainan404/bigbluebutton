@@ -1,6 +1,8 @@
 import { PluginConfig } from '../components/plugins-engine/types';
 
 export interface MeetingClientSettings {
+  enableGuestLobbyMessage: unknown;
+  dynamicGuestPolicy: unknown;
   public: Public
   private: Private
 }

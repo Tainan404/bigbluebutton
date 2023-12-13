@@ -4,14 +4,16 @@ import GuestPolicyComponent from './component';
 import Service from '../service';
 import Auth from '/imports/ui/services/auth';
 import { UsersContext } from '/imports/ui/components/components-data/users-context/context';
-
-const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const GuestPolicyContainer = (props) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const userConfig = MeetingSettings.public.user;
+  const roleModerator = userConfig.role_moderator;
   const usingUsersContext = useContext(UsersContext);
   const { users } = usingUsersContext;
   const currentUser = users[Auth.meetingID][Auth.userID];
-  const amIModerator = currentUser.role === ROLE_MODERATOR;
+  const amIModerator = currentUser.role === roleModerator;
 
   return amIModerator && <GuestPolicyComponent {...props} />;
 };

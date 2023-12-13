@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import Styled from './styles';
 import Icon from '/imports/ui/components/common/icon/component';
 import UserListService from '/imports/ui/components/user-list/service';
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const UserAvatarVideo = (props) => {
   const { user, unhealthyStream, squeezed, voiceUser } = props;
@@ -15,7 +16,9 @@ const UserAvatarVideo = (props) => {
 
   const talking = voiceUser?.talking || false;
 
-  const ROLE_MODERATOR = Meteor.settings.public.user.role_moderator;
+  const [MeetingSettings] = useMeetingSettings();
+  const userConfig = MeetingSettings.public.user;
+  const roleModerator = userConfig.role_moderator;
 
   const handleUserIcon = () => {
     if (emoji !== 'none') {
@@ -32,7 +35,7 @@ const UserAvatarVideo = (props) => {
 
   return (
     <Styled.UserAvatarStyled
-      moderator={role === ROLE_MODERATOR}
+      moderator={role === roleModerator}
       presenter={presenter}
       dialIn={clientType === 'dial-in-user'}
       color={color}

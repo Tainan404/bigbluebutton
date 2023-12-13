@@ -1,10 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Meteor } from 'meteor/meteor';
-
-const { pointerDiameter } = Meteor.settings.public.whiteboard;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const Cursor = (props) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const wbConfig = MeetingSettings.public.whiteboard;
+  const { pointerDiameter } = wbConfig;
   const {
     name,
     color,

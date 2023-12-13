@@ -30,15 +30,7 @@ import TextInput from '/imports/ui/components/text-input/component';
 import renderNoUserWaitingItem from './guest-items/noPendingGuestUser';
 import renderPendingUsers from './guest-items/guestPendingUser';
 import logger from '/imports/startup/client/logger';
-
-// @ts-ignore - temporary, while meteor exists in the project
-const isGuestLobbyMessageEnabled = Meteor.settings.public.app.enableGuestLobbyMessage;
-// @ts-ignore - temporary, while meteor exists in the project
-const { guestPolicyExtraAllowOptions } = Meteor.settings.public.app;
-
-// We use the dynamicGuestPolicy rule for allowing the rememberChoice checkbox
-// @ts-ignore - temporary, while meteor exists in the project
-const allowRememberChoice = Meteor.settings.public.app.dynamicGuestPolicy;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 interface LayoutDispatchProps {
   type: string,
@@ -163,6 +155,11 @@ const GuestUsersManagementPanel: React.FC<GuestUsersManagementPanelProps> = ({
   guestLobbyEnabled,
   guestLobbyMessage,
 }) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings;
+  const { guestPolicyExtraAllowOptions } = appConfig;
+  const isGuestLobbyMessageEnabled = appConfig.enableGuestLobbyMessage;
+  const allowRememberChoice = appConfig.dynamicGuestPolicy;
   const intl = useIntl();
   const { isChrome } = browserInfo;
   const [rememberChoice, setRememberChoice] = useState(false);

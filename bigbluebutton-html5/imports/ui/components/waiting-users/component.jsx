@@ -66,7 +66,7 @@ const intlMessages = defineMessages({
   privateMessageLabel: {
     id: 'app.userList.guest.privateMessageLabel',
     description: 'Private message button label',
-  },  
+  },
   privateInputPlaceholder: {
     id: 'app.userList.guest.privateInputPlaceholder',
     description: 'Private input placeholder',
@@ -97,69 +97,71 @@ const getNameInitials = (name) => {
 
 const renderGuestUserItem = (
   name, color, handleAccept, handleDeny, role, sequence, userId, avatar, intl,
-  privateMessageVisible, setPrivateGuestLobbyMessage, privateGuestLobbyMessage, isGuestLobbyMessageEnabled,
+  privateMessageVisible, setPrivateGuestLobbyMessage, privateGuestLobbyMessage,
+  isGuestLobbyMessageEnabled,
 ) => (
   <React.Fragment key={`user-${userId}`}>
-  <Styled.ListItem key={`userlist-item-${userId}`} animations={animations}>
-    <Styled.UserContentContainer key={`user-content-container-${userId}`}>
-      <Styled.UserAvatarContainer key={`user-avatar-container-${userId}`}>
-        <UserAvatar
-          key={`user-avatar-${userId}`}
-          moderator={role === 'MODERATOR'}
-          avatar={avatar}
-          color={color}
-        >
-          {getNameInitials(name)}
-        </UserAvatar>
-      </Styled.UserAvatarContainer>
-      <Styled.UserName key={`user-name-${userId}`}>
-        {`[${sequence}] ${name}`}
-      </Styled.UserName>
-    </Styled.UserContentContainer>
+    <Styled.ListItem key={`userlist-item-${userId}`} animations={animations}>
+      <Styled.UserContentContainer key={`user-content-container-${userId}`}>
+        <Styled.UserAvatarContainer key={`user-avatar-container-${userId}`}>
+          <UserAvatar
+            key={`user-avatar-${userId}`}
+            moderator={role === 'MODERATOR'}
+            avatar={avatar}
+            color={color}
+          >
+            {getNameInitials(name)}
+          </UserAvatar>
+        </Styled.UserAvatarContainer>
+        <Styled.UserName key={`user-name-${userId}`}>
+          {`[${sequence}] ${name}`}
+        </Styled.UserName>
+      </Styled.UserContentContainer>
 
-    <Styled.ButtonContainer key={`userlist-btns-${userId}`}>
-      <Styled.WaitingUsersButton
-        key={`userbtn-accept-${userId}`}
-        size="md"
-        aria-label={intl.formatMessage(intlMessages.accept)}
-        ghost
-        hideLabel
-        icon="add"
-        onClick={handleAccept}
-        data-test="acceptGuest"
-      />
-      { isGuestLobbyMessageEnabled ? ( 
-      <Styled.WaitingUsersButtonMsg
-        key={`userbtn-message-${userId}`}
-        size="lg"
-        aria-label={intl.formatMessage(intlMessages.privateMessageLabel)}
-        ghost
-        hideLabel
-        onClick={privateMessageVisible}
-        data-test="privateMessageGuest" 
-      />
-    ) : null}
-      <Styled.WaitingUsersButtonDeny
-        key={`userbtn-deny-${userId}`}
-        aria-label={intl.formatMessage(intlMessages.deny)}
-        ghost
-        hideLabel
-        onClick={handleDeny}
-        data-test="denyGuest"
-        size="sm"
-        icon="close"
-      />
-    </Styled.ButtonContainer>
-  </Styled.ListItem>
-  { isGuestLobbyMessageEnabled ? (
-    <Styled.PrivateLobbyMessage
-      id={`privateMessage-${userId}`}
-      data-test="privateLobbyMessage">
+      <Styled.ButtonContainer key={`userlist-btns-${userId}`}>
+        <Styled.WaitingUsersButton
+          key={`userbtn-accept-${userId}`}
+          size="md"
+          aria-label={intl.formatMessage(intlMessages.accept)}
+          ghost
+          hideLabel
+          icon="add"
+          onClick={handleAccept}
+          data-test="acceptGuest"
+        />
+        {isGuestLobbyMessageEnabled ? (
+          <Styled.WaitingUsersButtonMsg
+            key={`userbtn-message-${userId}`}
+            size="lg"
+            aria-label={intl.formatMessage(intlMessages.privateMessageLabel)}
+            ghost
+            hideLabel
+            onClick={privateMessageVisible}
+            data-test="privateMessageGuest"
+          />
+        ) : null}
+        <Styled.WaitingUsersButtonDeny
+          key={`userbtn-deny-${userId}`}
+          aria-label={intl.formatMessage(intlMessages.deny)}
+          ghost
+          hideLabel
+          onClick={handleDeny}
+          data-test="denyGuest"
+          size="sm"
+          icon="close"
+        />
+      </Styled.ButtonContainer>
+    </Styled.ListItem>
+    {isGuestLobbyMessageEnabled ? (
+      <Styled.PrivateLobbyMessage
+        id={`privateMessage-${userId}`}
+        data-test="privateLobbyMessage">
         <TextInput
           maxLength={128}
           placeholder={intl.formatMessage(intlMessages.privateInputPlaceholder,
-                                         { 0: name })}
-          send={setPrivateGuestLobbyMessage} />
+            { 0: name })}
+          send={setPrivateGuestLobbyMessage}
+        />
         <p>
           <i>
             &quot;
@@ -169,8 +171,8 @@ const renderGuestUserItem = (
             &quot;
           </i>
         </p>
-    </Styled.PrivateLobbyMessage>
-  ) : null}
+      </Styled.PrivateLobbyMessage>
+    ) : null}
   </React.Fragment>
 );
 
@@ -183,9 +185,9 @@ const renderNoUserWaitingItem = (message) => (
 );
 
 const renderPendingUsers = (message, usersArray, action, intl,
-  privateMessageVisible, setPrivateGuestLobbyMessage, 
+  privateMessageVisible, setPrivateGuestLobbyMessage,
   privateGuestLobbyMessage, isGuestLobbyMessageEnabled
-) => { 
+) => {
   if (!usersArray.length) return null;
   return (
     <Styled.PendingUsers>
@@ -261,15 +263,15 @@ const WaitingUsers = (props) => {
     setRememberChoice(checked);
   };
 
-  const changePolicy = (shouldExecutePolicy, policyRule, cb, message) => () => {   
+  const changePolicy = (shouldExecutePolicy, policyRule, cb, message) => () => {
     if (shouldExecutePolicy) {
       changeGuestPolicy(policyRule);
     }
 
     closePanel();
-    
+
     notify(intl.formatMessage(intlMessages.feedbackMessage) + message.toUpperCase(), 'success');
-    
+
     return cb();
   };
 
@@ -323,7 +325,7 @@ const WaitingUsers = (props) => {
     },
   ];
 
-  const buttonsData = ( authenticatedGuest && guestPolicyExtraAllowOptions )
+  const buttonsData = (authenticatedGuest && guestPolicyExtraAllowOptions)
     ? authGuestButtonsData.concat(guestButtonsData)
     : guestButtonsData;
 
@@ -349,18 +351,18 @@ const WaitingUsers = (props) => {
               <i>
                 &quot;
                 {
-                guestLobbyMessage.length > 0
-                  ? guestLobbyMessage
-                  : intl.formatMessage(intlMessages.emptyMessage)
-              }
+                  guestLobbyMessage.length > 0
+                    ? guestLobbyMessage
+                    : intl.formatMessage(intlMessages.emptyMessage)
+                }
                 &quot;
               </i>
             </p>
           </Styled.LobbyMessage>
         ) : null}
-          <Styled.ModeratorActions>
-            <Styled.MainTitle>{intl.formatMessage(intlMessages.optionTitle)}</Styled.MainTitle>
-            {
+        <Styled.ModeratorActions>
+          <Styled.MainTitle>{intl.formatMessage(intlMessages.optionTitle)}</Styled.MainTitle>
+          {
             buttonsData.map((buttonData) => renderButton(
               intl.formatMessage(buttonData.messageId),
               buttonData,

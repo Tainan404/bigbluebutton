@@ -5,8 +5,7 @@ import WakeLock from './component';
 import Service from './service';
 import Settings from '/imports/ui/services/settings';
 import getFromUserSettings from '/imports/ui/services/users-settings';
-
-const APP_CONFIG = Meteor.settings.public.app;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const propTypes = {
   areAudioModalsOpen: PropTypes.bool,
@@ -45,11 +44,14 @@ WakeLockContainer.propTypes = propTypes;
 WakeLockContainer.defaultProps = defaultProps;
 
 export default withTracker(() => {
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings.public.app;
+
   return {
     request: Service.request,
     release: Service.release,
     wakeLockSettings: Settings.application.wakeLock,
     areAudioModalsOpen: Session.get('audioModalIsOpen') || Session.get('inEchoTest'),
-    autoJoin: getFromUserSettings('bbb_auto_join_audio', APP_CONFIG.autoJoin),
+    autoJoin: getFromUserSettings('bbb_auto_join_audio', appConfig.autoJoin),
   };
 })(WakeLockContainer);
