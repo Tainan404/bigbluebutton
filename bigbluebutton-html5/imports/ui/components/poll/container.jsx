@@ -7,11 +7,19 @@ import Service from './service';
 import Auth from '/imports/ui/services/auth';
 import { UsersContext } from '../components-data/users-context/context';
 import { layoutDispatch, layoutSelectInput } from '../layout/context';
-
-const CHAT_CONFIG = Meteor.settings.public.chat;
-const PUBLIC_CHAT_KEY = CHAT_CONFIG.public_id;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const PollContainer = ({ ...props }) => {
+  const [MeetingSettings] = useMeetingSettings();
+
+  const pluginsConfig = MeetingSettings.public.poll;
+  const allowCustomInput = pluginsConfig.allowCustomResponseInput;
+  const maxCustomFields = pluginsConfig.maxCustom;
+  const maxInputChars = pluginsConfig.maxTypedAnswerLength;
+
+  const chatConfig = MeetingSettings.public.chat;
+  const publicChatKey = chatConfig.public_id;
+
   const layoutContextDispatch = layoutDispatch();
   const sidebarContent = layoutSelectInput((i) => i.sidebarContent);
   const { sidebarContentPanel } = sidebarContent;
@@ -27,18 +35,26 @@ const PollContainer = ({ ...props }) => {
 
   return (
     <Poll
-      {...{ layoutContextDispatch, sidebarContentPanel, ...props }}
+      {...{
+        maxCustomFields,
+        layoutContextDispatch,
+        maxInputChars,
+        sidebarContentPanel,
+        allowCustomInput,
+        publicChatKey,
+        ...props,
+      }}
       usernames={usernames}
     />
   );
 };
 
-export default withTracker(({ amIPresenter, currentSlideId }) => {
+export default withTracker(({ amIPresenter, currentSlideId, publicChatKey }) => {
   const isPollSecret = Session.get('secretPoll') || false;
 
   Meteor.subscribe('current-poll', isPollSecret, amIPresenter);
 
-  const pollId = currentSlideId || PUBLIC_CHAT_KEY;
+  const pollId = currentSlideId || publicChatKey;
 
   const { pollTypes } = Service;
 

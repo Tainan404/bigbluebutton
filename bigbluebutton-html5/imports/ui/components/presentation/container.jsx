@@ -22,12 +22,14 @@ import {
 import POLL_SUBSCRIPTION from '/imports/ui/core/graphql/queries/pollSubscription';
 import useMeeting from '/imports/ui/core/hooks/useMeeting';
 import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
-
-const APP_CONFIG = Meteor.settings.public.app;
-const PRELOAD_NEXT_SLIDE = APP_CONFIG.preloadNextSlides;
-const fetchedpresentation = {};
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const PresentationContainer = (props) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings.public.app;
+  const preloadNextSlide = appConfig.preloadNextSlides;
+  const fetchedpresentation = {};
+
   const { data: presentationPageData } = useSubscription(CURRENT_PRESENTATION_PAGE_SUBSCRIPTION);
   const { pres_page_curr: presentationPageArray } = (presentationPageData || {});
   const currentPresentationPage = presentationPageArray && presentationPageArray[0];
@@ -78,7 +80,7 @@ const PresentationContainer = (props) => {
       y: currentPresentationPage.yOffset,
     };
 
-    if (PRELOAD_NEXT_SLIDE && !fetchedpresentation[presentationId]) {
+    if (preloadNextSlide && !fetchedpresentation[presentationId]) {
       fetchedpresentation[presentationId] = {
         canFetch: true,
         fetchedSlide: {},
@@ -86,8 +88,8 @@ const PresentationContainer = (props) => {
     }
     const presentation = fetchedpresentation[presentationId];
 
-    if (PRELOAD_NEXT_SLIDE
-      && !presentation.fetchedSlide[currentSlide.num + PRELOAD_NEXT_SLIDE]
+    if (preloadNextSlide
+      && !presentation.fetchedSlide[currentSlide.num + preloadNextSlide]
       && presentation.canFetch) {
       // TODO: preload next slides should be reimplemented in graphql
       const slidesToFetch = [currentPresentationPage];
@@ -147,7 +149,7 @@ const PresentationContainer = (props) => {
         isIphone,
         currentSlide,
         slidePosition,
-        downloadPresentationUri: `${APP_CONFIG.bbbWebBase}/${currentPresentationPage?.downloadFileUri}`,
+        downloadPresentationUri: `${appConfig.bbbWebBase}/${currentPresentationPage?.downloadFileUri}`,
         multiUser: (multiUserData.hasAccess || multiUserData.active) && presentationIsOpen,
         presentationIsDownloadable: currentPresentationPage?.downloadable,
         mountPresentation: !!currentSlide,
@@ -158,7 +160,7 @@ const PresentationContainer = (props) => {
         publishedPoll: poll?.published || false,
         restoreOnUpdate: getFromUserSettings(
           'bbb_force_restore_presentation_on_new_events',
-          Meteor.settings.public.presentation.restoreOnUpdate,
+          MeetingSettings.public.presentation.restoreOnUpdate,
         ),
         addWhiteboardGlobalAccess: WhiteboardService.addGlobalAccess,
         removeWhiteboardGlobalAccess: WhiteboardService.removeGlobalAccess,

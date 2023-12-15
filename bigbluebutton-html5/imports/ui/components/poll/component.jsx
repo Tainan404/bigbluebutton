@@ -211,14 +211,8 @@ const intlMessages = defineMessages({
   pollingQuestion: {
     id: 'app.polling.pollQuestionTitle',
     description: 'polling question header',
-  }
+  },
 });
-
-const POLL_SETTINGS = Meteor.settings.public.poll;
-
-const ALLOW_CUSTOM_INPUT = POLL_SETTINGS.allowCustomResponseInput;
-const MAX_CUSTOM_FIELDS = POLL_SETTINGS.maxCustom;
-const MAX_INPUT_CHARS = POLL_SETTINGS.maxTypedAnswerLength;
 const MIN_OPTIONS_LENGTH = 2;
 const QUESTION_MAX_INPUT_CHARS = 1200;
 
@@ -357,15 +351,17 @@ class Poll extends Component {
    * @returns {void}
    */
   setQuestionAndOptions(input) {
-    const { intl, pollTypes, getSplittedQuestionAndOptions } = this.props;
-    const { warning, optList, isPasting, type, error } = this.state;
+    const { intl, pollTypes, getSplittedQuestionAndOptions, maxCustomFields } = this.props;
+    const {
+ warning, optList, isPasting, type, error
+    } = this.state;
     const { splittedQuestion, optionsList } = getSplittedQuestionAndOptions(input);
     const optionsListLength = optionsList.length;
     let maxOptionsWarning = warning;
-    const clearWarning = maxOptionsWarning && optionsListLength <= MAX_CUSTOM_FIELDS;
+    const clearWarning = maxOptionsWarning && optionsListLength <= maxCustomFields;
     const clearError = input.length > 0 && type === pollTypes.Response;
 
-    if (optionsListLength > MAX_CUSTOM_FIELDS  && optList[MAX_CUSTOM_FIELDS] === undefined) {
+    if (optionsListLength > maxCustomFields && optList[maxCustomFields] === undefined) {
       this.setState({ warning: intl.formatMessage(intlMessages.maxOptionsWarning) });
       if (!isPasting) return null;
       maxOptionsWarning = intl.formatMessage(intlMessages.maxOptionsWarning);
@@ -394,8 +390,8 @@ class Poll extends Component {
    * @param {Number} index 
    */
   handleRemoveOption(index) {
-    const { intl } = this.props;
-    const { optList, questionAndOptions, customInput, warning } = this.state;
+    const { intl, maxCustomFields } = this.props;
+    const { optList, questionAndOptions, customInput, warning, } = this.state;
     const list = [...optList];
     const removed = list[index];
     let questionAndOptionsList = [];
@@ -408,7 +404,7 @@ class Poll extends Component {
       questionAndOptionsList = questionAndOptions.split('\n');
       delete questionAndOptionsList[index + 1];
       questionAndOptionsList = questionAndOptionsList.filter((val) => val !== undefined);
-      clearWarning = warning && list.length <= MAX_CUSTOM_FIELDS;
+      clearWarning = warning && list.length <= maxCustomFields;
     }
 
     this.setState({
@@ -436,7 +432,7 @@ class Poll extends Component {
   }
 
   handleAutoOptionToogle() {
-    const { customInput, questionAndOptions, question } = this.state;
+    const { customInput, questionAndOptions, question, maxCustomFields } = this.state;
     const { intl, removeEmptyLineSpaces, getSplittedQuestionAndOptions } = this.props;
     const toggledValue = !customInput;
 
@@ -451,7 +447,7 @@ class Poll extends Component {
     } else {
       const inputList = removeEmptyLineSpaces(question);
       const { splittedQuestion, optionsList } = getSplittedQuestionAndOptions(inputList);
-      const clearWarning = optionsList.length > MAX_CUSTOM_FIELDS
+      const clearWarning = optionsList.length > maxCustomFields
         ? intl.formatMessage(intlMessages.maxOptionsWarning) : null;
       this.handlePollLetterOptions();
       this.setState({
@@ -516,10 +512,10 @@ class Poll extends Component {
   }
 
   renderInputs() {
-    const { intl, pollTypes } = this.props;
+    const { intl, pollTypes, maxCustomFields, maxInputChars } = this.props;
     const { optList, type, error } = this.state;
     let hasVal = false;
-    return optList.slice(0, MAX_CUSTOM_FIELDS).map((o, i) => {
+    return optList.slice(0, maxCustomFields).map((o, i) => {
       const pollOptionKey = `poll-option-${i}`;
       if (o.val && o.val.length > 0) hasVal = true;
       return (
@@ -531,7 +527,7 @@ class Poll extends Component {
               placeholder={intl.formatMessage(intlMessages.customPlaceholder)}
               data-test="pollOptionItem"
               onChange={(e) => this.handleInputChange(e, i)}
-              maxLength={MAX_INPUT_CHARS}
+              maxLength={maxInputChars}
               onPaste={(e) => { e.stopPropagation(); }}
               onCut={(e) => { e.stopPropagation(); }}
               onCopy={(e) => { e.stopPropagation(); }}
@@ -600,7 +596,7 @@ class Poll extends Component {
 
   renderStartPollButton() {
     const {
-      startPoll, startCustomPoll, intl, pollTypes, checkPollType,
+      startPoll, startCustomPoll, intl, pollTypes, checkPollType, maxCustomFields,
     } = this.props;
     const {
       type, secretPoll, optList, isMultipleResponse, question,
@@ -611,7 +607,7 @@ class Poll extends Component {
         label={intl.formatMessage(intlMessages.startPollLabel)}
         color="primary"
         onClick={() => {
-          const optionsList = optList.slice(0, MAX_CUSTOM_FIELDS);
+          const optionsList = optList.slice(0, maxCustomFields);
           let hasVal = false;
           optionsList.forEach((o) => {
             if (o.val.trim().length > 0) hasVal = true;
@@ -658,7 +654,7 @@ class Poll extends Component {
   }
 
   renderResponseArea() {
-    const { intl, pollTypes, isDefaultPoll } = this.props;
+    const { intl, pollTypes, isDefaultPoll, maxCustomFields } = this.props;
     const { type, secretPoll, optList, isMultipleResponse } = this.state;
     const defaultPoll = isDefaultPoll(type);
     if (defaultPoll || type === pollTypes.Response) return (
@@ -686,7 +682,7 @@ class Poll extends Component {
             aria-describedby="add-item-button"
             color="default"
             icon="add"
-            disabled={optList.length >= MAX_CUSTOM_FIELDS}
+            disabled={optList.length >= maxCustomFields}
             onClick={() => this.handleAddOption()}
           />
         )}
@@ -757,7 +753,7 @@ class Poll extends Component {
   }
 
   renderPollQuestionArea() {
-    const { intl, pollTypes } = this.props;
+    const { intl, pollTypes, maxInputChars } = this.props;
     const {
       type, optList, questionAndOptions, error,
       question, customInput, warning,
@@ -792,7 +788,7 @@ class Poll extends Component {
             : questionPlaceholder)}
           placeholder={intl.formatMessage(customInput ? questionsAndOptionsPlaceholder
             : questionPlaceholder)}
-          {...{ MAX_INPUT_CHARS }}
+          {...{ maxInputChars }}
           handlePollValuesText={(e) => this.handlePollValuesText(e)}
           as={customInput ? DraggableTextArea : 'textarea'}
           ref={this.textarea}
@@ -923,9 +919,10 @@ class Poll extends Component {
   }
 
   renderPollOptions() {
+    const { allowCustomInput } = this.props;
     return (
       <div>
-        {ALLOW_CUSTOM_INPUT && this.renderCustomInputRow()}
+        {allowCustomInput && this.renderCustomInputRow()}
         {this.renderPollQuestionArea()}
         {this.renderResponseTypes()}
         {this.renderResponseChoices()}

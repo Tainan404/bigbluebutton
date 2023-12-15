@@ -17,6 +17,7 @@ import AudioService from '/imports/ui/components/audio/service';
 import { shouldEnableVolumeControl } from './service';
 import MediaService from '/imports/ui/components/media/service';
 import { defineMessages } from 'react-intl';
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const screenshareIntlMessages = defineMessages({
   // SCREENSHARE
@@ -145,10 +146,15 @@ const ScreenshareContainer = (props) => {
   return null;
 };
 
-const LAYOUT_CONFIG = Meteor.settings.public.layout;
-
 export default withTracker(() => {
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings.public.app;
+  const layoutConfig = MeetingSettings.public.layout;
+  const { allowFullscreen } = appConfig;
+
   return {
+    allowFullscreen,
+    layoutConfig,
     isGloballyBroadcasting: isScreenGloballyBroadcasting() || isCameraAsContentGloballyBroadcasting(),
     toggleSwapLayout: MediaService.toggleSwapLayout,
     hidePresentationOnJoin: getFromUserSettings('bbb_hide_presentation_on_join', LAYOUT_CONFIG.hidePresentationOnJoin),

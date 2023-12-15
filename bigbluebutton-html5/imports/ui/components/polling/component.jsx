@@ -7,8 +7,6 @@ import Styled from './styles';
 import AudioService from '/imports/ui/components/audio/service';
 import Checkbox from '/imports/ui/components/common/checkbox/component';
 
-const MAX_INPUT_CHARS = Meteor.settings.public.poll.maxTypedAnswerLength;
-
 const intlMessages = defineMessages({
   pollingTitleLabel: {
     id: 'app.polling.pollingTitle',
@@ -131,7 +129,7 @@ class Polling extends Component {
 
     if (!poll) return null;
 
-    const { stackOptions, answers, question, pollType } = poll;
+    const { stackOptions, answers, question, pollType, maxInputChars } = poll;
     const defaultPoll = isDefaultPoll(pollType);
 
     return (
@@ -194,7 +192,7 @@ class Polling extends Component {
                 }}
                 type="text"
                 placeholder={intl.formatMessage(intlMessages.responsePlaceholder)}
-                maxLength={MAX_INPUT_CHARS}
+                maxLength={maxInputChars}
                 ref={(r) => { this.responseInput = r; }}
                 onPaste={(e) => { e.stopPropagation(); }}
                 onCut={(e) => { e.stopPropagation(); }}

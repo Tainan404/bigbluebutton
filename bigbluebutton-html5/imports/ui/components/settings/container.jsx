@@ -5,6 +5,7 @@ import Settings from './component';
 import { layoutDispatch } from '../layout/context';
 import { isScreenSharingEnabled } from '/imports/ui/services/features';
 import UserReactionService from '/imports/ui/components/user-reaction/service';
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 import {
   getUserRoles,
@@ -20,18 +21,23 @@ const SettingsContainer = (props) => {
   return <Settings {...props} layoutContextDispatch={layoutContextDispatch} />;
 };
 
-export default withTracker((props) => ({
-  ...props,
-  audio: SettingsService.audio,
-  dataSaving: SettingsService.dataSaving,
-  application: SettingsService.application,
-  updateSettings,
-  availableLocales: getAvailableLocales(),
-  isPresenter: isPresenter(),
-  isModerator: getUserRoles() === 'MODERATOR',
-  showGuestNotification: showGuestNotification(),
-  showToggleLabel: false,
-  isScreenSharingEnabled: isScreenSharingEnabled(),
-  isVideoEnabled: Meteor.settings.public.kurento.enableVideo,
-  isReactionsEnabled: UserReactionService.isEnabled(),
-}))(SettingsContainer);
+export default withTracker((props) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const kurentoConfig = MeetingSettings.public.kurento;
+
+  return {
+    ...props,
+    audio: SettingsService.audio,
+    dataSaving: SettingsService.dataSaving,
+    application: SettingsService.application,
+    updateSettings,
+    availableLocales: getAvailableLocales(),
+    isPresenter: isPresenter(),
+    isModerator: getUserRoles() === 'MODERATOR',
+    showGuestNotification: showGuestNotification(),
+    showToggleLabel: false,
+    isScreenSharingEnabled: isScreenSharingEnabled(),
+    isVideoEnabled: kurentoConfig.enableVideo,
+    isReactionsEnabled: UserReactionService.isEnabled(),
+  };
+})(SettingsContainer);

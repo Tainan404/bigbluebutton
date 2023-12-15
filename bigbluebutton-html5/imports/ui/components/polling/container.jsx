@@ -7,6 +7,7 @@ import PollingService from './service';
 import PollService from '/imports/ui/components/poll/service';
 import PollingComponent from './component';
 import { isPollingEnabled } from '/imports/ui/services/features';
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const propTypes = {
   pollExists: PropTypes.bool.isRequired,
@@ -27,6 +28,9 @@ const PollingContainer = ({ pollExists, ...props }) => {
 PollingContainer.propTypes = propTypes;
 
 export default withTracker(() => {
+  const [MeetingSettings] = useMeetingSettings();
+  const pollConfig = MeetingSettings.public.poll;
+  const maxInputChars = pollConfig.maxTypedAnswerLength;
   const {
     pollExists, handleVote, poll, handleTypedVote,
   } = PollingService.mapPolls();
@@ -38,6 +42,7 @@ export default withTracker(() => {
   }
 
   return ({
+    maxInputChars,
     pollExists,
     handleVote,
     handleTypedVote,

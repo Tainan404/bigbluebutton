@@ -6,14 +6,17 @@ import Settings from '/imports/ui/services/settings';
 import { UsersContext } from '/imports/ui/components/components-data/users-context/context';
 import { makeCall } from '/imports/ui/services/api';
 import RaiseHandNotifier from './component';
-
-const ROLE_VIEWER = Meteor.settings.public.user.role_viewer;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 const StatusNotifierContainer = (props) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const userConfig = MeetingSettings.public.user;
+  const roleViewer = userConfig.role_viewer;
+
   const usingUsersContext = useContext(UsersContext);
   const { users } = usingUsersContext;
   const currentUser = users[Auth.meetingID][Auth.userID];
-  const isViewer = currentUser.role === ROLE_VIEWER;
+  const isViewer = currentUser.role === roleViewer;
   const isPresenter = currentUser.presenter;
   return (
     <RaiseHandNotifier {...{

@@ -11,11 +11,7 @@ import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
 import { startTimer, stopTimer } from './service';
 import { layoutSelectInput } from '../../../layout/context';
 import { Input } from '../../../layout/layoutTypes';
-
-const CDN = Meteor.settings.public.app.cdn;
-const BASENAME = Meteor.settings.public.app.basename;
-const HOST = CDN + BASENAME;
-const trackName = Meteor.settings.public.timer.music;
+import useMeetingSettings from '/imports/ui/core/local-states/useMeetingSettings';
 
 interface TimerIndicatorProps {
   passedTime: number;
@@ -38,6 +34,12 @@ const TimerIndicator: React.FC<TimerIndicatorProps> = ({
   sidebarContentIsOpen,
   startedAt,
 }) => {
+  const [MeetingSettings] = useMeetingSettings();
+  const appConfig = MeetingSettings.public.app;
+  const { cdn } = appConfig;
+  const { basename } = appConfig;
+  const host = cdn + basename;
+  const trackName = MeetingSettings.public.timer.music;
   const [time, setTime] = useState<number>(0);
   const timeRef = useRef<HTMLSpanElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
@@ -47,9 +49,9 @@ const TimerIndicator: React.FC<TimerIndicatorProps> = ({
   const alreadyNotified = useRef<boolean>(false);
 
   useEffect(() => {
-    alarm.current = new Audio(`${HOST}/resources/sounds/alarm.mp3`);
+    alarm.current = new Audio(`${host}/resources/sounds/alarm.mp3`);
     if (songTrack in trackName) {
-      music.current = new Audio(`${HOST}/resources/sounds/${trackName[songTrack]}.mp3`);
+      music.current = new Audio(`${host}/resources/sounds/${trackName[songTrack]}.mp3`);
       music.current.addEventListener('timeupdate', () => {
         const buffer = 0.19;
         // Start playing the music before it ends to make the loop gapless

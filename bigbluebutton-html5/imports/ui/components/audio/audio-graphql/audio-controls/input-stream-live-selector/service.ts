@@ -15,8 +15,6 @@ const CLIENT_DID_USER_SELECTED_LISTEN_ONLY_KEY = 'clientUserSelectedListenOnly';
 export const handleLeaveAudio = (meetingIsBreakout: boolean) => {
   const [MeetingSettings] = useMeetingSettings();
   const appConfig = MeetingSettings.public.app;
-  const publicConfig = MeetingSettings.public;
-  const { toggleMuteThrottleTime } = publicConfig.media;
 
   if (!meetingIsBreakout) {
     Storage.setItem(CLIENT_DID_USER_SELECTED_MICROPHONE_KEY, !!false);
