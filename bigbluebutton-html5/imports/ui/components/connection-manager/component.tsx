@@ -212,7 +212,7 @@ const ConnectionManager: React.FC<ConnectionManagerProps> = ({ children }): Reac
                   errorMessage: JSON.stringify(error),
                   errorReason: 'Unknown',
                 },
-              }, `Connection error: ${JSON.stringify(error)}`);
+              }, `Connection error: ${error}`);
             }
 
             if (error && typeof error === 'object' && 'code' in error && error.code === 4403) {
