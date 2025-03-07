@@ -47,6 +47,7 @@ const ConnectionStatus = () => {
   };
 
   const handleUpdateConnectionAliveAt = () => {
+    console.log('🚀 -> ConnectionStatus -> data:', data);
     const startTime = performance.now();
     fetch(
       `${getBaseUrl()}/rtt-check`,
