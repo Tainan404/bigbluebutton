@@ -53,7 +53,6 @@ const ConnectionStatus = () => {
       { signal: AbortSignal.timeout(STATS_TIMEOUT) },
     )
       .then((res) => {
-        console.log('🚀 -> .then -> res:', res);
         if (res.ok && res.status === 200) {
           try {
             const rttLevels = window.meetingClientSettings.public.stats.rtt;
@@ -107,6 +106,7 @@ const ConnectionStatus = () => {
         }
 
         timeoutRef.current = setTimeout(() => {
+          console.log('🚀 -> timeoutRef.current=setTimeout -> data22222222:', data);
           handleUpdateConnectionAliveAt();
         }, STATS_INTERVAL);
       });
@@ -116,6 +116,7 @@ const ConnectionStatus = () => {
     // Delay first connectionAlive to avoid high RTT misestimation
     // due to initial subscription and mutation traffic at client render
     timeoutRef.current = setTimeout(() => {
+      console.log('🚀 -> timeoutRef.current=setTimeout -> data:', data);
       handleUpdateConnectionAliveAt();
     }, STATS_INTERVAL / 2);
 
