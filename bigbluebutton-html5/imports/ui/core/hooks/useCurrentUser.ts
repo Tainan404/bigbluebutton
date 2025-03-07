@@ -7,11 +7,15 @@ const currentUserSubscription = createUseSubscription<User>(CURRENT_USER_SUBSCRI
 const useCurrentUser = (fn: (c: Partial<User>) => Partial<User> = (u) => u) => {
   const response = currentUserSubscription(fn);
   console.log("🚀 -> response:", response)
-  const returnObject = useMemo(() => ({
-    ...response,
-    data: response.data ? response.data[0] : null,
-    rawData: response.data ?? null,
-  }), [response]);
+  const returnObject = useMemo(() => {
+    console.log("🚀 -> returnObject -> response.data:", response.data)
+    return {
+      ...response,
+      data: response.data ? response.data[0] : null,
+      rawData: response.data ?? null,
+    };
+  }, [response]);
+  console.log("🚀 -> returnObject -> returnObject:", returnObject);
   return returnObject;
 };
 
