@@ -29,15 +29,18 @@ const ConnectionStatus = () => {
     color: u.color,
     currentlyInMeeting: u.currentlyInMeeting,
   }));
+  console.log('🚀 -> ConnectionStatus -> data:', data);
   console.log('🚀 -> ConnectionStatus -> errors:', errors);
 
   const setErrorOnRtt = (error) => {
+    console.log('🚀 -> setErrorOnRtt -> error:', error);
     logger.error({
       logCode: 'rtt_fetch_error',
       extraInfo: {
         error,
       },
     }, 'Error fetching rtt');
+    console.log('🚀 -> setErrorOnRtt -> setErrorOnRtt:', new Error().stack);
     connectionStatus.setLastRttRequestSuccess(false);
     // gets the worst status
     connectionStatus.setConnectionStatus(2000, 'critical');
@@ -50,6 +53,7 @@ const ConnectionStatus = () => {
       { signal: AbortSignal.timeout(STATS_TIMEOUT) },
     )
       .then((res) => {
+        console.log('🚀 -> .then -> res:', res);
         if (res.ok && res.status === 200) {
           try {
             const rttLevels = window.meetingClientSettings.public.stats.rtt;
@@ -65,6 +69,8 @@ const ConnectionStatus = () => {
             connectionStatus.setConnectionStatus(networkRtt, rttStatus);
             connectionStatus.setLastRttRequestSuccess(true);
 
+            console.log('🚀 -> .then -> data:', data);
+            console.log('🚀 -> handleUpdateConnectionAliveAt -> errorssss:', errors);
             if (Object.keys(rttLevels).includes(rttStatus)) {
               connectionStatus.addUserNetworkHistory(
                 data,
