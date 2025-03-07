@@ -21,6 +21,7 @@ const ConnectionStatus = () => {
 
   const {
     data,
+    errors,
   } = useCurrentUser((u) => ({
     userId: u.userId,
     avatar: u.avatar,
@@ -28,6 +29,7 @@ const ConnectionStatus = () => {
     color: u.color,
     currentlyInMeeting: u.currentlyInMeeting,
   }));
+  console.log('🚀 -> ConnectionStatus -> errors:', errors);
 
   const setErrorOnRtt = (error) => {
     logger.error({
@@ -89,6 +91,8 @@ const ConnectionStatus = () => {
         }
       })
       .catch((error) => {
+        console.log('🚀 -> handleUpdateConnectionAliveAt -> error:', error);
+        console.log('🚀 -> handleUpdateConnectionAliveAt -> errorssss:', errors);
         setErrorOnRtt(error);
       })
       .finally(() => {
