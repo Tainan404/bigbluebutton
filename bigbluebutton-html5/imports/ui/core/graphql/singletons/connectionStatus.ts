@@ -269,9 +269,6 @@ class ConnectionStatus {
     lastUnstableStatus: string,
     lastUnstableStatusAt: Date | number,
   ): void {
-    console.log("🚀 -> ConnectionStatus -> lastUnstableStatusAt:", lastUnstableStatusAt)
-    console.log("🚀 -> ConnectionStatus -> lastUnstableStatus:", lastUnstableStatus)
-    console.log("🚀 -> ConnectionStatus -> user:", user)
     const userNetworkHistory = [...this.userNetworkHistory()];
     userNetworkHistory.push({
       user: {

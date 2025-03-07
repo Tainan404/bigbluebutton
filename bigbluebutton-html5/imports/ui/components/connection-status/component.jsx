@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useMutation } from '@apollo/client';
 import { UPDATE_CONNECTION_ALIVE_AT } from './mutations';
 import {
@@ -11,7 +11,9 @@ import useCurrentUser from '../../core/hooks/useCurrentUser';
 import getStatus from '../../core/utils/getStatus';
 import logger from '/imports/startup/client/logger';
 
-const ConnectionStatus = () => {
+const ConnectionStatus = ({
+  user,
+}) => {
   const STATS_INTERVAL = window.meetingClientSettings.public.stats.interval;
   const STATS_TIMEOUT = window.meetingClientSettings.public.stats.timeout;
   const networkRttInMs = useRef(0); // Ref to store the last rtt
@@ -19,35 +21,20 @@ const ConnectionStatus = () => {
 
   const [updateConnectionAliveAtM] = useMutation(UPDATE_CONNECTION_ALIVE_AT);
 
-  const {
-    data,
-    errors,
-  } = useCurrentUser((u) => ({
-    userId: u.userId,
-    avatar: u.avatar,
-    isModerator: u.isModerator,
-    color: u.color,
-    currentlyInMeeting: u.currentlyInMeeting,
-  }));
-  console.log('🚀 -> ConnectionStatus -> data:', data);
-  console.log('🚀 -> ConnectionStatus -> errors:', errors);
-
   const setErrorOnRtt = (error) => {
-    console.log('🚀 -> setErrorOnRtt -> error:', error);
     logger.error({
       logCode: 'rtt_fetch_error',
       extraInfo: {
         error,
       },
     }, 'Error fetching rtt');
-    console.log('🚀 -> setErrorOnRtt -> setErrorOnRtt:', new Error().stack);
     connectionStatus.setLastRttRequestSuccess(false);
     // gets the worst status
     connectionStatus.setConnectionStatus(2000, 'critical');
   };
 
   const handleUpdateConnectionAliveAt = () => {
-    console.log('🚀 -> ConnectionStatus -> data:', data);
+    console.log('🚀 -> handleUpdateConnectionAliveAt -> user:', user);
     const startTime = performance.now();
     fetch(
       `${getBaseUrl()}/rtt-check`,
@@ -69,11 +56,9 @@ const ConnectionStatus = () => {
             connectionStatus.setConnectionStatus(networkRtt, rttStatus);
             connectionStatus.setLastRttRequestSuccess(true);
 
-            console.log('🚀 -> .then -> data:', data);
-            console.log('🚀 -> handleUpdateConnectionAliveAt -> errorssss:', errors);
-            if (Object.keys(rttLevels).includes('warning')) {
+            if (Object.keys(rttLevels).includes(rttStatus)) {
               connectionStatus.addUserNetworkHistory(
-                data,
+                user,
                 rttStatus,
                 Date.now(),
               );
@@ -97,8 +82,6 @@ const ConnectionStatus = () => {
         }
       })
       .catch((error) => {
-        console.log('🚀 -> handleUpdateConnectionAliveAt -> error:', error);
-        console.log('🚀 -> handleUpdateConnectionAliveAt -> errorssss:', errors);
         setErrorOnRtt(error);
       })
       .finally(() => {
@@ -107,7 +90,6 @@ const ConnectionStatus = () => {
         }
 
         timeoutRef.current = setTimeout(() => {
-          console.log('🚀 -> timeoutRef.current=setTimeout -> data22222222:', data);
           handleUpdateConnectionAliveAt();
         }, STATS_INTERVAL);
       });
@@ -117,7 +99,6 @@ const ConnectionStatus = () => {
     // Delay first connectionAlive to avoid high RTT misestimation
     // due to initial subscription and mutation traffic at client render
     timeoutRef.current = setTimeout(() => {
-      console.log('🚀 -> timeoutRef.current=setTimeout -> data:', data);
       handleUpdateConnectionAliveAt();
     }, STATS_INTERVAL / 2);
 
@@ -141,4 +122,27 @@ const ConnectionStatus = () => {
   return null;
 };
 
-export default ConnectionStatus;
+const ConnectionStatusContainer = () => {
+  const {
+    data,
+    errors,
+  } = useCurrentUser((u) => ({
+    userId: u.userId,
+    avatar: u.avatar,
+    isModerator: u.isModerator,
+    color: u.color,
+    currentlyInMeeting: u.currentlyInMeeting,
+  }));
+
+  if (!data) {
+    return null;
+  }
+
+  if (errors) {
+    return null;
+  }
+
+  return <ConnectionStatus user={data} />;
+};
+
+export default ConnectionStatusContainer;
