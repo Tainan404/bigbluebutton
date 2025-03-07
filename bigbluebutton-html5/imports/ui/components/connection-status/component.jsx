@@ -71,7 +71,7 @@ const ConnectionStatus = () => {
 
             console.log('🚀 -> .then -> data:', data);
             console.log('🚀 -> handleUpdateConnectionAliveAt -> errorssss:', errors);
-            if (Object.keys(rttLevels).includes(rttStatus)) {
+            if (Object.keys(rttLevels).includes('warning')) {
               connectionStatus.addUserNetworkHistory(
                 data,
                 rttStatus,
