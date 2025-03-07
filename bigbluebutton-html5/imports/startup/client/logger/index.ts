@@ -39,7 +39,7 @@ export function createStreamForTarget(
       break;
     case TARGET_CONSOLE:
     default:
-      Stream = process.env.DETAILED_LOGS ? ConsoleStream : ConsoleFormattedStream;
+      Stream = ConsoleStream;
   }
 
   return new Stream(options);
