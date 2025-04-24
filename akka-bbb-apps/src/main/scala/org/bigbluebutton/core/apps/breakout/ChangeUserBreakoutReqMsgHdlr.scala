@@ -28,62 +28,68 @@ trait ChangeUserBreakoutReqMsgHdlr extends RightsManagementTrait {
 
       for {
         breakoutModel <- state.breakout
+        fromRoom <- breakoutModel.rooms.get(msg.body.fromBreakoutId)
+        toRoom <- breakoutModel.rooms.get(msg.body.toBreakoutId)
       } yield {
         //Eject user from room From
-        for {
-          roomFrom <- breakoutModel.rooms.get(msg.body.fromBreakoutId)
-        } yield {
-          roomFrom.users.filter(u => u.id == msg.body.userId + "-" + roomFrom.sequence).foreach(user => {
-            eventBus.publish(BigBlueButtonEvent(roomFrom.id, EjectUserFromBreakoutInternalMsg(meetingId, roomFrom.id, user.id, msg.header.userId, "User moved to another room", EjectReasonCode.EJECT_USER, false)))
-          })
-        }
+        val userAlreadyInTheRoom = toRoom.users.exists(u => u.id == msg.body.userId)
+        if (!userAlreadyInTheRoom) {
+          for {
+            roomFrom <- breakoutModel.rooms.get(msg.body.fromBreakoutId)
+          } yield {
+            roomFrom.users.filter(u => u.id == msg.body.userId + "-" + roomFrom.sequence).foreach(user => {
+              eventBus.publish(BigBlueButtonEvent(roomFrom.id, EjectUserFromBreakoutInternalMsg(meetingId, roomFrom.id, user.id, msg.header.userId, "User moved to another room", EjectReasonCode.EJECT_USER, false)))
+            })
+          }
 
-        val isSameRoom = msg.body.fromBreakoutId == msg.body.toBreakoutId
-        val removePreviousRoomFromDb = !breakoutModel.rooms.exists(r => r._2.freeJoin) && !isSameRoom
+          val isSameRoom = msg.body.fromBreakoutId == msg.body.toBreakoutId
+          val removePreviousRoomFromDb = !breakoutModel.rooms.exists(r => r._2.freeJoin) && !isSameRoom
 
-        //Get join URL for room To
-        val redirectToHtml5JoinURL = (
+          //Get join URL for room To
+          val redirectToHtml5JoinURL = (
             for {
               roomTo <- breakoutModel.rooms.get(msg.body.toBreakoutId)
               (redirectToHtml5JoinURL, redirectJoinURL) <- getRedirectUrls(liveMeeting, msg.body.userId, roomTo.externalId, roomTo.sequence.toString())
             } yield redirectToHtml5JoinURL
-          ).getOrElse("")
+            ).getOrElse("")
 
-        BreakoutHdlrHelpers.sendChangeUserBreakoutMsg(
-          outGW,
-          meetingId,
-          msg.body.userId,
-          msg.body.fromBreakoutId,
-          msg.body.toBreakoutId,
-          redirectToHtml5JoinURL,
-        )
-
-        //Update database
-        BreakoutRoomUserDAO.updateRoomChanged(
-          meetingId,
-          msg.body.userId,
-          msg.body.fromBreakoutId,
-          msg.body.toBreakoutId,
-          redirectToHtml5JoinURL,
-          removePreviousRoomFromDb)
-
-        //Send notification to moved User
-        for {
-          roomFrom <- breakoutModel.rooms.get(msg.body.fromBreakoutId)
-          roomTo <- breakoutModel.rooms.get(msg.body.toBreakoutId)
-        } yield {
-          val notifyUserEvent = MsgBuilder.buildNotifyUserInMeetingEvtMsg(
+          BreakoutHdlrHelpers.sendChangeUserBreakoutMsg(
+            outGW,
+            meetingId,
             msg.body.userId,
-            liveMeeting.props.meetingProp.intId,
-            "info",
-            "promote",
-            "app.updateBreakoutRoom.userChangeRoomNotification",
-            "Notification to warn user was moved to another room",
-            Vector(roomTo.shortName)
+            msg.body.fromBreakoutId,
+            msg.body.toBreakoutId,
+            redirectToHtml5JoinURL,
           )
-          outGW.send(notifyUserEvent)
-          NotificationDAO.insert(notifyUserEvent)
+
+          //Update database
+          BreakoutRoomUserDAO.updateRoomChanged(
+            meetingId,
+            msg.body.userId,
+            msg.body.fromBreakoutId,
+            msg.body.toBreakoutId,
+            redirectToHtml5JoinURL,
+            removePreviousRoomFromDb)
+
+          //Send notification to moved User
+          for {
+            roomFrom <- breakoutModel.rooms.get(msg.body.fromBreakoutId)
+            roomTo <- breakoutModel.rooms.get(msg.body.toBreakoutId)
+          } yield {
+            val notifyUserEvent = MsgBuilder.buildNotifyUserInMeetingEvtMsg(
+              msg.body.userId,
+              liveMeeting.props.meetingProp.intId,
+              "info",
+              "promote",
+              "app.updateBreakoutRoom.userChangeRoomNotification",
+              "Notification to warn user was moved to another room",
+              Vector(roomTo.shortName)
+            )
+            outGW.send(notifyUserEvent)
+            NotificationDAO.insert(notifyUserEvent)
+          }
         }
+
       }
 
       state
