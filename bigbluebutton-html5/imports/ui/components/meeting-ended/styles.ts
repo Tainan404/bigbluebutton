@@ -83,7 +83,7 @@ const MeetingEndedButton = styled.button`
   justify-content: center;
   flex-pack: center;
   color: var(--btn-primary-color, var(--color-white, #FFF));
-  background-color: var(--btn-primary-bg, var(--color-primary, #0F70D7));
+  background-color: var(--btn-primary-bg, var(--color-primary-bbb, #0F70D7));
   border: 3px solid transparent;
   padding: calc(1.25rem / 2);
   @media ${smallOnly} {

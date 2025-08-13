@@ -11,7 +11,7 @@ const detailedLogs = process.env.DETAILED_LOGS || false;
 
 const prodEnv = 'production';
 const devEnv = 'development';
-const isDev = env === devEnv;
+const isDev = env === devEnv && false;
 const isSafariTarget = process.env.TARGET === 'safari';
 
 console.log(`Building: ${process.env.TARGET}`);
@@ -79,6 +79,7 @@ const config = {
     alias: {
       '/client': path.resolve(__dirname, 'client/'),
       '/imports': path.resolve(__dirname, '/imports/'),
+      '@': path.resolve(__dirname, '.'),
     },
   },
   module: {
@@ -90,12 +91,20 @@ const config = {
           enforceExtension: false,
         },
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            plugins: [isDev && require.resolve('react-refresh/babel')].filter(Boolean),
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              plugins: [isDev && require.resolve('react-refresh/babel')].filter(Boolean),
+            },
           },
-        },
+          {
+            loader: '@wyw-in-js/webpack-loader',
+            options: {
+              plugins: [isDev && require.resolve('react-refresh/babel')].filter(Boolean),
+            },
+          },
+        ],
       },
       {
         test: /\.css$/,

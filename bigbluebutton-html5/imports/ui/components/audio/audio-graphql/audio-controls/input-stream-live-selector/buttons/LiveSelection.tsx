@@ -3,7 +3,17 @@ import React, { useCallback, useContext } from 'react';
 import deviceInfo from '/imports/utils/deviceInfo';
 import { defineMessages, useIntl } from 'react-intl';
 import { useShortcut } from '/imports/ui/core/hooks/useShortcut';
-import BBBMenu from '/imports/ui/components/common/menu/component';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
+import { Headphones, LogOut, MicIcon, Settings } from 'lucide-react';
 import { MenuSeparatorItemType, MenuOptionItemType } from '/imports/ui/components/common/menu/menuTypes';
 import * as PluginSdk from 'bigbluebutton-html-plugin-sdk';
 import { AudioSettingsDropdownItemType } from 'bigbluebutton-html-plugin-sdk/dist/cjs/extensible-areas/audio-settings-dropdown-item/enums';
@@ -99,6 +109,18 @@ interface LiveSelectionProps extends MuteToggleProps {
   supportsTransparentListenOnly: boolean;
 }
 
+export type DeviceKind = 'audioinput' | 'audiooutput' | 'videoinput' | (string & {});
+
+export type RenderDeviceMenuGroupArgs = {
+  deviceKind: string;
+  list: MediaDeviceInfo[];
+  currentDeviceId?: string;
+  callback: (deviceId: string) => void;
+  supportsTransparentListenOnly?: boolean;
+  truncateDeviceName?: (name: string) => string;
+  getFallbackLabel?: (device: MediaDeviceInfo, index: number) => string;
+};
+
 export const LiveSelection: React.FC<LiveSelectionProps> = ({
   listenOnly,
   inputDevices,
@@ -170,7 +192,7 @@ export const LiveSelection: React.FC<LiveSelectionProps> = ({
         // If the device is the first in the list and there's no
         // currentDeviceId, the user hasn't explicitly selected a device and we
         // couldn't infer it. In this case, consider the first device as the
-        // system default - as specified in "Media Capture and Streams API",
+        // system default - as specified in 'Media Capture and Streams API',
         // Section 9.2, enumerateDevices algorithm.
         const isCurrentDevice = (device.deviceId === currentDeviceId)
           || (!currentDeviceId && index === 0);
@@ -209,7 +231,7 @@ export const LiveSelection: React.FC<LiveSelectionProps> = ({
     }
 
     if (deviceKind === AUDIO_INPUT && supportsTransparentListenOnly) {
-      // "None" option for audio input devices - aka listen-only
+      // 'None' option for audio input devices - aka listen-only
       const listenOnly = deviceKind === AUDIO_INPUT
         && currentDeviceId === 'listen-only';
 
@@ -226,6 +248,74 @@ export const LiveSelection: React.FC<LiveSelectionProps> = ({
 
     return listTitle.concat(deviceList);
   }, []);
+
+  function renderDeviceMenuGroup({
+    deviceKind,
+    list,
+    currentDeviceId,
+    callback,
+    supportsTransparentListenOnly = false,
+    truncateDeviceName = (name) => name.length > 40 ? name.slice(0, 39) + '…' : name,
+    getFallbackLabel,
+  }: RenderDeviceMenuGroupArgs) {
+    const listLength = typeof list === 'undefined' ? -1 : list?.length ?? 0;
+
+    const options: {
+      value: string;
+      label: string;
+      disabled?: boolean;
+    }[] = [];
+
+    if (listLength > 0 && list) {
+      list.forEach((device, index) => {
+        options.push({
+          value: device.deviceId,
+          label: truncateDeviceName(device.label
+            || getFallbackLabel?.(device, index + 1) || `${deviceKind} ${index + 1}`),
+        });
+      });
+    } else if (deviceKind === 'audiooutput' && !('setSinkId' in HTMLMediaElement.prototype) && listLength === 0) {
+      options.push({ value: '__default_output__', label: intl.formatMessage(intlMessages.defaultOutputDeviceLabel), disabled: true });
+    } else if (listLength === -1) {
+      options.push({ value: '__loading__', label: intl.formatMessage(intlMessages.loading), disabled: true });
+    } else {
+      options.push({ value: '__none__', label: intl.formatMessage(intlMessages.noDeviceFound), disabled: true });
+    }
+
+    if (deviceKind === 'audioinput' && supportsTransparentListenOnly) {
+      options.push({ value: 'listen-only', label: intl.formatMessage(intlMessages.noMicListenOnlyLabel) });
+    }
+
+    const realDeviceIds = new Set(list?.map((d) => d.deviceId) ?? []);
+    let selectedValue;
+    if (currentDeviceId && (realDeviceIds.has(currentDeviceId) || currentDeviceId === 'listen-only')) {
+      selectedValue = currentDeviceId;
+    } else if (!currentDeviceId && listLength > 0 && list) {
+      selectedValue = list[0].deviceId;
+    } else if (options.length > 0) {
+      selectedValue = options[0].value;
+    }
+
+    const handleChange = (value: string) => {
+      if (options.find((o) => o.value === value)?.disabled) return;
+      callback(value);
+    };
+
+    return (
+      <DropdownMenuRadioGroup value={selectedValue} onValueChange={handleChange}>
+        {options.map((opt) => (
+          <DropdownMenuRadioItem
+            className={`hover:bg-blue-600 hover:text-white ${opt.value === currentDeviceId ? 'font-semibold' : ''}`}
+            key={opt.value}
+            value={opt.value}
+            disabled={!!opt.disabled}
+          >
+            {opt.label}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    );
+  }
 
   const onDeviceListClick = useCallback((deviceId: string, deviceKind: string, callback: Function) => {
     if (!deviceId) {
@@ -327,7 +417,6 @@ export const LiveSelection: React.FC<LiveSelectionProps> = ({
     }
   });
 
-  const customStyles = { top: '-1rem' };
   const { isMobile } = deviceInfo;
   const noInputDevice = inputDeviceId === 'listen-only';
 
@@ -354,53 +443,88 @@ export const LiveSelection: React.FC<LiveSelectionProps> = ({
           openAudioSettings={openAudioSettings}
         />
       )}
-      <BBBMenu
-        customStyles={!isMobile ? customStyles : null}
-        trigger={(
-          <>
-            {shouldTreatAsMicrophone() && !isMobile
-              ? (
-                <MuteToggle
-                  talking={talking}
-                  muted={muted}
-                  disabled={disabled || isAudioLocked}
-                  isAudioLocked={isAudioLocked}
-                  toggleMuteMicrophone={toggleMuteMicrophone}
-                  away={away}
-                  noInputDevice={noInputDevice}
-                  openAudioSettings={openAudioSettings}
-                />
-              )
-              : (
-                <ListenOnly
-                  listenOnly={listenOnly}
-                  handleLeaveAudio={handleLeaveAudio}
-                  meetingIsBreakout={meetingIsBreakout}
-                  actAsDeviceSelector={isMobile}
-                />
-              )}
-            <Styled.AudioDropdown
-              data-test="audioDropdownMenu"
-              emoji="device_list_selector"
-              label={intl.formatMessage(intlMessages.changeAudioDevice)}
-              hideLabel
-              tabIndex={0}
-              rotate
-            />
-          </>
+      {shouldTreatAsMicrophone() && !isMobile
+        ? (
+          <MuteToggle
+            talking={talking}
+            muted={muted}
+            disabled={disabled || isAudioLocked}
+            isAudioLocked={isAudioLocked}
+            toggleMuteMicrophone={toggleMuteMicrophone}
+            away={away}
+            noInputDevice={noInputDevice}
+            openAudioSettings={openAudioSettings}
+          />
+        )
+        : (
+          <ListenOnly
+            listenOnly={listenOnly}
+            handleLeaveAudio={handleLeaveAudio}
+            meetingIsBreakout={meetingIsBreakout}
+            actAsDeviceSelector={isMobile}
+          />
         )}
-        actions={!isAudioLocked ? dropdownListComplete : [leaveAudioOption]}
-        opts={{
-          id: 'audio-selector-dropdown-menu',
-          keepMounted: true,
-          transitionDuration: 0,
-          elevation: 3,
-          getcontentanchorel: null,
-          fullwidth: 'true',
-          anchorOrigin: { vertical: 'top', horizontal: 'center' },
-          transformOrigin: { vertical: 'bottom', horizontal: 'center' },
-        }}
-      />
+      <DropdownMenu className="w-96">
+        <DropdownMenuTrigger>
+          <Styled.AudioDropdown
+            data-test="audioDropdownMenu"
+            emoji="device_list_selector"
+            label={intl.formatMessage(intlMessages.changeAudioDevice)}
+            hideLabel
+            tabIndex={0}
+            rotate
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuLabel className="flex items-center gap-2 font-semibold">
+            <MicIcon className="h-4 w-4" />
+            <span>{intl.formatMessage(intlMessages.microphones)}</span>
+          </DropdownMenuLabel>
+          {
+            renderDeviceMenuGroup({
+              list: inputDevices,
+              currentDeviceId: inputDeviceId,
+              callback: (deviceId) => onDeviceListClick(deviceId, AUDIO_INPUT, liveChangeInputDevice),
+              deviceKind: AUDIO_INPUT,
+              supportsTransparentListenOnly,
+              truncateDeviceName,
+              getFallbackLabel,
+            })
+          }
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="flex items-center gap-2 font-semibold">
+            <Headphones className="h-4 w-4" />
+            <span>{intl.formatMessage(intlMessages.speakers)}</span>
+          </DropdownMenuLabel>
+          {
+            renderDeviceMenuGroup({
+              list: outputDevices,
+              currentDeviceId: outputDeviceId,
+              callback: (deviceId) => onDeviceListClick(deviceId, AUDIO_OUTPUT, liveChangeOutputDevice),
+              deviceKind: AUDIO_OUTPUT,
+              truncateDeviceName,
+              getFallbackLabel,
+              supportsTransparentListenOnly,
+            })
+          }
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => openAudioSettings()}
+            className="flex items-center gap-2 font-medium hover:bg-blue-600 hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+            {intl.formatMessage(intlMessages.audioSettingsTitle)}
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => handleLeaveAudio(meetingIsBreakout)}
+            className="flex items-center gap-2 text-red-600 font-medium hover:bg-blue-600 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            {intl.formatMessage(intlMessages.leaveAudio)}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 };

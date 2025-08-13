@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 import { useMutation } from '@apollo/client';
+import { Button } from '@/components/ui/button';
+import { Mic, MicOff } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import Styled from '../styles';
 import { useShortcut } from '/imports/ui/core/hooks/useShortcut';
 import { getSettingsSingletonInstance } from '/imports/ui/services/settings';
@@ -147,23 +154,24 @@ export const MuteToggle: React.FC<MuteToggleProps> = ({
   };
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-access-key
-    <Styled.MuteToggleButton
-      onClick={onClickCallback}
-      disabled={disabled || isAudioLocked}
-      hideLabel
-      label={label}
-      aria-label={label}
-      color={!muted ? 'primary' : 'default'}
-      icon={muted ? 'mute' : 'unmute'}
-      size="lg"
-      circle
-      accessKey={toggleMuteShourtcut}
-      $talking={talking || undefined}
-      animations={animations}
-      loading={isMuteLoading}
-      data-test={muted ? 'unmuteMicButton' : 'muteMicButton'}
-    />
+    <Tooltip>
+      <TooltipTrigger>
+        {/* eslint-disable-next-line jsx-a11y/no-access-key */}
+        <Button
+          onClick={onClickCallback}
+          aria-label={label}
+          className={`w-12 h-12 rounded-full ${talking ? Styled.pulseClass : ''}`}
+          variant={muted ? 'secondary' : 'blueBrand'}
+          disabled={disabled || isAudioLocked}
+          accessKey={toggleMuteShourtcut}
+        >
+          {muted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

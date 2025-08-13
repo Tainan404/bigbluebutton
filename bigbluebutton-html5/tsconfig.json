@@ -31,7 +31,8 @@
       /* Support absolute /imports/* with a leading '/' */
       "/*": ["*"],
       "/imports/": ["./imports/*"],
-      "/client/": ["./client/*"]
+      "/client/": ["./client/*"],
+      "@/*": ["*"],
     },
     "moduleResolution": "node",
     "esModuleInterop": true,

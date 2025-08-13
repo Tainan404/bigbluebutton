@@ -17,7 +17,7 @@ const colorBlueLighterChannel = '146 188 234';
 
 const colorTransparent = 'var(--color-transparent, #ff000000)';
 
-const colorPrimary = 'var(--color-primary, #0F70D7)';
+const colorPrimary = 'var(--color-primary-bbb, #0F70D7)';
 const colorDanger = 'var(--color-danger, #DF2721)';
 const colorDangerDark = 'var(--color-danger-dark, #AE1010)';
 const colorSuccess = 'var(--color-success, #008081)';
@@ -26,7 +26,7 @@ const colorOffline = `var(--color-offline, ${colorGrayLight})`;
 const colorMuted = 'var(--color-muted, #586571)';
 const colorMutedBackground = 'var(--color-muted-background, #F3F6F9)';
 
-const colorBackground = `var(--color-background, ${colorGrayDark})`;
+const colorBackground = `var(--color-background-bbb, ${colorGrayDark})`;
 const colorOverlay = 'var(--color-overlay, rgba(6, 23, 42, 0.75))';
 
 const userListBg = `var(--user-list-bg, ${colorOffWhite})`;

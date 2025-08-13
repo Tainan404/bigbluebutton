@@ -1,71 +1,27 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import styled, { css, keyframes } from 'styled-components';
+import styled from 'styled-components';
 import ButtonEmoji from '/imports/ui/components/common/button/button-emoji/ButtonEmoji';
-import Button from '/imports/ui/components/common/button/component';
 import {
   colorPrimary,
   colorDanger,
   colorGrayDark,
   colorOffWhite,
-  colorWhite,
   colorSuccess,
 } from '/imports/ui/stylesheets/styled-components/palette';
-import { smPaddingY, smPadding } from '/imports/ui/stylesheets/styled-components/general';
-import { smallOnly } from '/imports/ui/stylesheets/styled-components/breakpoints';
+import { css } from "@linaria/core";
 
-const pulse = keyframes`
-  0% {
-    box-shadow: 0 0 0 0 white;
+// Create a reusable CSS class
+const pulseClass = css`
+  @keyframes pulseShadow {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, .7); }
+    70% { box-shadow: 0 0 0 0.75rem rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
   }
-  70% {
-    box-shadow: 0 0 0 0.5625rem transparent;
-  }
-  100% {
-    box-shadow: 0 0 0 0 transparent;
-  }
+
+  animation: pulseShadow 1.5s ease-in-out infinite;
+  border-radius: 9999px;
 `;
 
-// @ts-ignore - as button comes from JS, we can't provide its props
-export const MuteToggleButton = styled(Button)`
-  ${({ ghost }) => ghost && `
-    span {
-      box-shadow: none;
-      background-color: transparent !important;
-      border-color: ${colorWhite} !important;
-    }
-  `}
-
-  ${({ $talking }) => $talking && `
-    border-radius: 50%;
-  `}
-
-  ${({ $talking, animations }) => $talking && animations && css`
-      animation: ${pulse} 1s infinite ease-in;
-    `}
-
-  ${({ $talking, animations }) => $talking && !animations && css`
-      & span {
-        content: '';
-        outline: none !important;
-        background-clip: padding-box;
-        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.5);
-      }
-    `}
-  
-      @media ${smallOnly} {
-        margin-right: ${smPaddingY};
-      }
-  
-      [dir='rtl'] & {
-        margin-right: 0;
-        margin-left: -${smPadding};
-  
-        @media ${smallOnly} {
-          margin-left: ${smPaddingY};
-        }
-      }
-    }
-`;
 
 export const DisabledLabel = {
   color: colorGrayDark,
@@ -110,7 +66,6 @@ export const AudioDropdown = styled(ButtonEmoji)`
 `;
 
 export default {
-  MuteToggleButton,
   DisabledLabel,
   DeviceLabel,
   SelectedLabel,
@@ -118,4 +73,5 @@ export default {
   AudioSettingsOption,
   DangerColor,
   AudioDropdown,
+  pulseClass,
 };
