@@ -25,32 +25,34 @@ export interface ConnectionStatusSummary {
 export interface ConnectionStatusSummaryResponse {
   user_connectionStatusSummary: ConnectionStatusSummary[];
 }
-
-export const CONNECTION_STATUS_REPORT_SUBSCRIPTION = gql`subscription ConnStatusReport {
-  user_connectionStatusReport(
-  where: {
-    _or: [
-            { clientNotResponding: { _eq: true } }, 
-            { lastUnstableStatus: { _is_null: false } }
-          ]
-  },
-  order_by: {lastUnstableStatusAt: desc}
-  ) {
-    user {
-      userId
-      name
-      avatar
-      color
-      isModerator
-      currentlyInMeeting
+// does not change: This subscription is used by the backend to measure the server load
+export const CONNECTION_STATUS_REPORT_SUBSCRIPTION = gql`
+  subscription ConnStatusReport {
+    user_connectionStatusReport(
+      where: {
+        _or: [
+          { clientNotResponding: { _eq: true } },
+          { lastUnstableStatus: { _is_null: false } }
+        ]
+      }
+      order_by: { lastUnstableStatusAt: desc }
+    ) {
+      user {
+        userId
+        name
+        avatar
+        color
+        isModerator
+        currentlyInMeeting
+      }
+      clientNotResponding
+      lastUnstableStatus
+      lastUnstableStatusAt
+      currentStatus
+      connectionAliveAt
     }
-    clientNotResponding
-    lastUnstableStatus
-    lastUnstableStatusAt
-    currentStatus
-    connectionAliveAt
   }
-}`;
+`;
 
 export const USER_CURRENT_STATUS_SUBSCRIPTION = gql`
   subscription CurrentUserConnStatus($userId: String!) {
@@ -66,18 +68,30 @@ export const USER_CURRENT_STATUS_SUBSCRIPTION = gql`
   }
 `;
 
-export const CONNECTION_STATUS_SUBSCRIPTION = gql`subscription ConnStatus {
-  user_connectionStatus {
-    connectionAliveAt
-    userClientResponseAt
-    status
-    statusUpdatedAt
+export const CONNECTION_STATUS_SUBSCRIPTION = gql`
+  subscription ConnStatusWithTraceLog($clientSessionUUID: String!) {
+    user_connectionStatus(
+      where: {
+        clientSessionUUID: { _eq: $clientSessionUUID }
+      }
+    ) {
+      meetingId
+      userId
+      sessionToken
+      traceLog
+      networkRttInMs
+      applicationRttInMs
+      statusUpdatedAt
+    }
   }
-}`;
+`;
 
 export const CONNECTION_STATUS_HISTORY = gql`
   subscription ConnectionStatus($userId: String!) {
-    user_connectionStatusHistory(order_by: {statusUpdatedAt: asc}, where: {userId: {_eq: $userId}}) {
+    user_connectionStatusHistory(
+      order_by: { statusUpdatedAt: asc }
+      where: { userId: { _eq: $userId } }
+    ) {
       statusUpdatedAt
       status
       networkRttInMs
@@ -85,9 +99,9 @@ export const CONNECTION_STATUS_HISTORY = gql`
   }
 `;
 
-export const CONNECTION_STATUS_SUMARY = gql`
+export const CONNECTION_STATUS_SUMMARY = gql`
   subscription getConnectionStatusSummary($userId: String!) {
-    user_connectionStatusSummary(where: {userId: {_eq: $userId}}) {
+    user_connectionStatusSummary(where: { userId: { _eq: $userId } }) {
       statusCriticalLastOccurrenceAt
       statusCriticalOccurrences
       statusDangerLastOccurrenceAt
