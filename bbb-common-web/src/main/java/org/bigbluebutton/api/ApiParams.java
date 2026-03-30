@@ -65,6 +65,7 @@ public class ApiParams {
     public static final String WEB_VOICE = "webVoice";
     public static final String LEARNING_DASHBOARD_CLEANUP_DELAY_IN_MINUTES = "learningDashboardCleanupDelayInMinutes";
     public static final String WEBCAMS_ONLY_FOR_MODERATOR = "webcamsOnlyForModerator";
+    public static final String MULTIUSER_WHITEBOARD_ENABLED = "multiUserWhiteboardEnabled";
     public static final String MEETING_CAMERA_CAP = "meetingCameraCap";
     public static final String USER_CAMERA_CAP = "userCameraCap";
     public static final String MAX_PINNED_CAMERAS = "maxPinnedCameras";
@@ -76,6 +77,7 @@ public class ApiParams {
     public static final String DISABLED_FEATURES = "disabledFeatures";
     public static final String PLUGIN_MANIFESTS = "pluginManifests";
     public static final String PLUGIN_MANIFESTS_FETCH_URL = "pluginManifestsFetchUrl";
+    public static final String CLIENT_SETTINGS_OVERRIDE_JSON_URL = "clientSettingsOverrideJsonUrl";
     public static final String DISABLED_FEATURES_EXCLUDE = "disabledFeaturesExclude";
     public static final String NOTIFY_RECORDING_IS_ON = "notifyRecordingIsOn";
 
