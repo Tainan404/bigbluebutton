@@ -28,17 +28,36 @@ const annotationsBufferTimeMax = 200;
 const annotationsRetryDelay = 1000;
 
 let annotationsSenderIsRunning = false;
+let activeWhiteboardUsers = 1;
+let isCurrentUserPresenter = false;
+
+export const setActiveWhiteboardUsers = (count) => {
+  activeWhiteboardUsers = Math.max(1, count);
+};
+
+export const setCurrentUserIsPresenter = (value) => {
+  isCurrentUserPresenter = Boolean(value);
+};
+
+const computeFlushInterval = () => {
+  if (isCurrentUserPresenter) return annotationsBufferTimeMin;
+  const {
+    annotationsTargetThroughput = 60,
+    annotationsRateLimitMax = 2000,
+  } = window.meetingClientSettings?.public?.whiteboard || {};
+  const perUserMs = Math.round(1000 * activeWhiteboardUsers / annotationsTargetThroughput);
+  return Math.max(annotationsBufferTimeMin, Math.min(annotationsRateLimitMax, perUserMs));
+};
 
 const proccessAnnotationsQueue = async (submitAnnotations) => {
   annotationsSenderIsRunning = true;
-  const queueSize = annotationsQueue.length;
 
-  if (!queueSize) {
+  if (!annotationsQueue.length) {
     annotationsSenderIsRunning = false;
     return;
   }
 
-  const annotations = annotationsQueue.splice(0, queueSize);
+  const annotations = annotationsQueue.splice(0, annotationsQueue.length);
 
   try {
     const isAnnotationSent = await submitAnnotations(annotations);
@@ -48,13 +67,7 @@ const proccessAnnotationsQueue = async (submitAnnotations) => {
       annotationsQueue.splice(0, 0, ...annotations);
       setTimeout(() => proccessAnnotationsQueue(submitAnnotations), annotationsRetryDelay);
     } else {
-      // ask tiago
-      const delayPerc = Math.min(
-        annotationsMaxDelayQueueSize, queueSize,
-      ) / annotationsMaxDelayQueueSize;
-      const delayDelta = annotationsBufferTimeMax - annotationsBufferTimeMin;
-      const delayTime = annotationsBufferTimeMin + delayDelta * delayPerc;
-      setTimeout(() => proccessAnnotationsQueue(submitAnnotations), delayTime);
+      setTimeout(() => proccessAnnotationsQueue(submitAnnotations), computeFlushInterval());
     }
   } catch (error) {
     annotationsQueue.splice(0, 0, ...annotations);
@@ -74,6 +87,7 @@ const sendAnnotation = (annotation, submitAnnotations) => {
     annotationsQueue.push(annotation);
   }
   if (!annotationsSenderIsRunning) {
+    annotationsSenderIsRunning = true;
     setTimeout(() => proccessAnnotationsQueue(submitAnnotations), annotationsBufferTimeMin);
   }
 };

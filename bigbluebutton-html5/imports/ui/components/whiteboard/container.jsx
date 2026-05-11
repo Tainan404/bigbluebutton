@@ -21,6 +21,8 @@ import {
   notifyNotAllowedChange,
   notifyShapeNumberExceeded,
   toggleToolsAnimations,
+  setActiveWhiteboardUsers,
+  setCurrentUserIsPresenter,
 } from './service';
 import {
   usePrevious,
@@ -166,6 +168,14 @@ const WhiteboardContainer = (props) => {
 
   const whiteboardWriters = whiteboardWritersData?.user_whiteboardWriteAccess || [];
   const wBAccessChanged = usePrevious(hasWBAccess) !== hasWBAccess;
+
+  useEffect(() => {
+    setActiveWhiteboardUsers(whiteboardWriters.length);
+  }, [whiteboardWriters]);
+
+  useEffect(() => {
+    setCurrentUserIsPresenter(isPresenter);
+  }, [isPresenter]);
 
   const [presentationSetZoom] = useMutation(PRESENTATION_SET_ZOOM);
   const [presentationSetPage] = useMutation(PRESENTATION_SET_PAGE);

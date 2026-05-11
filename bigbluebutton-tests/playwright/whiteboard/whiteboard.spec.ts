@@ -5,6 +5,7 @@ import { DrawShape } from './drawShape';
 import { ShapeOptions } from './shapeOptions';
 import { ShapeTools } from './shapeTools';
 import { TextShape } from './textShape';
+import { AnnotationThrottle } from './annotationThrottle';
 import { linkIssue } from '../core/helpers';
 
 //! @flaky note:
@@ -162,5 +163,35 @@ test.describe.parallel('Whiteboard tools', { tag: '@ci' }, () => {
       await shapeOptions.initUserPage(context, { testInfo });
       await shapeOptions.rotate();
     });
+  });
+});
+
+test.describe.parallel('Annotation throttle safeguard', () => {
+  test.beforeEach(({ browserName }) => {
+    test.skip(browserName !== 'chromium', 'Drawing visual regression tests are enabled only for Chromium');
+  });
+
+  test('Annotation throttle config defaults', async ({ browser, context, page }, testInfo) => {
+    const throttle = new AnnotationThrottle(browser, context);
+    await throttle.initModPage(page, { testInfo });
+    await throttle.checkConfigDefaults();
+  });
+
+  test('Viewer annotations are throttled under low throughput', async ({ browser, context, page }, testInfo) => {
+    const throttle = new AnnotationThrottle(browser, context);
+    await throttle.initModPage(page, { testInfo });
+    // WS spy is installed before the viewer page navigates so it covers the
+    // entire WebSocket lifetime; no extra browser tabs needed.
+    const mutationTimes = await throttle.initUserPageWithWsSpy(context);
+    await throttle.viewerAnnotationsAreThrottled(mutationTimes);
+  });
+
+  test('Presenter annotations bypass throttle', async ({ browser, context, page }, testInfo) => {
+    const throttle = new AnnotationThrottle(browser, context);
+    // Spy on the mod (presenter) page before initModPage navigates it.
+    const mutationTimes = await throttle.setupWsSpy(page);
+    await throttle.initModPage(page, { testInfo });
+    await throttle.initUserPage(context, { testInfo });
+    await throttle.presenterAnnotationsNotThrottled(mutationTimes);
   });
 });

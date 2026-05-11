@@ -794,6 +794,8 @@ export interface Label {
 
 export interface Whiteboard {
   annotationsQueueProcessInterval: number
+  annotationsTargetThroughput: number
+  annotationsRateLimitMax: number
   cursorInterval: number
   pointerDiameter: number
   maxStickyNoteLength: number

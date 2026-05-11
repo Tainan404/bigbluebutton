@@ -1150,10 +1150,14 @@ public:
     allowInfiniteWhiteboardInBreakouts: false
     pointerDiameter: 5
     maxStickyNoteLength: 1000
+    # Target total annotation events per second across all active whiteboard users
+    annotationsTargetThroughput: 60
+    # Maximum per-user flush interval in ms (caps throttle for very large sessions)
+    annotationsRateLimitMax: 2000
     # limit number of annotations per slide
     maxNumberOfAnnotations: 300
     # Limit the number of users who can interact with the whiteboard
-    maxNumberOfActiveUsers: 25
+    maxNumberOfActiveUsers: 100
     # This is the number of times we can press undo (plus 100 providing a safe margin for some shapes with extra entries)
     # default value is 400, adjusted for maxNumberOfAnnotations being 300
     maxHistoryStackSize: 400
