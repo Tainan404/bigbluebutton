@@ -33,6 +33,7 @@ export const elements = {
   lowerHandBtn: 'button[data-test="lowerHandBtn"]',
   raiseHandRejection: 'button[data-test="raiseHandRejection"]',
   raiseHandWrapper: 'div[data-test="raiseHandWrapper"]',
+  raiseHandVideoIndicator: 'div[data-test="raiseHandVideoIndicator"]',
   meetingEndedModal: 'div[data-test="meetingEndedModal"]',
   redirectButton: 'button[data-test="redirectButton"]',
   leaveMeetingDropdown: 'button[data-test="leaveMeetingDropdown"]',

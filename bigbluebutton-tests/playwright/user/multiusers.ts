@@ -1,6 +1,6 @@
 import { Browser, BrowserContext, expect, Page as PlaywrightPage, TestInfo } from '@playwright/test';
 
-import { ELEMENT_WAIT_TIME } from '../core/constants';
+import { ELEMENT_WAIT_TIME, ELEMENT_WAIT_LONGER_TIME } from '../core/constants';
 import { elements as e } from '../core/elements';
 import { InitOptionsProps, Page } from '../core/page';
 import { checkTextContent } from '../core/util';
@@ -200,6 +200,42 @@ export class MultiUsers {
     await this.modPage.waitAndClick(e.usersListSidebarButton);
     await this.modPage.waitAndClick(e.raiseHandRejection);
     await this.userPage.hasElement(e.raiseHandBtn, 'should display the raise hand button after rejection');
+  }
+
+  async raiseHandAudioOnlyTile() {
+    // Issue 25169: the raised hand indicator must be shown on audio-only tiles,
+    // not only on webcam tiles.
+    await this.modPage.waitForSelector(e.whiteboard);
+    await this.initUserPage();
+    await this.userPage.waitForSelector(e.whiteboard);
+
+    // The moderator shares a webcam so the video grid with tiles is shown over the presentation.
+    await this.modPage.shareWebcam();
+
+    // The attendee joins with microphone and speaks to take the audio floor, which surfaces
+    // them as an audio-only tile on the first page of the unified layout
+    // (requires public.kurento.cameraSortingModes.showAudioOnlyOnFirstPage, enabled by default).
+    await this.userPage.waitAndClick(e.joinAudio);
+    await this.userPage.joinMicrophone();
+
+    // The attendee on the audio-only tile raises their hand.
+    await this.userPage.waitAndClick(e.raiseHandBtn);
+    await this.userPage.hasElement(e.lowerHandBtn, 'should display the lower hand button after raising the hand');
+
+    // Once the attendee has taken the audio floor, the moderator sees their audio-only tile
+    // (an avatar tile with no webcam) on the first page.
+    await this.modPage.hasElement(
+      e.webcamConnecting,
+      'should display the audio-only tile for the attendee that took the floor',
+      ELEMENT_WAIT_LONGER_TIME,
+    );
+
+    // The moderator should see the raised hand indicator on the attendee's audio-only tile.
+    await this.modPage.hasElement(
+      e.raiseHandVideoIndicator,
+      'should display the raised hand indicator on the audio-only tile',
+      ELEMENT_WAIT_LONGER_TIME,
+    );
   }
 
   async toggleUserList() {
