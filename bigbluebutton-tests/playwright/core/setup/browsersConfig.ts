@@ -16,10 +16,7 @@ export const chromiumConfig: Project = {
     browserName: 'chromium' as const,
     viewport: { width: 1366, height: 768 },
     launchOptions: {
-      args: [
-        ...chromiumBaseArgs,
-        `--use-file-for-fake-video-capture=${path.join(__dirname, '../media/video.y4m')}`,
-      ],
+      args: [...chromiumBaseArgs, `--use-file-for-fake-video-capture=${path.join(__dirname, '../media/video.y4m')}`],
     },
   },
 };

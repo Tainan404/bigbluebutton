@@ -201,7 +201,7 @@ export class MultiUsers {
     await this.modPage.waitForSelector(e.whiteboard);
 
     // Moderator shares a webcam so the camera dock is visible over the presentation.
-    await this.modPage.shareWebcam();
+    await this.modPage.shareWebcam({ shouldConfirmSharing: false });
 
     // An attendee joins with microphone and unmutes.
     await this.initUserPage();
@@ -218,10 +218,7 @@ export class MultiUsers {
         .filter({ has: testPage.page.locator(e.webcamConnecting) });
 
     // Control: moderator (unpaginated) shows exactly 1 audio-only tile.
-    await expect(
-      audioOnlyTile(this.modPage),
-      'moderator should display exactly 1 audio-only tile',
-    ).toHaveCount(1);
+    await expect(audioOnlyTile(this.modPage), 'moderator should display exactly 1 audio-only tile').toHaveCount(1);
 
     // Regression: attendee (paginated, partitionPrivilegedStreams=false) must also show it (issue 25242).
     await expect(
@@ -251,19 +248,19 @@ export class MultiUsers {
 
     // Fill page 0 with 5 cameras (moderator + 4 others) to force pagination.
     // Viewer pageSize is 5, so a 6th audio-only tile must land on page 1.
-    await this.modPage.shareWebcam();
+    await this.modPage.shareWebcam({ shouldConfirmSharing: false });
 
     await this.initUserPage(ctx, { useModMeetingId: true });
     await this.userPage.waitForSelector(e.whiteboard);
-    await this.userPage.shareWebcam();
+    await this.userPage.shareWebcam({ shouldConfirmSharing: false });
 
     await this.initModPage2(ctx, { useModMeetingId: true });
     await this.modPage2.waitForSelector(e.whiteboard);
-    await this.modPage2.shareWebcam();
+    await this.modPage2.shareWebcam({ shouldConfirmSharing: false });
 
     await this.initUserPage2(ctx, { useModMeetingId: true });
     await this.userPage2.waitForSelector(e.whiteboard);
-    await this.userPage2.shareWebcam();
+    await this.userPage2.shareWebcam({ shouldConfirmSharing: false });
 
     // 5th camera user — fills the last slot on page 0.
     const page5 = await ctx.newPage();
@@ -273,7 +270,7 @@ export class MultiUsers {
       meetingId: this.modPage.meetingId,
     });
     await cameraPage5.waitForSelector(e.whiteboard);
-    await cameraPage5.shareWebcam();
+    await cameraPage5.shareWebcam({ shouldConfirmSharing: false });
 
     // Audio-only attendee — must land on page 1 when partitionPrivilegedStreams=false.
     const page6 = await ctx.newPage();
