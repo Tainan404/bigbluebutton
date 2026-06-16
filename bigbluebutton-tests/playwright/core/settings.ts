@@ -41,6 +41,9 @@ export interface Settings {
   emojiRain?: boolean;
   // Whiteboard
   allowInfiniteWhiteboard?: boolean;
+  // Camera sorting modes
+  showAudioOnlyOnFirstPage?: boolean;
+  partitionPrivilegedStreams?: boolean;
 }
 
 let settings: Settings | undefined;
@@ -95,6 +98,9 @@ export async function generateSettingsData(page: Page): Promise<Settings | undef
       emojiRain: settingsData.app?.emojiRain?.enabled,
       // Whiteboard
       allowInfiniteWhiteboard: settingsData.whiteboard?.allowInfiniteWhiteboard,
+      // Camera sorting modes
+      showAudioOnlyOnFirstPage: settingsData.kurento?.cameraSortingModes?.showAudioOnlyOnFirstPage,
+      partitionPrivilegedStreams: settingsData.kurento?.cameraSortingModes?.partitionPrivilegedStreams,
     };
 
     return settings;
