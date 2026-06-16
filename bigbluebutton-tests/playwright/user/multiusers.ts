@@ -1,4 +1,4 @@
-import { Browser, BrowserContext, expect, Page as PlaywrightPage, TestInfo } from '@playwright/test';
+import { Browser, BrowserContext, expect, Page as PlaywrightPage, test, TestInfo } from '@playwright/test';
 
 import { ELEMENT_WAIT_TIME } from '../core/constants';
 import { elements as e } from '../core/elements';
@@ -181,6 +181,42 @@ export class MultiUsers {
     await this.modPage.comparingSelectorsBackgroundColor(e.avatarsWrapperAvatar, `${e.userListItem} div:first-child`);
     await this.modPage.waitAndClick(e.raiseHandRejection);
     await this.userPage.hasElement(e.raiseHandBtn, 'should display the raise hand button after rejection');
+  }
+
+  async audioOnlyTileVisibleForAttendee() {
+    const showAudioOnlyOnFirstPage = this.modPage.settings?.showAudioOnlyOnFirstPage ?? true;
+    test.skip(
+      !showAudioOnlyOnFirstPage,
+      'requires public.kurento.cameraSortingModes.showAudioOnlyOnFirstPage to be enabled',
+    );
+
+    await this.modPage.waitForSelector(e.whiteboard);
+
+    // Moderator shares a webcam so the camera dock is visible over the presentation.
+    await this.modPage.shareWebcam();
+
+    // An attendee joins with microphone and unmutes.
+    await this.initUserPage();
+    await this.userPage.waitForSelector(e.whiteboard);
+    await this.userPage.waitAndClick(e.joinAudio);
+    await this.userPage.joinMicrophone();
+
+    // Wait for the moderator webcam in the attendee grid.
+    await this.userPage.hasElement(e.webcamContainer, 'attendee should receive the moderator webcam');
+
+    const audioOnlyTiles = (testPage: import('./page').Page) =>
+      testPage.page
+        .locator(`${e.webcamItem}, ${e.webcamItemTalkingUser}`)
+        .filter({ has: testPage.page.locator(e.webcamConnecting) });
+
+    // Control: moderator (unpaginated) shows the audio-only tile.
+    await expect(audioOnlyTiles(this.modPage), 'moderator should display the audio-only tile').not.toHaveCount(0);
+
+    // Regression: attendee (paginated) must also show it (issue 25242).
+    await expect(
+      audioOnlyTiles(this.userPage),
+      'attendee should also display the audio-only tile (issue 25242)',
+    ).not.toHaveCount(0);
   }
 
   async toggleUserList() {

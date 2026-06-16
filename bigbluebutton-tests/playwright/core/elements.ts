@@ -535,6 +535,7 @@ export const elements = {
   nextPageVideoPagination: 'button[data-test="nextPageVideoPaginationBtn"]',
   previousPageVideoPagination: 'button[data-test="previousPageVideoPaginationBtn"]',
   videoQualitySelector: 'select[id="setQuality"]',
+  webcamItem: 'div[data-test="webcamItem"]',
   webcamItemTalkingUser: 'div[data-test="webcamItemTalkingUser"]',
   webcamSettingsModal: 'div[data-test="webcamSettingsModal"]',
   dropdownWebcamButton: 'div[data-test="dropdownWebcamButton"]',
