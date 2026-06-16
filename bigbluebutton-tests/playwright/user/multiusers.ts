@@ -1,4 +1,4 @@
-import { Browser, BrowserContext, expect, Page as PlaywrightPage, TestInfo } from '@playwright/test';
+import { Browser, BrowserContext, expect, Page as PlaywrightPage, test, TestInfo } from '@playwright/test';
 
 import { ELEMENT_WAIT_TIME } from '../core/constants';
 import { elements as e } from '../core/elements';
@@ -181,6 +181,118 @@ export class MultiUsers {
     await this.modPage.comparingSelectorsBackgroundColor(e.avatarsWrapperAvatar, `${e.userListItem} div:first-child`);
     await this.modPage.waitAndClick(e.raiseHandRejection);
     await this.userPage.hasElement(e.raiseHandBtn, 'should display the raise hand button after rejection');
+  }
+
+  async audioOnlyTileVisibleForAttendee() {
+    const settings = this.modPage.settings;
+
+    const showAudioOnlyOnFirstPage = settings?.showAudioOnlyOnFirstPage ?? true;
+    test.skip(
+      !showAudioOnlyOnFirstPage,
+      'requires public.kurento.cameraSortingModes.showAudioOnlyOnFirstPage to be enabled',
+    );
+
+    const partitionPrivilegedStreams = settings?.partitionPrivilegedStreams ?? true;
+    test.skip(
+      partitionPrivilegedStreams,
+      'requires public.kurento.cameraSortingModes.partitionPrivilegedStreams to be disabled',
+    );
+
+    await this.modPage.waitForSelector(e.whiteboard);
+
+    // Moderator shares a webcam so the camera dock is visible over the presentation.
+    await this.modPage.shareWebcam({ shouldConfirmSharing: false });
+
+    // An attendee joins with microphone and unmutes.
+    await this.initUserPage();
+    await this.userPage.waitForSelector(e.whiteboard);
+    await this.userPage.waitAndClick(e.joinAudio);
+    await this.userPage.joinMicrophone();
+
+    // Wait for the moderator webcam in the attendee grid.
+    await this.userPage.hasElement(e.webcamContainer, 'attendee should receive the moderator webcam');
+
+    const audioOnlyTile = (testPage: Page) =>
+      testPage.page
+        .locator(`${e.webcamItem}, ${e.webcamItemTalkingUser}`)
+        .filter({ has: testPage.page.locator(e.webcamConnecting) });
+
+    // Control: moderator (unpaginated) shows exactly 1 audio-only tile.
+    await expect(audioOnlyTile(this.modPage), 'moderator should display exactly 1 audio-only tile').toHaveCount(1);
+
+    // Regression: attendee (paginated, partitionPrivilegedStreams=false) must also show it (issue 25242).
+    await expect(
+      audioOnlyTile(this.userPage),
+      'attendee should also display the audio-only tile (issue 25242)',
+    ).toHaveCount(1);
+  }
+
+  async audioOnlyTileVisibleForAttendeeMultiPage() {
+    const settings = this.modPage.settings;
+
+    const showAudioOnlyOnFirstPage = settings?.showAudioOnlyOnFirstPage ?? true;
+    test.skip(
+      !showAudioOnlyOnFirstPage,
+      'requires public.kurento.cameraSortingModes.showAudioOnlyOnFirstPage to be enabled',
+    );
+
+    const partitionPrivilegedStreams = settings?.partitionPrivilegedStreams ?? true;
+    test.skip(
+      partitionPrivilegedStreams,
+      'requires public.kurento.cameraSortingModes.partitionPrivilegedStreams to be disabled',
+    );
+
+    await this.modPage.waitForSelector(e.whiteboard);
+
+    const ctx = this.modPage.context;
+
+    // Fill page 0 with 5 cameras (moderator + 4 others) to force pagination.
+    // Viewer pageSize is 5, so a 6th audio-only tile must land on page 1.
+    await this.modPage.shareWebcam({ shouldConfirmSharing: false });
+
+    await this.initUserPage(ctx, { useModMeetingId: true });
+    await this.userPage.waitForSelector(e.whiteboard);
+    await this.userPage.shareWebcam({ shouldConfirmSharing: false });
+
+    await this.initModPage2(ctx, { useModMeetingId: true });
+    await this.modPage2.waitForSelector(e.whiteboard);
+    await this.modPage2.shareWebcam({ shouldConfirmSharing: false });
+
+    await this.initUserPage2(ctx, { useModMeetingId: true });
+    await this.userPage2.waitForSelector(e.whiteboard);
+    await this.userPage2.shareWebcam({ shouldConfirmSharing: false });
+
+    // 5th camera user — fills the last slot on page 0.
+    const page5 = await ctx.newPage();
+    const cameraPage5 = new Page(this.browser, page5, this?.modPage?.testInfo ?? undefined);
+    await cameraPage5.init(false, {
+      fullName: 'CameraUser5',
+      meetingId: this.modPage.meetingId,
+    });
+    await cameraPage5.waitForSelector(e.whiteboard);
+    await cameraPage5.shareWebcam({ shouldConfirmSharing: false });
+
+    // Audio-only attendee — must land on page 1 when partitionPrivilegedStreams=false.
+    const page6 = await ctx.newPage();
+    const audioOnlyPage = new Page(this.browser, page6, this?.modPage?.testInfo ?? undefined);
+    await audioOnlyPage.init(false, {
+      fullName: 'AudioOnlyAttendee',
+      meetingId: this.modPage.meetingId,
+    });
+    await audioOnlyPage.waitForSelector(e.whiteboard);
+    await audioOnlyPage.waitAndClick(e.joinAudio);
+    await audioOnlyPage.joinMicrophone();
+
+    const audioOnlyTile = (testPage: Page) =>
+      testPage.page
+        .locator(`${e.webcamItem}, ${e.webcamItemTalkingUser}`)
+        .filter({ has: testPage.page.locator(e.webcamConnecting) });
+
+    // The audio-only tile exists (on page 1 for paginated viewers).
+    await expect(
+      audioOnlyTile(this.userPage),
+      'attendee should display the audio-only tile in multi-page setup',
+    ).not.toHaveCount(0);
   }
 
   async toggleUserList() {

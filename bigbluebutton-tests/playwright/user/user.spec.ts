@@ -24,6 +24,26 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
       await multiusers.raiseHandRejected();
     });
 
+    test(
+      'Audio-only tile visible for attendee',
+      { tag: '@setting-required:cameraSortingModes' },
+      async ({ browser, context, page }, testInfo) => {
+        const multiusers = new MultiUsers(browser, context);
+        await multiusers.initModPage(page, { testInfo });
+        await multiusers.audioOnlyTileVisibleForAttendee();
+      },
+    );
+
+    test(
+      'Audio-only tile visible for attendee (multi-page)',
+      { tag: '@setting-required:cameraSortingModes' },
+      async ({ browser, context, page }, testInfo) => {
+        const multiusers = new MultiUsers(browser, context);
+        await multiusers.initModPage(page, { testInfo });
+        await multiusers.audioOnlyTileVisibleForAttendeeMultiPage();
+      },
+    );
+
     test('Toggle user list', async ({ browser, context, page }, testInfo) => {
       const multiusers = new MultiUsers(browser, context);
       await multiusers.initModPage(page, { testInfo });
@@ -248,53 +268,65 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
 
       // Regression tests for issue #24888:
       // usernames must not leak through join/leave notifications when hideUserList is active.
-      test('Hide user list suppresses join notification for locked viewer', async ({ browser, context, page }, testInfo) => {
+      test('Hide user list suppresses join notification for locked viewer', async ({
+        browser,
+        context,
+        page,
+      }, testInfo) => {
         const lockViewers = new LockViewers(browser, context);
         await lockViewers.initModPage(page, { testInfo });
         await lockViewers.hideUserListSuppressesJoinNotification();
       });
 
-      test('Hide user list suppresses leave notification for locked viewer', async ({ browser, context, page }, testInfo) => {
+      test('Hide user list suppresses leave notification for locked viewer', async ({
+        browser,
+        context,
+        page,
+      }, testInfo) => {
         const lockViewers = new LockViewers(browser, context);
         await lockViewers.initModPage(page, { testInfo });
         await lockViewers.hideUserListSuppressesLeaveNotification();
       });
 
-      test(
-        'Hide user list join notification is shown only to moderator and unlocked viewer',
-        async ({ browser, context, page }, testInfo) => {
-          const lockViewers = new LockViewers(browser, context);
-          await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListJoinNotificationVisibleForUnlockedAndModOnly();
-        },
-      );
+      test('Hide user list join notification is shown only to moderator and unlocked viewer', async ({
+        browser,
+        context,
+        page,
+      }, testInfo) => {
+        const lockViewers = new LockViewers(browser, context);
+        await lockViewers.initModPage(page, { testInfo });
+        await lockViewers.hideUserListJoinNotificationVisibleForUnlockedAndModOnly();
+      });
 
-      test(
-        'Hide user list leave notification is shown only to moderator and unlocked viewer',
-        async ({ browser, context, page }, testInfo) => {
-          const lockViewers = new LockViewers(browser, context);
-          await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListLeaveNotificationVisibleForUnlockedAndModOnly();
-        },
-      );
+      test('Hide user list leave notification is shown only to moderator and unlocked viewer', async ({
+        browser,
+        context,
+        page,
+      }, testInfo) => {
+        const lockViewers = new LockViewers(browser, context);
+        await lockViewers.initModPage(page, { testInfo });
+        await lockViewers.hideUserListLeaveNotificationVisibleForUnlockedAndModOnly();
+      });
 
-      test(
-        'Hide user list join notification is visible to locked viewer when a moderator joins',
-        async ({ browser, context, page }, testInfo) => {
-          const lockViewers = new LockViewers(browser, context);
-          await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListModeratorJoinNotificationVisibleToAll();
-        },
-      );
+      test('Hide user list join notification is visible to locked viewer when a moderator joins', async ({
+        browser,
+        context,
+        page,
+      }, testInfo) => {
+        const lockViewers = new LockViewers(browser, context);
+        await lockViewers.initModPage(page, { testInfo });
+        await lockViewers.hideUserListModeratorJoinNotificationVisibleToAll();
+      });
 
-      test(
-        'Hide user list leave notification is visible to locked viewer when a moderator leaves',
-        async ({ browser, context, page }, testInfo) => {
-          const lockViewers = new LockViewers(browser, context);
-          await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListModeratorLeaveNotificationVisibleToAll();
-        },
-      );
+      test('Hide user list leave notification is visible to locked viewer when a moderator leaves', async ({
+        browser,
+        context,
+        page,
+      }, testInfo) => {
+        const lockViewers = new LockViewers(browser, context);
+        await lockViewers.initModPage(page, { testInfo });
+        await lockViewers.hideUserListModeratorLeaveNotificationVisibleToAll();
+      });
     });
 
     // https://docs.bigbluebutton.org/3.0/testing/release-testing/#saving-usernames
