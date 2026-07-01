@@ -63,9 +63,10 @@ public class OfficeToPdfConversionService {
       }
 
       // Pre-process pptx (OOXML) uploads before rendering to PDF so that
-      // super/subscript text survives the pdftotext slide-text extraction used
-      // by quick polls (issue #25320). Scoped to pptx; any failure is swallowed
-      // and the original file is used.
+      // super/subscript text survives the pdftotext slide-text extraction and
+      // the slide title is not merged into the poll question, both used by quick
+      // polls (issue #25320). Scoped to pptx; any failure is swallowed and the
+      // original file is used.
       if (FileTypeConstants.PPTX.equalsIgnoreCase(pres.getFileType())) {
         PptxPreProcessor.process(pres);
       }

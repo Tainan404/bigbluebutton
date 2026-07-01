@@ -63,6 +63,15 @@ import org.w3c.dom.NodeList;
  * the character in the extracted slide text we rewrite such runs to the Unicode
  * super/subscript equivalents before the PDF is produced.</p>
  *
+ * <p>The same slide XML is also used to keep the slide <em>title</em> from being
+ * merged into the poll question. The Quick Poll parser splits the extracted text
+ * into paragraphs on blank lines; depending on the layout {@code pdftotext} may
+ * place the title and the body on adjacent lines with no blank line between them,
+ * so the title rides along with the question. When a slide has a non-empty title
+ * placeholder we prepend an empty paragraph to the body placeholder(s), which
+ * renders as a blank line separating the title from the body regardless of the
+ * layout.</p>
+ *
  * <p>The rewrite is scoped to {@code ppt/slides/slideN.xml} entries; every other
  * part of the package is copied through verbatim so the file stays a valid OOXML
  * document. Any failure leaves the original file untouched.</p>
@@ -71,6 +80,7 @@ public final class PptxPreProcessor {
   private static final Logger log = LoggerFactory.getLogger(PptxPreProcessor.class);
 
   private static final String NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main";
+  private static final String NS_P = "http://schemas.openxmlformats.org/presentationml/2006/main";
 
   private static final Map<Character, Character> SUPERSCRIPT = new HashMap<>();
   private static final Map<Character, Character> SUBSCRIPT = new HashMap<>();
@@ -170,6 +180,7 @@ public final class PptxPreProcessor {
     try {
       Document doc = parse(xml);
       boolean changed = inlineSuperSubscript(doc);
+      changed |= separateTitleFromBody(doc);
       if (!changed) {
         return null;
       }
@@ -231,6 +242,81 @@ public final class PptxPreProcessor {
       sb.append(mapped != null ? mapped.charValue() : ch);
     }
     return sb.toString();
+  }
+
+  /**
+   * Bug 3: when a slide carries a non-empty title placeholder, prepend an empty
+   * paragraph to each non-title body placeholder. That renders as a blank line
+   * between the title and the body so {@code pdftotext} keeps them in separate
+   * paragraphs and the Quick Poll parser no longer prepends the title onto the
+   * question (which otherwise happens on layouts where the title and body land
+   * on adjacent lines, e.g. Two Content).
+   */
+  private static boolean separateTitleFromBody(Document doc) {
+    NodeList shapes = doc.getElementsByTagNameNS(NS_P, "sp");
+
+    boolean hasTitleText = false;
+    for (int i = 0; i < shapes.getLength(); i++) {
+      Element sp = (Element) shapes.item(i);
+      if (isTitlePlaceholder(sp) && hasText(sp)) {
+        hasTitleText = true;
+        break;
+      }
+    }
+    if (!hasTitleText) {
+      return false;
+    }
+
+    boolean changed = false;
+    for (int i = 0; i < shapes.getLength(); i++) {
+      Element sp = (Element) shapes.item(i);
+      if (placeholder(sp) == null || isTitlePlaceholder(sp) || !hasText(sp)) {
+        continue;
+      }
+      Element txBody = firstChild(sp, NS_P, "txBody");
+      if (txBody == null) {
+        continue;
+      }
+      Element firstParagraph = firstChild(txBody, NS_A, "p");
+      if (firstParagraph == null) {
+        continue;
+      }
+      txBody.insertBefore(doc.createElementNS(NS_A, "a:p"), firstParagraph);
+      changed = true;
+    }
+    return changed;
+  }
+
+  private static Element placeholder(Element sp) {
+    Element nvSpPr = firstChild(sp, NS_P, "nvSpPr");
+    if (nvSpPr == null) {
+      return null;
+    }
+    Element nvPr = firstChild(nvSpPr, NS_P, "nvPr");
+    if (nvPr == null) {
+      return null;
+    }
+    return firstChild(nvPr, NS_P, "ph");
+  }
+
+  private static boolean isTitlePlaceholder(Element sp) {
+    Element ph = placeholder(sp);
+    if (ph == null) {
+      return false;
+    }
+    String type = ph.getAttribute("type");
+    return "title".equals(type) || "ctrTitle".equals(type);
+  }
+
+  private static boolean hasText(Element sp) {
+    NodeList texts = sp.getElementsByTagNameNS(NS_A, "t");
+    for (int i = 0; i < texts.getLength(); i++) {
+      String text = texts.item(i).getTextContent();
+      if (text != null && !text.trim().isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static Document parse(byte[] xml) throws Exception {
