@@ -20,6 +20,7 @@ package org.bigbluebutton.presentation.imp;
 
 import com.google.gson.Gson;
 import org.bigbluebutton.presentation.ConversionMessageConstants;
+import org.bigbluebutton.presentation.FileTypeConstants;
 import org.bigbluebutton.presentation.SupportedFileTypes;
 import org.bigbluebutton.presentation.UploadedPresentation;
 import org.slf4j.Logger;
@@ -60,6 +61,15 @@ public class OfficeToPdfConversionService {
         pres.setConversionStatus(ConversionMessageConstants.OFFICE_DOC_CONVERSION_INVALID_KEY);
         return pres;
       }
+
+      // Pre-process pptx (OOXML) uploads before rendering to PDF so that
+      // super/subscript text survives the pdftotext slide-text extraction used
+      // by quick polls (issue #25320). Scoped to pptx; any failure is swallowed
+      // and the original file is used.
+      if (FileTypeConstants.PPTX.equalsIgnoreCase(pres.getFileType())) {
+        PptxPreProcessor.process(pres);
+      }
+
       File pdfOutput = setupOutputPdfFile(pres);
       if (convertOfficeDocToPdf(pres, pdfOutput)) {
         Map<String, Object> logData = new HashMap<>();
