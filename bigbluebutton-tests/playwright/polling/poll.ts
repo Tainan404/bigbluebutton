@@ -333,6 +333,79 @@ export class Polling extends MultiUsers {
     );
   }
 
+  // Navigate to a converted smart-slides slide and open its quick-poll dropdown. A freshly
+  // uploaded deck can briefly snap back to slide 1 while it becomes the current presentation, so
+  // re-select the target slide until it sticks before opening the dropdown; otherwise the click can
+  // capture the wrong (or a stale) slide's parsed question.
+  async openQuickPollOnSlide(slideNumber: number) {
+    await this.modPage.hasElement(
+      e.quickPoll,
+      'should display the quick poll button once the smart slides deck is converted',
+      ELEMENT_WAIT_EXTRA_LONG_TIME,
+    );
+    const slideDropdown = this.modPage.page.locator(e.skipSlide);
+    await expect(async () => {
+      await slideDropdown.selectOption({ label: `Slide ${slideNumber}` });
+      await this.modPage.page.waitForTimeout(1500);
+      await expect(slideDropdown).toHaveValue(String(slideNumber), { timeout: ELEMENT_WAIT_TIME });
+    }).toPass({ timeout: ELEMENT_WAIT_LONGER_TIME });
+    // let the selected slide propagate to the quick-poll dropdown before triggering it
+    await this.modPage.page.waitForTimeout(3000);
+    await this.modPage.waitAndClick(e.quickPoll, ELEMENT_WAIT_LONGER_TIME);
+  }
+
+  // Regression test for issue #25320 (Bug 2): PowerPoint stores the "3" in "mg/m³" as a run whose
+  // rPr carries a baseline offset. Rendering the deck to PDF and extracting the slide text with
+  // pdftotext flattened the raised glyph to a plain "mg/m3" in the quick-poll question and options.
+  // The pptx pre-processor now rewrites baseline runs to the Unicode super/subscript before the
+  // office->PDF step, so "mg/m³" survives. Uploads the .pptx (not a PDF) so the conversion pipeline
+  // - and therefore the pre-processor - actually runs.
+  async superscriptPreservedInQuestion() {
+    await this.modPage.waitForSelector(e.whiteboard, ELEMENT_WAIT_LONGER_TIME);
+    await util.uploadSPresentationForTestingPolls(this.modPage, e.smartSlidesBugRepro1Pptx);
+    await this.userPage.hasElement(e.userListItem, 'should display the user list item for the attendee');
+    await this.modPage.closeAllToastNotifications();
+    await this.modPage.page.waitForTimeout(5000);
+
+    // Slide 2 — "What is the LOD concentration in mg/m³?"
+    await this.openQuickPollOnSlide(2);
+    const question = this.modPage.page.locator(e.pollQuestionArea);
+    await expect(
+      question,
+      'the quick-poll question should keep the superscript ("mg/m³", not the flattened "mg/m3")',
+    ).toHaveValue(/mg\/m³/, { timeout: ELEMENT_WAIT_TIME });
+    await expect(
+      question,
+      'the flattened "mg/m3" must no longer appear in the question',
+    ).not.toHaveValue(/mg\/m3(?!³)/, { timeout: ELEMENT_WAIT_TIME });
+  }
+
+  // Regression test for issue #25320 (Bug 3), Two Content layout: pdftotext places the slide title
+  // and the body on adjacent lines with no blank line between them, so the parser (which cleaves
+  // paragraphs on blank lines) prepended the title onto the question - e.g.
+  // "Bug 3 — title prepended What is the asbestos concentration?". The pptx pre-processor now
+  // inserts a blank-line separator between the title and the body placeholders, so only the body
+  // (the question) is picked.
+  async titleNotPrependedTwoContent() {
+    await this.modPage.waitForSelector(e.whiteboard, ELEMENT_WAIT_LONGER_TIME);
+    await util.uploadSPresentationForTestingPolls(this.modPage, e.smartSlidesBugRepro1Pptx);
+    await this.userPage.hasElement(e.userListItem, 'should display the user list item for the attendee');
+    await this.modPage.closeAllToastNotifications();
+    await this.modPage.page.waitForTimeout(5000);
+
+    // Slide 3 — Two Content: title "Bug 3 — title prepended", body "What is the asbestos concentration?"
+    await this.openQuickPollOnSlide(3);
+    const question = this.modPage.page.locator(e.pollQuestionArea);
+    await expect(
+      question,
+      'the quick-poll question should be just the body question',
+    ).toHaveValue(/What is the asbestos concentration\?/, { timeout: ELEMENT_WAIT_TIME });
+    await expect(
+      question,
+      'the slide title "Bug 3 — title prepended" must not be prepended onto the question',
+    ).not.toHaveValue(/Bug 3/, { timeout: ELEMENT_WAIT_TIME });
+  }
+
   async trueFalse() {
     await this.modPage.waitForSelector(e.whiteboard, ELEMENT_WAIT_LONGER_TIME);
     await util.uploadSPresentationForTestingPolls(this.modPage, e.smartSlides2);

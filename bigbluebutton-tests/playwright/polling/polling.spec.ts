@@ -83,6 +83,14 @@ test.describe.parallel('Polling', { tag: '@ci' }, () => {
       await polling.typeResponse();
     });
 
+    test('Superscript preserved in quick poll question - issue 25320', async () => {
+      await polling.superscriptPreservedInQuestion();
+    });
+
+    test('Two Content title not prepended onto question - issue 25320', async () => {
+      await polling.titleNotPrependedTwoContent();
+    });
+
     test('Hiding pools - Poll anywhere in the slide', async () => {
       await polling.pollAnywhereSlide();
     });
