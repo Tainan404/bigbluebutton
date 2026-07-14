@@ -18,6 +18,16 @@ test.describe.parallel('Chat', { tag: '@ci' }, () => {
     await chat.sendPrivateMessage();
   });
 
+  test('Private chat list item reserves preview space (no reflow)', async ({ browser, context, page }, testInfo) => {
+    const chat = new Chat(browser, context);
+    // Two attendees with distinct (non-substring) names: one gets a message (tall item), the
+    // other stays an empty chat (short item), so the per-item height assertion sees both.
+    await chat.initModPage(page, { testInfo });
+    await chat.initUserPage(context, { fullName: 'Bob', testInfo });
+    await chat.initUserPage2(context, { fullName: 'Carol', testInfo });
+    await chat.privateChatPreviewNoReflow();
+  });
+
   test('Clear chat', async ({ browser, context, page }, testInfo) => {
     const chat = new Chat(browser, context);
     await chat.initPages(page, testInfo);

@@ -265,6 +265,11 @@ const ChatContent = styled.div`
 const MessageItemWrapper = styled.div`
   flex: 1;
   min-width: 0;
+  // Reserve one row height so a resolved-but-empty preview (a soft-deleted last message renders
+  // null in the still-shown wrapper) does not collapse the row below the others (issue 25416).
+  // box-sizing is border-box (global reset in client/main.html), so this is one text line plus
+  // the wrapper's own vertical padding.
+  min-height: calc(${fontSizeBase} * 2 + ${lgPadding} * 2);
   padding: ${lgPadding} ${xlPadding};
   overflow: hidden;
   white-space: nowrap;
@@ -273,6 +278,20 @@ const MessageItemWrapper = styled.div`
 
   [dir="rtl"] & {
     text-align: right;
+  }
+`;
+
+// Loading placeholder for the preview text, sized to one text line (line-height 2 x
+// fontSizeBase) so the skeleton -> text swap has no visual jump (issue 25416).
+const PreviewSkeleton = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: calc(${fontSizeBase} * 2);
+
+  & .react-loading-skeleton {
+    width: 70%;
+    height: 1rem;
   }
 `;
 
@@ -287,6 +306,7 @@ export default {
   ChatWrapper,
   ChatContent,
   MessageItemWrapper,
+  PreviewSkeleton,
   UnreadMessages,
   UnreadMessagesText,
   UserAvatar,

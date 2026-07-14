@@ -2,6 +2,7 @@
 /* eslint-disable jsx-a11y/no-access-key */
 import React, { useEffect } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
+import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 import { layoutSelect, layoutSelectInput, layoutDispatch } from '/imports/ui/components/layout/context';
 import { ACTIONS, PANELS } from '/imports/ui/components/layout/enums';
 import Styled from './styles';
@@ -36,6 +37,20 @@ interface PrivateChatListItemProps {
   index: number;
   privateChatSelectedCallback: () => void;
 }
+
+// Placeholder shown while the last-message preview is still being fetched, so the
+// item is born at its final height and the list does not reflow (see issue 25416).
+const PreviewSkeleton = () => {
+  const isRTL = layoutSelect((i: Layout) => i.isRTL);
+
+  return (
+    <SkeletonTheme baseColor="#DCE4EC">
+      <Styled.PreviewSkeleton>
+        <Skeleton direction={isRTL ? 'rtl' : 'ltr'} />
+      </Styled.PreviewSkeleton>
+    </SkeletonTheme>
+  );
+};
 
 const PrivateChatListItem = (props: PrivateChatListItemProps) => {
   const sidebarContent = layoutSelectInput((i: Input) => i.sidebarContent);
@@ -73,12 +88,15 @@ const PrivateChatListItem = (props: PrivateChatListItemProps) => {
     limit: 1,
   }; // to get only the last message from private chat
   const variables = { ...defaultVariables, requestedChatId: chat.chatId };
-  // Skip subscription if chat has no messages
-  const skipSubscription = totalMessages === 0;
+  // A non-empty chat will show a last-message preview, so its item must reserve the preview space
+  // from the first render (empty chats never have a preview and stay shorter). Empty chats also
+  // skip the per-item subscription entirely.
+  const hasAnyMessages = totalMessages > 0;
   const useChatMessageSubscription = useCreateUseSubscription<Message>(chatQuery, variables);
   const {
     data: chatMessageData,
-  } = useChatMessageSubscription((msg) => msg, skipSubscription) as GraphqlDataHookSubscriptionResponse<Message[]>;
+    loading: lastMessageLoading,
+  } = useChatMessageSubscription((msg) => msg, !hasAnyMessages) as GraphqlDataHookSubscriptionResponse<Message[]>;
 
   useEffect(() => {
     // Clear any previous timeout to prevent multiple executions
@@ -171,10 +189,15 @@ const PrivateChatListItem = (props: PrivateChatListItemProps) => {
               />
             </Styled.ChatHeading>
           )}
-          {(hasMessages || unreadMessagesToDisplay > 0) && (
+          {/* totalUnread is a subset of totalMessages (same chat row, chatSubscription.ts:22-23),
+              so unread > 0 implies hasAnyMessages; the unread badge below can never be orphaned. */}
+          {hasAnyMessages && (
             <Styled.ChatContent data-test="private-user-list-content">
               <Styled.MessageItemWrapper>
-                {lastMessage}
+                {/* On a subscription error the hook leaves loading true (known hook limitation,
+                    see PR notes), so the skeleton persists instead of resolving; the row still
+                    keeps its reserved height. */}
+                {lastMessageLoading ? <PreviewSkeleton /> : lastMessage}
               </Styled.MessageItemWrapper>
               {(unreadMessagesToDisplay > 0)
                 ? (
