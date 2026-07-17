@@ -67,6 +67,101 @@ export class Chat extends MultiUsers {
     await this.userPage.waitAndClick(e.publicChatButton);
   }
 
+  // Opens the private chat with a specific user by name (the shared openPrivateChat helper only
+  // targets the last user in the list, which is not enough when seeding several chats).
+  async startPrivateChatWithUser(name: string) {
+    await this.modPage.waitAndClick(e.usersListSidebarButton);
+    const userItem = this.modPage.page.locator(e.userListItem, { hasText: name }).first();
+    await userItem.waitFor({ state: 'visible', timeout: ELEMENT_WAIT_LONGER_TIME });
+    await userItem.hover();
+    await userItem.locator(e.startPrivateChat).first().click();
+    await this.modPage.hasElement(e.hidePrivateChat, `should open the private chat with ${name}`);
+  }
+
+  // Regression guard for issue 25416: opening the private chat list used to render each item
+  // short (avatar + name only) and then grow it once the per-item last-message subscription
+  // resolved, making the list reflow. The item now reserves one text line for the preview
+  // (skeleton placeholder + a min-height backstop) so its height never changes while loading.
+  async privateChatPreviewNoReflow() {
+    // Seed two chats with legitimately different final heights: one with a last message (tall,
+    // reserves a preview line) and one left empty (short, no preview). The per-item assertion
+    // below must not conflate them - the whole point of the fix is that empty and non-empty
+    // rows differ.
+    await this.startPrivateChatWithUser(this.userPage.username);
+    // prevent a race condition when running on a deployed server
+    await this.modPage.page.waitForTimeout(500);
+    await this.modPage.fill(e.chatBox, e.message1);
+    await this.modPage.waitAndClick(e.sendButton);
+    await checkLastMessageSent(this.modPage, e.message1);
+    await this.startPrivateChatWithUser(this.userPage2.username); // empty chat, no message sent
+
+    // Let the chats-list subscription settle each chat's totalMessages before measuring. This is
+    // a different async source than the preview-lag bug under test: a just-created chat can mount
+    // with totalMessages still 0 (no preview reserved) and then resize to its real height once
+    // the count propagates, which would false-fail the stability check. Needed even with the
+    // ResizeObserver, which faithfully reports that unrelated resize.
+    await this.modPage.page.waitForTimeout(2000);
+
+    // Open the list and watch every item with a ResizeObserver installed BEFORE the click, so no
+    // sampling gap can hide a transient: the buggy build grows the non-empty item from its short
+    // to its tall height as the preview resolves, and the observer records both. A MutationObserver
+    // attaches the ResizeObserver to each item the moment it mounts. Heights are keyed by chat name
+    // (aria-label), not by node, so a React remount that split the short and tall heights across two
+    // nodes still lands both under the same key and fails the stability check.
+    await this.modPage.hasElement(e.privateChatButton, 'should display the private chat button');
+    const items: { name: string; heights: number[] }[] = await this.modPage.page.evaluate(
+      async ({ itemSel, buttonSel, durationMs }) => {
+        const heightsByName = new Map<string, Set<number>>();
+        const record = (el: Element) => {
+          const name = el.getAttribute('aria-label') ?? 'unknown';
+          const set = heightsByName.get(name) ?? new Set<number>();
+          set.add(Math.round(el.getBoundingClientRect().height));
+          heightsByName.set(name, set);
+        };
+        const observed = new WeakSet<Element>();
+        const resizeObserver = new ResizeObserver((entries) => entries.forEach((entry) => record(entry.target)));
+        const observe = (el: Element) => {
+          if (!observed.has(el)) {
+            observed.add(el);
+            record(el);
+            resizeObserver.observe(el);
+          }
+        };
+        const mutationObserver = new MutationObserver(() => document.querySelectorAll(itemSel).forEach(observe));
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
+        (document.querySelector(buttonSel) as HTMLElement).click();
+        document.querySelectorAll(itemSel).forEach(observe);
+        await new Promise((resolve) => {
+          setTimeout(resolve, durationMs);
+        });
+        mutationObserver.disconnect();
+        resizeObserver.disconnect();
+        return Array.from(heightsByName.entries()).map(([name, set]) => ({ name, heights: Array.from(set) }));
+      },
+      { itemSel: e.privateChatItem, buttonSel: e.privateChatButton, durationMs: 2500 },
+    );
+
+    // both seeded chats must be present, and each individual item must have kept a single stable
+    // height (on the buggy build the non-empty item is observed at two heights, e.g. 48 then 94)
+    expect(items.length, 'should observe exactly the two seeded private chats').toBe(2);
+    items.forEach(({ name, heights }) => {
+      expect(
+        heights,
+        `the "${name}" private chat item height must be stable while the preview loads (observed: ${heights.join(', ')})`,
+      ).toHaveLength(1);
+    });
+
+    // The fix's actual behavior: the chat with a message reserves a preview line and is taller than
+    // the empty chat. This guards against a regression where willHavePreview is always false (no
+    // preview ever renders) - that would keep every item stable but at the short height, passing the
+    // checks above; here both rows would be equally short and this comparison would fail.
+    const stableHeights = items.map((item) => item.heights[0]).sort((a, b) => a - b);
+    expect(
+      stableHeights[stableHeights.length - 1],
+      'the chat with a message should be taller than the empty chat (preview line reserved)',
+    ).toBeGreaterThan(stableHeights[0]);
+  }
+
   async clearChat() {
     await openPublicChat(this.modPage);
 
