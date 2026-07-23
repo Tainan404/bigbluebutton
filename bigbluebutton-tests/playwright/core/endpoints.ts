@@ -34,6 +34,7 @@ interface GetMeetingInfoResponse {
     running: string[];
     participantCount: string[];
     moderatorCount: string[];
+    voiceBridge?: string[];
     isBreakout: string[];
     parentMeetingID?: string[];
     breakoutRooms?: Array<{

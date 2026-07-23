@@ -14,6 +14,14 @@ test.describe.parallel('API', () => {
     await api.testGetMeetingInfo(page, testInfo);
   });
 
+  test('createIgnoresDistinctWebVoice', async () => {
+    await API.testCreateIgnoresDistinctWebVoice();
+  });
+
+  test('voiceBridgeCollisionStillDetected', async () => {
+    await API.testVoiceBridgeCollisionStillDetected();
+  });
+
   test('breakoutWithoutParent', async () => {
     await APIBreakout.testBreakoutWithoutParent();
   });
