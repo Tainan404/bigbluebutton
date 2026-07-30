@@ -33,6 +33,7 @@ import java.util.concurrent.Semaphore;
 public class OfficeToPdfConversionService {
   private static Logger log = LoggerFactory.getLogger(OfficeToPdfConversionService.class);
   private OfficeDocumentValidator2 officeDocumentValidator;
+  private PptxSuperscriptSubscriptNormalizer pptxSuperscriptSubscriptNormalizer;
   private boolean skipOfficePrecheck = false;
   private String presOfficeConversionExec = null;
   private Semaphore presOfficeConversionSemaphore = new Semaphore(4);
@@ -60,8 +61,19 @@ public class OfficeToPdfConversionService {
         pres.setConversionStatus(ConversionMessageConstants.OFFICE_DOC_CONVERSION_INVALID_KEY);
         return pres;
       }
-      File pdfOutput = setupOutputPdfFile(pres);
-      if (convertOfficeDocToPdf(pres, pdfOutput)) {
+      File normalizedPresentation = pptxSuperscriptSubscriptNormalizer.normalize(pres.getUploadedFile(), pres.getId());
+      File presentationFile = normalizedPresentation != null ? normalizedPresentation : pres.getUploadedFile();
+      File pdfOutput;
+      boolean conversionSucceeded;
+      try {
+        pdfOutput = setupOutputPdfFile(pres);
+        conversionSucceeded = convertOfficeDocToPdf(pres, presentationFile, pdfOutput);
+      } finally {
+        if (normalizedPresentation != null && normalizedPresentation.exists() && !normalizedPresentation.delete()) {
+          log.warn("Failed to delete normalized PPTX for presId={} filename={}", pres.getId(), pres.getName());
+        }
+      }
+      if (conversionSucceeded) {
         Map<String, Object> logData = new HashMap<>();
         logData.put("meetingId", pres.getMeetingId());
         logData.put("presId", pres.getId());
@@ -97,7 +109,7 @@ public class OfficeToPdfConversionService {
         presentationFile.getAbsolutePath().lastIndexOf('.'));
     return new File(filenameWithoutExt + ".pdf");
   }
-  private boolean convertOfficeDocToPdf(UploadedPresentation pres, File pdfOutput) {
+  private boolean convertOfficeDocToPdf(UploadedPresentation pres, File presentationFile, File pdfOutput) {
     boolean success = false;
     int attempts = 0;
     while(!success) {
@@ -109,7 +121,7 @@ public class OfficeToPdfConversionService {
         }
         presOfficeConversionSemaphore.acquire();
 
-        success = Office2PdfPageConverter.convert(pres.getUploadedFile(), pdfOutput, 0, pres,
+        success = Office2PdfPageConverter.convert(presentationFile, pdfOutput, 0, pres,
                 presOfficeConversionExec, presOfficeConversionTimeout);
 
       } catch (Exception e) {
@@ -139,6 +151,10 @@ public class OfficeToPdfConversionService {
     officeDocumentValidator = v;
   }
 
+  public void setPptxSuperscriptSubscriptNormalizer(PptxSuperscriptSubscriptNormalizer normalizer) {
+    pptxSuperscriptSubscriptNormalizer = normalizer;
+  }
+
   public void setSkipOfficePrecheck(boolean skipOfficePrecheck) {
     this.skipOfficePrecheck = skipOfficePrecheck;
   }
@@ -156,4 +172,3 @@ public class OfficeToPdfConversionService {
   }
 
 }
-
