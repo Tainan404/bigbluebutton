@@ -38,16 +38,32 @@ import org.slf4j.LoggerFactory;
 public class PptxSuperscriptSubscriptNormalizer {
   private static final Logger log = LoggerFactory.getLogger(PptxSuperscriptSubscriptNormalizer.class);
 
+  // PPTX files above this size skip normalization: newXMLSlideShow loads the whole deck into memory and
+  // write() serializes a full copy, so large decks under concurrent uploads risk memory pressure.
+  // Poll slides are text-light, so a big deck is the least likely to hold the runs we care about.
+  private static final long MAX_NORMALIZATION_SIZE_BYTES = 50L * 1024 * 1024;
+
+  // Character maps for the superscript/subscript runs we can flatten to Unicode. Scope is
+  // intentionally minimal: digits 0-9, the math symbols + - = ( ), and the letter n (nth
+  // exponent/index). Everything else - other letters, spaces, decimal points, commas - has no
+  // mapping, so normalizeText returns null and the run is left untouched (all-or-nothing per run).
+  // Out of scope by design: ordinals such as 1st, and general chemical/math letter sub/superscripts.
   private static final Map<Character, Character> SUPERSCRIPT_CHARACTERS = new HashMap<>();
   private static final Map<Character, Character> SUBSCRIPT_CHARACTERS = new HashMap<>();
 
   static {
     addMappings(SUPERSCRIPT_CHARACTERS, "0123456789+-=()n", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ");
-    addMappings(SUBSCRIPT_CHARACTERS, "0123456789+-=()", "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎");
+    addMappings(SUBSCRIPT_CHARACTERS, "0123456789+-=()n", "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₙ");
   }
 
   public File normalize(File pptx, String presId) {
     if (!FilenameUtils.isExtension(pptx.getName(), FileTypeConstants.PPTX)) {
+      return null;
+    }
+
+    if (pptx.length() > MAX_NORMALIZATION_SIZE_BYTES) {
+      log.info("Skipping superscript/subscript normalization for presId={} filename={}; size {} bytes exceeds limit {} bytes",
+          presId, pptx.getName(), pptx.length(), MAX_NORMALIZATION_SIZE_BYTES);
       return null;
     }
 
@@ -127,7 +143,7 @@ public class PptxSuperscriptSubscriptNormalizer {
     }
 
     run.setText(normalized);
-    ((CTRegularTextRun) run.getXmlObject()).getRPr().setBaseline(0);
+    properties.setBaseline(0);
     return true;
   }
 

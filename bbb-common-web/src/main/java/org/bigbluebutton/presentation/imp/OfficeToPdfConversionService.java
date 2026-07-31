@@ -68,6 +68,14 @@ public class OfficeToPdfConversionService {
       try {
         pdfOutput = setupOutputPdfFile(pres);
         conversionSucceeded = convertOfficeDocToPdf(pres, presentationFile, pdfOutput);
+        if (!conversionSucceeded && normalizedPresentation != null) {
+          // The normalized (POI-rewritten) deck failed to convert. POI can occasionally emit decks
+          // LibreOffice handles differently, so retry once with the untouched original before
+          // declaring failure - keeps the superscript/subscript feature fail-open end to end.
+          log.warn("Conversion of normalized PPTX failed for presId={} filename={}; retrying with the original file",
+              pres.getId(), pres.getName());
+          conversionSucceeded = convertOfficeDocToPdf(pres, pres.getUploadedFile(), pdfOutput);
+        }
       } finally {
         if (normalizedPresentation != null && normalizedPresentation.exists() && !normalizedPresentation.delete()) {
           log.warn("Failed to delete normalized PPTX for presId={} filename={}", pres.getId(), pres.getName());
@@ -172,3 +180,4 @@ public class OfficeToPdfConversionService {
   }
 
 }
+

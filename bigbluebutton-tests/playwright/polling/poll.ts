@@ -522,10 +522,10 @@ export class Polling extends MultiUsers {
     await this.modPage.page.waitForTimeout(3000);
     await this.modPage.waitAndClick(e.quickPoll, ELEMENT_WAIT_LONGER_TIME);
     const typedQuestion = this.modPage.page.locator(e.pollQuestionArea);
-    await expect(typedQuestion, 'the typed-response question should keep the "(in min)" clause').toHaveValue(
-      /How long \(in min\) for/,
-      { timeout: ELEMENT_WAIT_TIME },
-    );
+    await expect(
+      typedQuestion,
+      'the typed-response question should keep the "(in min)" clause',
+    ).toHaveValue(/How long \(in min\) for/, { timeout: ELEMENT_WAIT_TIME });
     await expect(
       typedQuestion,
       'the words around the parenthetical must not be joined together (no "longfor")',
@@ -537,6 +537,9 @@ export class Polling extends MultiUsers {
     await util.uploadSPresentationForTestingPolls(this.modPage, e.smartSlidesBugRepro1Pptx);
     await this.userPage.hasElement(e.userListItem, 'should display the user list item for the attendee');
     await this.modPage.closeAllToastNotifications();
+    // Fixed settle so the whole deck (all slides' extracted text) is ready before navigating; a
+    // condition-based wait on the "Slide 2" option races the per-slide text extraction and the
+    // quick poll then captures the previous slide's parsed question.
     await this.modPage.page.waitForTimeout(10000);
 
     await this.modPage.selectSlide('Slide 2');

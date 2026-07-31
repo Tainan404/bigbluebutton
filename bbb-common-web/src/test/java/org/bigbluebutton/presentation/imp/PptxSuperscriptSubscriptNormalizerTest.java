@@ -34,8 +34,8 @@ public class PptxSuperscriptSubscriptNormalizerTest {
 
   @Test
   public void mapsSubscriptCharacters() {
-    assertEquals("₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎",
-        PptxSuperscriptSubscriptNormalizer.normalizeText("0123456789+-=()", false));
+    assertEquals("₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₙ",
+        PptxSuperscriptSubscriptNormalizer.normalizeText("0123456789+-=()n", false));
   }
 
   @Test
