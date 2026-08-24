@@ -1656,7 +1656,7 @@ Note :
 
     - You should get into a lobby screen indicating your position in the queue
 
-8. Moderator: the user list should show separate "Waiting Authenticated Users" and "Waiting Guests" sections, each with its pending-user count. Expanding a section should show its users and queue-specific actions with the affected count in their labels. The global "Allow everyone" and "Deny everyone" actions should appear only when both queues contain users, also with the total affected count. Searching should filter the visible rows while keeping both queue headers, full counts, and bulk-action scopes unchanged.
+8. Moderator: the user list should show a single "Waiting Users" section with its pending-user count. The global "Allow everyone" and "Deny everyone" actions should always be available while users are waiting and show the total affected count. Searching should filter the visible rows while keeping the section header, full count, and bulk-action scope unchanged.
 
 9. Moderator: click "Permissions and Policies" at the bottom of the user list, select "Guest Policy", enable "Message to the guests' lobby", type the message, and press Enter or click "Send". The message should be visible to all waiting viewers on their lobby screens.
 
