@@ -73,16 +73,17 @@ class GuestsWaiting {
   }
 }
 
-case class GuestWaiting(intId: String, name: String, role: String, guest: Boolean, avatar: String, webcamBackground: String, color: String, authenticated: Boolean, registeredOn: Long)
+case class GuestWaiting(intId: String, name: String, role: String, guest: Boolean, avatar: String, webcamBackground: String, color: String, registeredOn: Long)
 case class GuestPolicy(policy: String, setBy: String)
 
 object GuestPolicyType {
   val ALWAYS_ACCEPT = "ALWAYS_ACCEPT"
   val ALWAYS_DENY = "ALWAYS_DENY"
   val ASK_MODERATOR = "ASK_MODERATOR"
+  // Deprecated and mapped to ASK_MODERATOR for one release cycle.
   val ALWAYS_ACCEPT_AUTH = "ALWAYS_ACCEPT_AUTH"
 
-  val policyTypes = Set(ALWAYS_ACCEPT, ALWAYS_DENY, ASK_MODERATOR, ALWAYS_ACCEPT_AUTH)
+  val policyTypes = Set(ALWAYS_ACCEPT, ALWAYS_DENY, ASK_MODERATOR)
 }
 
 object GuestStatus {
@@ -90,45 +91,5 @@ object GuestStatus {
   val DENY = "DENY"
   val WAIT = "WAIT"
 
-  def defaultGuestStatus(guestPolicy: String): String = {
-    guestPolicy match {
-      case GuestPolicyType.ASK_MODERATOR =>
-        GuestStatus.WAIT
-      case GuestPolicyType.ALWAYS_ACCEPT =>
-        GuestStatus.ALLOW
-      case GuestPolicyType.ALWAYS_DENY =>
-        GuestStatus.DENY
-      case _ =>
-        //Handle No case found
-        GuestStatus.DENY
-    }
-  }
-
-  def determineGuestStatus(guest: Boolean, guestPolicy: String, authenticated: Boolean): String = {
-    var guestStatus = defaultGuestStatus(guestPolicy)
-
-    if (guest) {
-      guestPolicy match {
-        case GuestPolicyType.ASK_MODERATOR =>
-          guestStatus = GuestStatus.WAIT
-        case GuestPolicyType.ALWAYS_ACCEPT =>
-          guestStatus = GuestStatus.ALLOW
-        case GuestPolicyType.ALWAYS_ACCEPT_AUTH =>
-          if (authenticated) {
-            // if authenticated, allow.
-            guestStatus = GuestStatus.ALLOW
-          } else {
-            // ask for permission
-            guestStatus = GuestStatus.WAIT
-          }
-        case GuestPolicyType.ALWAYS_DENY =>
-          guestStatus = GuestStatus.DENY
-        case _ =>
-          //Handle No case found
-          guestStatus = GuestStatus.DENY
-      }
-    }
-    guestStatus
-  }
 }
 

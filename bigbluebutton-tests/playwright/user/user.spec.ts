@@ -12,6 +12,40 @@ const iPhone11 = devices['iPhone 11'];
 
 test.describe.parallel('User', { tag: '@ci' }, () => {
   test.describe.parallel('Waiting users', () => {
+    const waitingViewerCases = [
+      {
+        name: 'Waits when guest is explicitly false under ask moderator',
+        createParameter: 'guestPolicy=ASK_MODERATOR',
+        joinParameter: 'guest=false',
+      },
+      {
+        name: 'Waits when auth is explicitly false under ask moderator',
+        createParameter: 'guestPolicy=ASK_MODERATOR',
+        joinParameter: 'auth=false',
+      },
+      {
+        name: 'Waits when authenticated under always accept authenticated',
+        createParameter: 'guestPolicy=ALWAYS_ACCEPT_AUTH',
+      },
+      {
+        name: 'Waits when guest under always accept authenticated',
+        createParameter: 'guestPolicy=ALWAYS_ACCEPT_AUTH',
+        joinParameter: 'guest=true',
+      },
+      {
+        name: 'Waits when authenticated under ask moderator',
+        createParameter: 'guestPolicy=ASK_MODERATOR',
+      },
+    ];
+
+    for (const { name, createParameter, joinParameter } of waitingViewerCases) {
+      test(name, async ({ browser, context, page }, testInfo) => {
+        const guestPolicy = new GuestPolicy(browser, context);
+        await guestPolicy.initModPage(page, { createParameter, testInfo });
+        await guestPolicy.viewerWaitsInLobby(joinParameter);
+      });
+    }
+
     test('Shows authenticated and guest users in one waiting queue', async ({ browser, context, page }, testInfo) => {
       const guestPolicy = new GuestPolicy(browser, context);
       await guestPolicy.initModPage(page, { createParameter: 'guestPolicy=ASK_MODERATOR', testInfo });

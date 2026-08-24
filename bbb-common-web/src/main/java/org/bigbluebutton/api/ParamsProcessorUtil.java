@@ -914,8 +914,15 @@ public class ParamsProcessorUtil {
 
         String guestPolicy = defaultGuestPolicy;
         if (!StringUtils.isEmpty(params.get(ApiParams.GUEST_POLICY))) {
-        	guestPolicy = params.get(ApiParams.GUEST_POLICY);
-		    }
+            guestPolicy = params.get(ApiParams.GUEST_POLICY);
+		}
+        if (GuestPolicy.ALWAYS_ACCEPT_AUTH.equals(guestPolicy)) {
+            log.warn("[DEPRECATION] guestPolicy=ALWAYS_ACCEPT_AUTH no longer distinguishes authenticated users in the guest lobby; use guestPolicy=ASK_MODERATOR instead");
+            guestPolicy = GuestPolicy.ASK_MODERATOR;
+        }
+        if (Boolean.FALSE.equals(authenticatedGuest)) {
+            log.warn("[DEPRECATION] authenticatedGuest=false no longer affects the guest lobby and now only relaxes the promote-guest-to-moderator restriction");
+        }
 
         Boolean allowPromoteGuestToModerator = defaultAllowPromoteGuestToModerator;
         if (!StringUtils.isEmpty(params.get(ApiParams.ALLOW_PROMOTE_GUEST_TO_MODERATOR))) {

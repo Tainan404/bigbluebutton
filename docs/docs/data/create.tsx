@@ -720,7 +720,7 @@ const createEndpointTableData = [
     "required": false,
     "type": "Boolean",
     "default": false,
-    "description": (<> If passed as true, we allow moderators to promote guests to moderators even if the authenticatedGuest config is enabled. The defaultAllowPromoteGuestToModerator configuration sets this behaviour globally for all meetings if no api parameter is passed (added in BBB 2.7.9)</>)
+    "description": (<> If passed as true, moderators can promote guests to moderators regardless of the authenticatedGuest config. The defaultAllowPromoteGuestToModerator configuration sets this behaviour globally for all meetings if no api parameter is passed (added in BBB 2.7.9)</>)
   },
   {
     "name": "pluginManifests",

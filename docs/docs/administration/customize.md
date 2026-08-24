@@ -1734,8 +1734,8 @@ These configs can be set in `/etc/bigbluebutton/bbb-web.properties`. The table i
 | `maxUserConcurrentAccesses` | Maximum number of sessions a single user (extId) can open simultaneously in the same meeting; oldest session is ended when exceeded | Integer (0=disable) | 3 |
 | `defaultMeetingDuration` | Default duration of the meeting in minutes | Integer (0=disable) | 0 _`overwritable`_ (via `duration`) |
 | `defaultGuestPolicy` | Default guest policy applied to meetings | ALWAYS_ACCEPT, ALWAYS_DENY, ASK_MODERATOR | ALWAYS_ACCEPT _`overwritable`_ (via `guestPolicy`) |
-| `authenticatedGuest` | Enable authenticated guest mode | true/false | true |
-| `defaultAllowPromoteGuestToModerator` | Allows moderators to promote guests to moderators when `authenticatedGuest` is enabled | true/false | false _`overwritable`_ (via `allowPromoteGuestToModerator`) |
+| `authenticatedGuest` | Require `allowPromoteGuestToModerator` before moderators can promote guests; this no longer affects the guest lobby | true/false | true |
+| `defaultAllowPromoteGuestToModerator` | Allows moderators to promote guests to moderators regardless of `authenticatedGuest` | true/false | false _`overwritable`_ (via `allowPromoteGuestToModerator`) |
 | `clientLogoutTimerInMinutes` | Number of minutes to logout client if user isn't responsive | Integer (0=disable) | 0 |
 | `meetingExpireIfNoUserJoinedInMinutes` | End meeting if no user joined within a period of time after meeting created | Integer | 5 _`overwritable`_ |
 | `meetingExpireWhenLastUserLeftInMinutes` | Number of minutes to end meeting when the last user left | Integer (0=disable) | 1 _`overwritable`_ |

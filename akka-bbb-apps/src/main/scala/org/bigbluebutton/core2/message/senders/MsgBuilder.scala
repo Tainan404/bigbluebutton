@@ -84,7 +84,7 @@ object MsgBuilder {
     val envelope = BbbCoreEnvelope(GetGuestsWaitingApprovalRespMsg.NAME, routing)
     val header = BbbClientMsgHeader(GetGuestsWaitingApprovalRespMsg.NAME, meetingId, userId)
 
-    val guestsWaiting = guests.map(g => GuestWaitingVO(g.intId, g.name, g.role, g.guest, g.avatar, g.color, g.authenticated, g.registeredOn))
+    val guestsWaiting = guests.map(g => GuestWaitingVO(g.intId, g.name, g.role, g.guest, g.avatar, g.color, g.registeredOn))
     val body = GetGuestsWaitingApprovalRespMsgBody(guestsWaiting)
     val event = GetGuestsWaitingApprovalRespMsg(header, body)
 
@@ -96,7 +96,7 @@ object MsgBuilder {
     val envelope = BbbCoreEnvelope(GuestsWaitingForApprovalEvtMsg.NAME, routing)
     val header = BbbClientMsgHeader(GuestsWaitingForApprovalEvtMsg.NAME, meetingId, userId)
 
-    val guestsWaiting = guests.map(g => GuestWaitingVO(g.intId, g.name, g.role, g.guest, g.avatar, g.color, g.authenticated, g.registeredOn))
+    val guestsWaiting = guests.map(g => GuestWaitingVO(g.intId, g.name, g.role, g.guest, g.avatar, g.color, g.registeredOn))
     val body = GuestsWaitingForApprovalEvtMsgBody(guestsWaiting)
     val event = GuestsWaitingForApprovalEvtMsg(header, body)
 
