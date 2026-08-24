@@ -599,27 +599,7 @@ public class Meeting {
 		return meetingLayout;
 	}
 
-	private String getUnauthenticatedGuestStatus(Boolean guest) {
-		if (guest) {
-			switch(guestPolicy) {
-				case GuestPolicy.ALWAYS_ACCEPT:
-				case GuestPolicy.ALWAYS_ACCEPT_AUTH:
-					return GuestPolicy.ALLOW;
-				case GuestPolicy.ASK_MODERATOR:
-					return GuestPolicy.WAIT;
-				case GuestPolicy.ALWAYS_DENY:
-					return GuestPolicy.DENY;
-				default:
-					return GuestPolicy.DENY;
-			}
-		} else {
-			return GuestPolicy.ALLOW;
-		}
-	}
-
-	public String calcGuestStatus(String role, Boolean guest, Boolean authned) {
-		if (!authenticatedGuest) return getUnauthenticatedGuestStatus(guest);
-
+	public String calcGuestStatus(String role, Boolean guest) {
 		// Allow moderators all the time.
 		if (ROLE_MODERATOR.equals(role)) {
 			return GuestPolicy.ALLOW;
@@ -630,16 +610,7 @@ public class Meeting {
 		} else if (GuestPolicy.ALWAYS_DENY.equals(guestPolicy)) {
 			return GuestPolicy.DENY;
 		} else if (GuestPolicy.ASK_MODERATOR.equals(guestPolicy)) {
-			if  (guest || (!ROLE_MODERATOR.equals(role) && authned)) {
-				return GuestPolicy.WAIT ;
-			}
-			return GuestPolicy.ALLOW;
-		} else if (GuestPolicy.ALWAYS_ACCEPT_AUTH.equals(guestPolicy)) {
-			if (guest){
-				// Only ask moderator for guests.
-				return GuestPolicy.WAIT ;
-			}
-			return GuestPolicy.ALLOW;
+			return GuestPolicy.WAIT;
 		}
 		return GuestPolicy.DENY ;
 	}

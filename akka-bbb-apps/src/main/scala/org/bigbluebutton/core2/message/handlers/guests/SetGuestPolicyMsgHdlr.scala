@@ -20,7 +20,14 @@ trait SetGuestPolicyMsgHdlr extends RightsManagementTrait {
       val reason = "No permission to set guest policy in meeting."
       PermissionCheck.ejectUserForFailedPermission(meetingId, msg.header.userId, reason, outGW, liveMeeting)
     } else {
-      val newPolicy = msg.body.policy.toUpperCase()
+      val requestedPolicy = msg.body.policy.toUpperCase()
+      val newPolicy = if (requestedPolicy == GuestPolicyType.ALWAYS_ACCEPT_AUTH) {
+        log.warning(
+          "[DEPRECATION] guestPolicy=ALWAYS_ACCEPT_AUTH no longer distinguishes authenticated users in the guest lobby; mapping to ASK_MODERATOR. meetingId={}",
+          liveMeeting.props.meetingProp.intId
+        )
+        GuestPolicyType.ASK_MODERATOR
+      } else requestedPolicy
       if (GuestPolicyType.policyTypes.contains(newPolicy)) {
         val oldPolicy = liveMeeting.guestsWaiting.getGuestPolicy().policy
         val policy = GuestPolicy(newPolicy, msg.body.setBy)
@@ -38,7 +45,6 @@ trait SetGuestPolicyMsgHdlr extends RightsManagementTrait {
           val policyLabelKey: Option[String] = newPolicy match {
             case GuestPolicyType.ASK_MODERATOR      => Some("app.guest-policy.button.askModerator")
             case GuestPolicyType.ALWAYS_ACCEPT      => Some("app.guest-policy.button.alwaysAccept")
-            case GuestPolicyType.ALWAYS_ACCEPT_AUTH => Some("app.guest-policy.button.alwaysAcceptAuth")
             case GuestPolicyType.ALWAYS_DENY        => Some("app.guest-policy.button.alwaysDeny")
             case _                                  => None
           }

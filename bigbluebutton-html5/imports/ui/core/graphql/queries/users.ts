@@ -39,7 +39,6 @@ subscription UserListSubscription($offset: Int!, $limit: Int!, $where: user_bool
     presenter
     pinned
     locked
-    authed
     mobile
     guest
     bot

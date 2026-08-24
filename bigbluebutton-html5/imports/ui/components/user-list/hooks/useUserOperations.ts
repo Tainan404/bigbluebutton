@@ -40,7 +40,6 @@ export const mapRaisedHandToUser = (raisedHandUser: RaisedHandUser): User => {
     emoji: 'none',
     loggedOut: false,
     guest: false,
-    authed: true,
     waitingForAcceptance: false,
   } as User;
 

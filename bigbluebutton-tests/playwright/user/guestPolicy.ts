@@ -6,6 +6,16 @@ import { MultiUsers } from './multiusers';
 import { openLockViewers, setGuestPolicyOption } from './util';
 
 export class GuestPolicy extends MultiUsers {
+  async viewerWaitsInLobby(joinParameter?: string) {
+    await this.initUserPage(this.context, {
+      fullName: 'MatrixViewer',
+      joinParameter,
+      shouldCloseAudioModal: false,
+      shouldCheckAllInitialSteps: false,
+    });
+    await this.userPage.hasText(e.guestMessage, /wait/, 'should display the waiting message for the viewer');
+  }
+
   async initTwoWaitingUsers() {
     await this.initUserPage(this.context, {
       fullName: 'AuthenticatedViewer',

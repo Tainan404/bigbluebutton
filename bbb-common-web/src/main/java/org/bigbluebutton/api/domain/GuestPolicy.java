@@ -4,6 +4,7 @@ public class GuestPolicy {
     public static final String ALWAYS_ACCEPT = "ALWAYS_ACCEPT";
     public static final String ALWAYS_DENY = "ALWAYS_DENY";
     public static final String ASK_MODERATOR = "ASK_MODERATOR";
+    // Deprecated and mapped to ASK_MODERATOR for one release cycle.
     public static final String ALWAYS_ACCEPT_AUTH = "ALWAYS_ACCEPT_AUTH";
 
     public static final String ALLOW = "ALLOW";

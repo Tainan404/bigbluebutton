@@ -92,7 +92,6 @@ trait UserJoinedVoiceConfEvtMsgHdlr extends SystemConfiguration with HandlerHelp
           avatar = "",
           webcamBackground = "",
           userColor,
-          authenticated = true,
           System.currentTimeMillis()
         )
         GuestsWaiting.add(liveMeeting.guestsWaiting, guest)

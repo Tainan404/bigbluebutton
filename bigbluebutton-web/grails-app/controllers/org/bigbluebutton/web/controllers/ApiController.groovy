@@ -377,6 +377,7 @@ class ApiController {
 
     if (!StringUtils.isEmpty(params.auth)) {
       authenticated = Boolean.parseBoolean(params.auth)
+      log.warn("[DEPRECATION] auth no longer affects the guest lobby and only sets the user's authenticated flag for permission level and end-meeting-when-no-authed-users")
     }
 
     String fullName = ParamsUtil.stripControlChars(params.fullName)
@@ -528,7 +529,7 @@ class ApiController {
     //Currently, it's associated with the externalUserID
     meetingService.addUserCustomData(meeting.getInternalId(), externUserID, userCustomData);
 
-    String guestStatusVal = meeting.calcGuestStatus(role, guest, authenticated)
+    String guestStatusVal = meeting.calcGuestStatus(role, guest)
 
     UserSession us = new UserSession();
     us.authToken = authToken;
