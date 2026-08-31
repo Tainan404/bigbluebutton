@@ -1640,7 +1640,7 @@
     "app.externalVideo.autoPlayWarning": "Play the video to enable media synchronization",
     "app.externalVideo.refreshLabel": "Refresh Video Player",
     "app.externalVideo.fullscreenLabel": "Video Player",
-    "app.externalVideo.noteLabelSupported": "Supports links from YouTube, Vimeo, Instructure Media, Twitch, and media file URLs (e.g. https://example.com/xy.mp4).",
+    "app.externalVideo.noteLabelSupported": "Supports links from YouTube, Vimeo, Dailymotion, Instructure Media, Twitch, and media file URLs (e.g. https://example.com/xy.mp4).",
     "app.externalVideo.noteLabelWarning": "Shared videos are not included in the recording.",
     "app.externalVideo.subtitlesOn": "Turn off",
     "app.externalVideo.subtitlesOff": "Turn on (if available)",

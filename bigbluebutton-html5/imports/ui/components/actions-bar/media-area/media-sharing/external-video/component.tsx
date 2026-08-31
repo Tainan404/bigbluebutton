@@ -64,6 +64,7 @@ const ExternalVideoView: React.FC<ExternalVideoViewProps> = ({
             error={!valid && videoUrl !== ''}
             helperText={!valid && videoUrl !== '' ? intl.formatMessage(intlMessages.urlError) : ''}
             value={videoUrl}
+            inputProps={{ 'data-test': 'externalVideoUrl' }}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
               setVideoUrl(event.target.value.trim());
             }}

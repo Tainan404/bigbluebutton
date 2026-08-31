@@ -224,6 +224,41 @@ export class Presentation extends MultiUsers {
     );
   }
 
+  async shareDailymotionVideo() {
+    const existingProviderUrls = [
+      e.youtubeLink,
+      'https://vimeo.com/76979871',
+      'https://www.twitch.tv/videos/123456789',
+      'https://example.com/video.mp4',
+      'https://demo.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=12345678-abcd-1234-abcd-123456789abc',
+      'https://peertube.example.com/w/12345678',
+      'https://media.instructuremedia.com/embed/abcdef01',
+    ];
+    const dailymotionUrls = [
+      'https://www.dailymotion.com/video/x84sh87',
+      'https://www.dailymotion.com/video/x84sh87',
+      'https://www.dailymotion.com/video/x84sh87',
+      'https://www.dailymotion.com/embed/video/x84sh87',
+      'https://dai.ly/x84sh87',
+    ];
+
+    await this.modPage.hasElement(e.whiteboard, 'should display the whiteboard before sharing a video');
+    await this.modPage.waitAndClick(e.mediaAreaButton);
+    await this.modPage.waitAndClick(e.shareExternalVideoBtn);
+    for (const providerUrl of existingProviderUrls) {
+      await this.modPage.fill(e.videoModalInput, providerUrl);
+      await expect(this.modPage.page.locator(e.startShareVideoBtn)).toBeEnabled();
+    }
+    for (const dailymotionUrl of dailymotionUrls) {
+      await this.modPage.fill(e.videoModalInput, dailymotionUrl);
+      await expect(this.modPage.page.locator(e.startShareVideoBtn)).toBeEnabled();
+    }
+
+    await this.modPage.waitAndClick(e.startShareVideoBtn);
+    await expect(this.modPage.page.locator(`${e.videoPlayer} iframe[src*="geo.dailymotion.com"]`)).toBeVisible();
+    await this.modPage.page.waitForTimeout(ELEMENT_WAIT_TIME);
+  }
+
   async checkVideoAfterUserJoins() {
     await this.modPage.page.waitForTimeout(ELEMENT_WAIT_LONGER_TIME);
 

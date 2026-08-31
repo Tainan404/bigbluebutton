@@ -43,6 +43,7 @@ import { calculateCurrentTime } from '/imports/ui/components/external-video-play
 import PeerTube from '../custom-players/peertube';
 import { ArcPlayer } from '../custom-players/arc-player';
 import Panopto from '../custom-players/panopto';
+import Dailymotion from '../custom-players/dailymotion';
 import getStorageSingletonInstance from '/imports/ui/services/storage';
 
 const AUTO_PLAY_BLOCK_DETECTION_TIMEOUT_SECONDS = 5;
@@ -149,6 +150,8 @@ Styled.VideoPlayer.addCustomPlayer(PeerTube);
 Styled.VideoPlayer.addCustomPlayer(ArcPlayer);
 // @ts-ignore - Panopto is not typed
 Styled.VideoPlayer.addCustomPlayer(Panopto);
+// @ts-ignore - Dailymotion is not typed
+Styled.VideoPlayer.addCustomPlayer(Dailymotion);
 
 const truncateTime = (time: number) => (time < 1 ? 0 : time);
 
@@ -205,11 +208,6 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
       },
       facebook: {
         controls: !isBot,
-      },
-      dailymotion: {
-        params: {
-          controls: !isBot,
-        },
       },
       youtube: {
         playerVars: {

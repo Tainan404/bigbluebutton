@@ -108,6 +108,13 @@ test.describe.parallel('Presentation', { tag: '@ci' }, () => {
     await presentation.selectSlide();
   });
 
+  test('Share a Dailymotion external video', async ({ browser, context, page }, testInfo) => {
+    linkIssue(24630);
+    const presentation = new Presentation(browser, context);
+    await presentation.initModPage(page, { testInfo });
+    await presentation.shareDailymotionVideo();
+  });
+
   // All external video tests (youtube) require logged user to start external video on CI environment
   test.describe.parallel('External Video', { tag: '@flaky' }, () => {
     // https://docs.bigbluebutton.org/3.0/testing/release-testing/#start-youtube-video-sharing
