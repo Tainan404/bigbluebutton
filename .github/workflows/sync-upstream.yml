@@ -1,0 +1,35 @@
+name: Sync upstream branches
+
+on:
+  schedule:
+    - cron: '0 */12 * * *' # every 12 hours (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync branches from bigbluebutton/bigbluebutton
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          failed=0
+          for branch in v3.0.x-develop v3.0.x-release v4.0.x-develop v4.0.x-release; do
+            echo "::group::Syncing $branch"
+            # Same as the "Sync fork" button: fast-forwards, or merges upstream
+            # into the branch if it has local commits; fails on conflicts.
+            if gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch="$branch"; then
+              echo
+            else
+              echo "::error::Failed to sync $branch (merge conflict with upstream?)"
+              failed=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $failed
