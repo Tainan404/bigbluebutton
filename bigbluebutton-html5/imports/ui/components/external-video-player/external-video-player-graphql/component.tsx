@@ -517,10 +517,11 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
   if (internalPlayer && internalPlayer?.getVolume
     && typeof internalPlayer?.getVolume === 'function'
     && internalPlayer?.getVolume() !== currentVolume.current) {
-    currentVolume.current = internalPlayer?.getVolume();
+    const playerVolume = internalPlayer.getVolume();
+    currentVolume.current = playerVolume;
     window.dispatchEvent(new CustomEvent(ExternalVideoVolumeUiDataNames.CURRENT_VOLUME_VALUE, {
       detail: {
-        value: internalPlayer?.getVolume() / 100,
+        value: playerVolume > 1 ? playerVolume / 100 : playerVolume,
       } as ExternalVideoVolumeUiDataPayloads[ExternalVideoVolumeUiDataNames.CURRENT_VOLUME_VALUE],
     }));
   }

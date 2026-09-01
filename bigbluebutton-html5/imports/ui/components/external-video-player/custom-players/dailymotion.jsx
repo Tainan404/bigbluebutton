@@ -29,14 +29,22 @@ export class DailymotionPlayer extends Component {
   }
 
   componentWillUnmount() {
-    this._player?.destroy();
+    const player = this._player;
+    this._player = null;
+    player?.destroy();
   }
 
   updateState = async () => {
     if (!this._player) return;
-    const state = await this._player.getState();
-    this.stateSnapshot = state;
-    if (!state.adIsPlaying && Number.isFinite(state.videoTime)) this.lastContentTime = state.videoTime;
+    const player = this._player;
+    try {
+      const state = await player.getState();
+      if (player !== this._player) return;
+      this.stateSnapshot = state;
+      if (!state.adIsPlaying && Number.isFinite(state.videoTime)) this.lastContentTime = state.videoTime;
+    } catch (error) {
+      if (player === this._player) this.props.onError?.(error);
+    }
   };
 
   load() {

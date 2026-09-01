@@ -236,11 +236,10 @@ export class Presentation extends MultiUsers {
     ];
     const dailymotionUrls = [
       'https://www.dailymotion.com/video/x84sh87',
-      'https://www.dailymotion.com/video/x84sh87',
-      'https://www.dailymotion.com/video/x84sh87',
       'https://www.dailymotion.com/embed/video/x84sh87',
       'https://dai.ly/x84sh87',
     ];
+    const unsupportedDailymotionUrls = ['https://www.dailymotion.com/video/x84sh87.swf'];
 
     await this.modPage.hasElement(e.whiteboard, 'should display the whiteboard before sharing a video');
     await this.modPage.waitAndClick(e.mediaAreaButton);
@@ -253,7 +252,12 @@ export class Presentation extends MultiUsers {
       await this.modPage.fill(e.videoModalInput, dailymotionUrl);
       await expect(this.modPage.page.locator(e.startShareVideoBtn)).toBeEnabled();
     }
+    for (const unsupportedDailymotionUrl of unsupportedDailymotionUrls) {
+      await this.modPage.fill(e.videoModalInput, unsupportedDailymotionUrl);
+      await expect(this.modPage.page.locator(e.startShareVideoBtn)).toBeDisabled();
+    }
 
+    await this.modPage.fill(e.videoModalInput, dailymotionUrls[0]);
     await this.modPage.waitAndClick(e.startShareVideoBtn);
     await expect(this.modPage.page.locator(`${e.videoPlayer} iframe[src*="geo.dailymotion.com"]`)).toBeVisible();
     await this.modPage.page.waitForTimeout(ELEMENT_WAIT_TIME);
