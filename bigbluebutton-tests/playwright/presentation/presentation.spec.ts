@@ -108,8 +108,8 @@ test.describe.parallel('Presentation', { tag: '@ci' }, () => {
     await presentation.selectSlide();
   });
 
-  // This @ci regression depends on Dailymotion's external SDK and test video remaining reachable.
-  test('Share a Dailymotion external video', async ({ browser, context, page }, testInfo) => {
+  // This regression depends on Dailymotion's external SDK and test video remaining reachable.
+  test('Share a Dailymotion external video', { tag: '@flaky' }, async ({ browser, context, page }, testInfo) => {
     linkIssue(24630);
     const presentation = new Presentation(browser, context);
     await presentation.initModPage(page, { testInfo });

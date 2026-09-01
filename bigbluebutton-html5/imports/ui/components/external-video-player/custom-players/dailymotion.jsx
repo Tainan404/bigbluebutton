@@ -16,6 +16,7 @@ export class DailymotionPlayer extends Component {
     super(props);
     this.player = this;
     this._player = null;
+    this._destroyed = false;
     this.stateSnapshot = {};
     this.lastContentTime = 0;
     this.volumeBeforeMute = 1;
@@ -29,16 +30,17 @@ export class DailymotionPlayer extends Component {
   }
 
   componentWillUnmount() {
+    this._destroyed = true;
     const player = this._player;
     this._player = null;
     player?.destroy();
   }
 
-  updateState = async () => {
+  updateState = async (eventState) => {
     if (!this._player) return;
     const player = this._player;
     try {
-      const state = await player.getState();
+      const state = eventState || await player.getState();
       if (player !== this._player) return;
       this.stateSnapshot = state;
       if (!state.adIsPlaying && Number.isFinite(state.videoTime)) this.lastContentTime = state.videoTime;
@@ -48,14 +50,20 @@ export class DailymotionPlayer extends Component {
   };
 
   load() {
+    this._player?.destroy();
+    this._player = null;
     getSDK(SDK_URL, SDK_LOADED_FLAG)
       .then(() => {
+        if (this._destroyed) return null;
         const match = this.props.url.match(MATCH_URL);
         if (!match) return null;
         return window.dailymotion.createPlayer(this.containerId, { video: match[1], autoplay: true });
       })
       .then(async (player) => {
-        if (!player) return;
+        if (!player || this._destroyed) {
+          player?.destroy?.();
+          return;
+        }
         this._player = player;
         const { events } = window.dailymotion;
         player.on(events.PLAYER_CRITICALPATHREADY, () => {
@@ -77,7 +85,9 @@ export class DailymotionPlayer extends Component {
           this.props.onReady();
         }
       })
-      .catch((error) => this.props.onError?.(error));
+      .catch((error) => {
+        if (!this._destroyed) this.props.onError?.(error);
+      });
   }
 
   play() { this._player?.play(); }

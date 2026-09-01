@@ -244,6 +244,10 @@ export class Presentation extends MultiUsers {
     await this.modPage.hasElement(e.whiteboard, 'should display the whiteboard before sharing a video');
     await this.modPage.waitAndClick(e.mediaAreaButton);
     await this.modPage.waitAndClick(e.shareExternalVideoBtn);
+    await this.modPage.hasElement(
+      e.closeIcon,
+      'should display the close modal button after the moderator opens the modal for sharing external video',
+    );
     for (const providerUrl of existingProviderUrls) {
       await this.modPage.fill(e.videoModalInput, providerUrl);
       await expect(this.modPage.page.locator(e.startShareVideoBtn)).toBeEnabled();

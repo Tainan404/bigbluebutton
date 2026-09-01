@@ -93,6 +93,12 @@ const MIN_SEEK_BROADCAST_INTERVAL_SECONDS = 2;
 // keyboard-only viewer is covered too.
 const GESTURE_EVENTS_FOR_UNMUTE = ['pointerup', 'keydown'];
 
+// Provider volume scales are either 0..1 or 0..100. Exactly 1 is ambiguous: this
+// treats it as full volume on a 0..1 scale, so a 0..100 provider's 1% is indistinguishable.
+const normalizePlayerVolume = (playerVolume: number) => (
+  playerVolume > 1 ? playerVolume / 100 : playerVolume
+);
+
 const intlMessages = defineMessages({
   autoPlayWarning: {
     id: 'app.externalVideo.autoPlayWarning',
@@ -521,7 +527,7 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
     currentVolume.current = playerVolume;
     window.dispatchEvent(new CustomEvent(ExternalVideoVolumeUiDataNames.CURRENT_VOLUME_VALUE, {
       detail: {
-        value: playerVolume > 1 ? playerVolume / 100 : playerVolume,
+        value: normalizePlayerVolume(playerVolume),
       } as ExternalVideoVolumeUiDataPayloads[ExternalVideoVolumeUiDataNames.CURRENT_VOLUME_VALUE],
     }));
   }
@@ -540,9 +546,7 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
         && typeof internalPlayer?.getVolume === 'function'
         && internalPlayer?.getVolume() !== currentVolume.current) {
         const playerVolume = internalPlayer?.getVolume();
-        // the scale given by the player is 0 to 100, but the accepted scale is 0 to 1
-        // So we need to divide by 100
-        setVolume(playerVolume > 1 ? playerVolume / 100 : playerVolume);
+        setVolume(normalizePlayerVolume(playerVolume));
       }
 
       // Reset the progress baseline on any presenter change. A stalled or autoplay-blocked
