@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import styled from 'styled-components';
 import getSDK from './get-sdk';
 
 const MATCH_URL = /^https?:\/\/(?:(?:www\.)?dailymotion\.com\/(?:embed\/)?video\/|dai\.ly\/)([a-zA-Z0-9]+)(?:_[\w-]+)?(?:[/?#].*)?$/;
@@ -6,6 +7,64 @@ const SDK_URL = 'https://geo.dailymotion.com/libs/player.js';
 const SDK_LOADED_FLAG = 'DailymotionPlayerSDK';
 
 let playerInstanceCount = 0;
+
+const PlayerWrapper = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: black;
+  position: relative;
+  container-type: size;
+
+  > .dailymotion-player-root {
+    width: 100%;
+  }
+`;
+
+const SwitchControlMask = styled.span`
+  position: absolute;
+  z-index: 1;
+  display: block;
+  pointer-events: auto;
+  background: black;
+  opacity: 0;
+
+  ${PlayerWrapper}:hover & {
+    opacity: 1;
+  }
+`;
+
+const PreviousMask = styled(SwitchControlMask)`
+  top: calc(50% - 32px);
+  left: calc(50% - 152px);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+`;
+
+const NextMask = styled(SwitchControlMask)`
+  top: calc(50% - 32px);
+  left: calc(50% + 88px);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+`;
+
+const MenuMask = styled(SwitchControlMask)`
+  top: calc(50% - 28.125cqw + 8px);
+  right: 8px;
+  width: 48px;
+  height: 48px;
+`;
+
+const RecommendationsMask = styled(SwitchControlMask)`
+  bottom: calc(50% - 28.125cqw + 8px);
+  left: 8px;
+  width: 48px;
+  height: 48px;
+`;
 
 export class DailymotionPlayer extends Component {
   static displayName = 'DailymotionPlayer';
@@ -21,6 +80,8 @@ export class DailymotionPlayer extends Component {
     this.lastContentTime = 0;
     this.volumeBeforeMute = 1;
     this.ready = false;
+    this.restoringPausedState = false;
+    this.restoreTimeout = null;
     playerInstanceCount += 1;
     this.containerId = `dailymotionPlayerContainer-${playerInstanceCount}`;
   }
@@ -31,6 +92,7 @@ export class DailymotionPlayer extends Component {
 
   componentWillUnmount() {
     this._destroyed = true;
+    clearTimeout(this.restoreTimeout);
     const player = this._player;
     this._player = null;
     player?.destroy();
@@ -50,14 +112,20 @@ export class DailymotionPlayer extends Component {
   };
 
   load() {
+    clearTimeout(this.restoreTimeout);
     this._player?.destroy();
     this._player = null;
+    this.restoringPausedState = !this.props.playing;
     getSDK(SDK_URL, SDK_LOADED_FLAG)
       .then(() => {
         if (this._destroyed) return null;
         const match = this.props.url.match(MATCH_URL);
         if (!match) return null;
-        return window.dailymotion.createPlayer(this.containerId, { video: match[1], autoplay: true });
+        const startTime = this.props.config?.dailymotion?.startTime ?? 0;
+        return window.dailymotion.createPlayer(this.containerId, {
+          video: match[1],
+          params: { startTime, autoplay: this.props.playing },
+        });
       })
       .then(async (player) => {
         if (!player || this._destroyed) {
@@ -66,24 +134,36 @@ export class DailymotionPlayer extends Component {
         }
         this._player = player;
         const { events } = window.dailymotion;
+        const handleReady = async () => {
+          await this.updateState();
+          if (this.ready || this._destroyed) return;
+          this.ready = true;
+          if (!this.props.playing) await player.pause();
+          if (this._destroyed) return;
+          this.props.onReady();
+          this.restoreTimeout = setTimeout(() => {
+            this.restoringPausedState = false;
+          }, 1500);
+        };
         player.on(events.PLAYER_CRITICALPATHREADY, () => {
-          this.updateState();
-          if (!this.ready) {
-            this.ready = true;
-            this.props.onReady();
-          }
+          handleReady().catch((error) => this.props.onError?.(error));
         });
         player.on(events.VIDEO_TIMECHANGE, this.updateState);
         player.on(events.VIDEO_SEEKEND, this.updateState);
-        player.on(events.VIDEO_PLAY, () => this.props.onPlay());
+        const handlePlay = () => {
+          if (this.restoringPausedState) {
+            player.pause().finally(() => { this.restoringPausedState = false; });
+            return;
+          }
+          this.props.onPlay();
+        };
+        player.on(events.VIDEO_PLAY, handlePlay);
+        player.on(events.VIDEO_PLAYING, handlePlay);
         player.on(events.VIDEO_PAUSE, () => this.props.onPause());
         player.on(events.VIDEO_END, () => this.props.onEnded());
         player.on(events.PLAYER_ERROR, (error) => this.props.onError?.(error));
         await this.updateState();
-        if (this.stateSnapshot.playerIsCriticalPathReady && !this.ready) {
-          this.ready = true;
-          this.props.onReady();
-        }
+        if (this.stateSnapshot.playerIsCriticalPathReady) await handleReady();
       })
       .catch((error) => {
         if (!this._destroyed) this.props.onError?.(error);
@@ -126,17 +206,37 @@ export class DailymotionPlayer extends Component {
     return this.stateSnapshot.adIsPlaying ? this.lastContentTime : (this.stateSnapshot.videoTime ?? 0);
   }
 
-  getSecondsLoaded() { return 0; }
+  getSecondsLoaded() {
+    const duration = this.getDuration();
+    const bufferedTime = this.stateSnapshot.videoBufferedTime
+      ?? this.stateSnapshot.videoBuffered
+      ?? this.stateSnapshot.bufferedTime;
+    if (Number.isFinite(bufferedTime)) return Math.min(duration, bufferedTime);
+
+    // The current SDK does not document buffered ranges in getState(). The current
+    // playback position is the conservative lower bound of content already loaded.
+    return Math.min(duration, this.getCurrentTime());
+  }
 
   getPlaybackRate() { return this.stateSnapshot.playerPlaybackSpeed ?? 1; }
 
   setPlaybackRate(rate) { this._player?.setPlaybackSpeed(rate); }
 
   render() {
-    const style = {
-      width: '100%', height: '100%', margin: 0, padding: 0, border: 0, overflow: 'hidden', backgroundColor: 'black',
-    };
-    return <div key={this.props.url} style={style} id={this.containerId} />;
+    const isPresenter = this.props.previewTabIndex === 0;
+    return (
+      <PlayerWrapper>
+        <div key={this.props.url} id={this.containerId} />
+        {isPresenter && (
+          <>
+            <PreviousMask data-test="dailymotionPreviousMask" />
+            <NextMask data-test="dailymotionNextMask" />
+            <MenuMask data-test="dailymotionMenuMask" />
+            <RecommendationsMask data-test="dailymotionRecommendationsMask" />
+          </>
+        )}
+      </PlayerWrapper>
+    );
   }
 }
 

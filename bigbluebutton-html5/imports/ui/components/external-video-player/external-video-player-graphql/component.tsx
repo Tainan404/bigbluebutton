@@ -197,6 +197,12 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
     YouTube: false,
   }), []);
 
+  const dailymotionStartRef = useRef({ playerKey: '', time: 0 });
+  if (dailymotionStartRef.current.playerKey !== playerKey) {
+    dailymotionStartRef.current = { playerKey, time: getServerCurrentTime() };
+  }
+  const dailymotionStartTime = dailymotionStartRef.current.time;
+
   const videoPlayConfig = useMemo(() => {
     return {
       // default option for all players, can be overwritten
@@ -235,10 +241,13 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
         },
         playerId: 'externalVideoPlayerTwitch',
       },
+      dailymotion: {
+        startTime: dailymotionStartTime,
+      },
       preload: true,
       showHoverToolBar: false,
     };
-  }, [isBot]);
+  }, [isBot, dailymotionStartTime]);
 
   const [showUnsynchedMsg, setShowUnsynchedMsg] = React.useState(false);
   const [showHoverToolBar, setShowHoverToolBar] = React.useState(false);
