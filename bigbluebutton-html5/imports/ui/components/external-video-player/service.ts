@@ -2,9 +2,9 @@ import ReactPlayer from 'react-player';
 import { MutationFunction } from '@apollo/client';
 
 import { ExternalVideo } from '/imports/ui/Types/meeting';
+import Dailymotion from '/imports/ui/components/external-video-player/custom-players/dailymotion';
 
 const YOUTUBE_SHORTS_REGEX = new RegExp(/^(?:https?:\/\/)?(?:www\.)?(youtube\.com\/shorts)\/.+$/);
-const DAILYMOTION_MATCH_URL = /https?:\/\/(?:www\.)?dailymotion\.com\/video\/[a-zA-Z0-9]+(?:\?[^\s]*)?/g;
 const YOUTUBE_REGEX = new RegExp(/^(?:https?:\/\/)?(?:www\.)?(youtube\.com|youtu.be)\/.+$/);
 
 const startWatching = (startExternalVideoMutation: MutationFunction) => {
@@ -28,17 +28,25 @@ const startWatching = (startExternalVideoMutation: MutationFunction) => {
 };
 
 const isUrlValid = (url: string) => {
+  if (!/^https.*$/.test(url)) return false;
+
   if (YOUTUBE_SHORTS_REGEX.test(url)) {
     const shortsUrl = url.replace('shorts/', 'watch?v=');
 
-    return /^https.*$/.test(shortsUrl) && ReactPlayer.canPlay(shortsUrl);
+    return ReactPlayer.canPlay(shortsUrl);
   }
 
-  if (DAILYMOTION_MATCH_URL.test(url)) {
-    return false; // Dailymotion is not supported by react-player https://github.com/cookpete/react-player/issues/1772
+  let hostname;
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    return false;
+  }
+  if (['dailymotion.com', 'www.dailymotion.com', 'dai.ly'].includes(hostname)) {
+    return Dailymotion.canPlay(url);
   }
 
-  return /^https.*$/.test(url) && ReactPlayer.canPlay(url);
+  return ReactPlayer.canPlay(url);
 };
 
 // Convert state (Number) to playing (Boolean)

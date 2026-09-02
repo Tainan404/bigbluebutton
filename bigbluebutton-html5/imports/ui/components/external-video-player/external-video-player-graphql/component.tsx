@@ -43,6 +43,7 @@ import { calculateCurrentTime } from '/imports/ui/components/external-video-play
 import PeerTube from '../custom-players/peertube';
 import { ArcPlayer } from '../custom-players/arc-player';
 import Panopto from '../custom-players/panopto';
+import Dailymotion from '../custom-players/dailymotion';
 import getStorageSingletonInstance from '/imports/ui/services/storage';
 
 const AUTO_PLAY_BLOCK_DETECTION_TIMEOUT_SECONDS = 5;
@@ -91,6 +92,12 @@ const MIN_SEEK_BROADCAST_INTERVAL_SECONDS = 2;
 // Both mouse/touch (pointerup) and keyboard (keydown) count as activation triggers, so a
 // keyboard-only viewer is covered too.
 const GESTURE_EVENTS_FOR_UNMUTE = ['pointerup', 'keydown'];
+
+// Provider volume scales are either 0..1 or 0..100. Exactly 1 is ambiguous: this
+// treats it as full volume on a 0..1 scale, so a 0..100 provider's 1% is indistinguishable.
+const normalizePlayerVolume = (playerVolume: number) => (
+  playerVolume > 1 ? playerVolume / 100 : playerVolume
+);
 
 const intlMessages = defineMessages({
   autoPlayWarning: {
@@ -149,6 +156,8 @@ Styled.VideoPlayer.addCustomPlayer(PeerTube);
 Styled.VideoPlayer.addCustomPlayer(ArcPlayer);
 // @ts-ignore - Panopto is not typed
 Styled.VideoPlayer.addCustomPlayer(Panopto);
+// @ts-ignore - Dailymotion is not typed
+Styled.VideoPlayer.addCustomPlayer(Dailymotion);
 
 const truncateTime = (time: number) => (time < 1 ? 0 : time);
 
@@ -188,6 +197,12 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
     YouTube: false,
   }), []);
 
+  const dailymotionStartRef = useRef({ playerKey: '', time: 0 });
+  if (dailymotionStartRef.current.playerKey !== playerKey) {
+    dailymotionStartRef.current = { playerKey, time: getServerCurrentTime() };
+  }
+  const dailymotionStartTime = dailymotionStartRef.current.time;
+
   const videoPlayConfig = useMemo(() => {
     return {
       // default option for all players, can be overwritten
@@ -205,11 +220,6 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
       },
       facebook: {
         controls: !isBot,
-      },
-      dailymotion: {
-        params: {
-          controls: !isBot,
-        },
       },
       youtube: {
         playerVars: {
@@ -231,10 +241,13 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
         },
         playerId: 'externalVideoPlayerTwitch',
       },
+      dailymotion: {
+        startTime: dailymotionStartTime,
+      },
       preload: true,
       showHoverToolBar: false,
     };
-  }, [isBot]);
+  }, [isBot, dailymotionStartTime]);
 
   const [showUnsynchedMsg, setShowUnsynchedMsg] = React.useState(false);
   const [showHoverToolBar, setShowHoverToolBar] = React.useState(false);
@@ -519,10 +532,11 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
   if (internalPlayer && internalPlayer?.getVolume
     && typeof internalPlayer?.getVolume === 'function'
     && internalPlayer?.getVolume() !== currentVolume.current) {
-    currentVolume.current = internalPlayer?.getVolume();
+    const playerVolume = internalPlayer.getVolume();
+    currentVolume.current = playerVolume;
     window.dispatchEvent(new CustomEvent(ExternalVideoVolumeUiDataNames.CURRENT_VOLUME_VALUE, {
       detail: {
-        value: internalPlayer?.getVolume() / 100,
+        value: normalizePlayerVolume(playerVolume),
       } as ExternalVideoVolumeUiDataPayloads[ExternalVideoVolumeUiDataNames.CURRENT_VOLUME_VALUE],
     }));
   }
@@ -541,9 +555,7 @@ const ExternalVideoPlayer: React.FC<ExternalVideoPlayerProps> = ({
         && typeof internalPlayer?.getVolume === 'function'
         && internalPlayer?.getVolume() !== currentVolume.current) {
         const playerVolume = internalPlayer?.getVolume();
-        // the scale given by the player is 0 to 100, but the accepted scale is 0 to 1
-        // So we need to divide by 100
-        setVolume(playerVolume > 1 ? playerVolume / 100 : playerVolume);
+        setVolume(normalizePlayerVolume(playerVolume));
       }
 
       // Reset the progress baseline on any presenter change. A stalled or autoplay-blocked
