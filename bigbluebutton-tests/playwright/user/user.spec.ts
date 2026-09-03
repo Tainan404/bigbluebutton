@@ -318,11 +318,11 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
       });
 
       // Regression tests for issue #24888:
-      // usernames must not leak through join/leave notifications when hideUserList is active.
+      // usernames must not leak through join/leave notifications when isolateUsers is active.
       test('Hide user list suppresses join notification for locked viewer', async ({ browser, context, page }, testInfo) => {
         const lockViewers = new LockViewers(browser, context);
         await lockViewers.initModPage(page, { testInfo });
-        await lockViewers.hideUserListSuppressesJoinNotification();
+        await lockViewers.isolateUsersSuppressesJoinNotification();
       });
 
       // @known-issue: with the hide-user-list lock active, user-LEAVE toast
@@ -332,7 +332,7 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
       test('Hide user list suppresses leave notification for locked viewer', { tag: '@known-issue' }, async ({ browser, context, page }, testInfo) => {
         const lockViewers = new LockViewers(browser, context);
         await lockViewers.initModPage(page, { testInfo });
-        await lockViewers.hideUserListSuppressesLeaveNotification();
+        await lockViewers.isolateUsersSuppressesLeaveNotification();
       });
 
       test(
@@ -340,7 +340,7 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
         async ({ browser, context, page }, testInfo) => {
           const lockViewers = new LockViewers(browser, context);
           await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListJoinNotificationVisibleForUnlockedAndModOnly();
+          await lockViewers.isolateUsersJoinNotificationVisibleForUnlockedAndModOnly();
         },
       );
 
@@ -354,7 +354,7 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
         async ({ browser, context, page }, testInfo) => {
           const lockViewers = new LockViewers(browser, context);
           await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListLeaveNotificationVisibleForUnlockedAndModOnly();
+          await lockViewers.isolateUsersLeaveNotificationVisibleForUnlockedAndModOnly();
         },
       );
 
@@ -363,7 +363,7 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
         async ({ browser, context, page }, testInfo) => {
           const lockViewers = new LockViewers(browser, context);
           await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListModeratorJoinNotificationVisibleToAll();
+          await lockViewers.isolateUsersModeratorJoinNotificationVisibleToAll();
         },
       );
 
@@ -377,7 +377,7 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
         async ({ browser, context, page }, testInfo) => {
           const lockViewers = new LockViewers(browser, context);
           await lockViewers.initModPage(page, { testInfo });
-          await lockViewers.hideUserListModeratorLeaveNotificationVisibleToAll();
+          await lockViewers.isolateUsersModeratorLeaveNotificationVisibleToAll();
         },
       );
     });
