@@ -6,7 +6,7 @@ import { MultiUsers } from './multiusers';
 import { openLockViewers, setGuestPolicyOption } from './util';
 
 export class GuestPolicy extends MultiUsers {
-  async initTwoWaitingQueues() {
+  async initTwoWaitingUsers() {
     await this.initUserPage(this.context, {
       fullName: 'AuthenticatedViewer',
       shouldCloseAudioModal: false,
@@ -27,32 +27,29 @@ export class GuestPolicy extends MultiUsers {
     await this.modPage.waitAndClick(e.usersListSidebarButton);
   }
 
-  async distinguishWaitingQueues() {
-    await this.initTwoWaitingQueues();
+  async showUnifiedWaitingQueue() {
+    await this.initTwoWaitingUsers();
 
-    const authenticatedQueue = this.modPage.page.locator(e.authenticatedWaitingUsers);
-    const guestQueue = this.modPage.page.locator(e.guestWaitingUsers);
-    await expect(authenticatedQueue, 'should display the authenticated waiting users queue').toBeVisible();
-    await expect(guestQueue, 'should display the guest waiting users queue').toBeVisible();
-    await authenticatedQueue.click();
-    const allowAllAuthenticated = this.modPage.page.locator(e.allowAllAuthenticatedWaiting);
-    const denyAllAuthenticated = this.modPage.page.locator(e.denyAllAuthenticatedWaiting);
-    await expect(allowAllAuthenticated).toHaveText('Allow all authenticated (1)');
-    await expect(denyAllAuthenticated).toHaveText('Deny all authenticated (1)');
-    await expect(allowAllAuthenticated).toHaveCSS('color', 'rgb(0, 128, 129)');
-    await expect(denyAllAuthenticated).toHaveCSS('color', 'rgb(223, 39, 33)');
+    const waitingUsers = this.modPage.page.locator(e.waitingUsers);
+    await expect(waitingUsers, 'should display one waiting users queue').toHaveCount(1);
+    await expect(waitingUsers).toHaveText(/Waiting Users\s*2$/);
+    const allowEveryone = this.modPage.page.locator(e.allowEveryone);
+    const denyEveryone = this.modPage.page.locator(e.denyEveryone);
+    await expect(allowEveryone).toHaveText('Allow everyone (2)');
+    await expect(denyEveryone).toHaveText('Deny everyone (2)');
+    await expect(allowEveryone).toHaveCSS('color', 'rgb(0, 128, 129)');
+    await expect(denyEveryone).toHaveCSS('color', 'rgb(223, 39, 33)');
 
-    const actionButtonsBox = await allowAllAuthenticated.locator('..').boundingBox();
-    const actionRowBox = await allowAllAuthenticated.locator('../..').boundingBox();
+    const actionButtonsBox = await allowEveryone.locator('..').boundingBox();
+    const actionRowBox = await allowEveryone.locator('../..').boundingBox();
     expect(actionButtonsBox).not.toBeNull();
     expect(actionRowBox).not.toBeNull();
     const rightInset = actionRowBox!.x + actionRowBox!.width - actionButtonsBox!.x - actionButtonsBox!.width;
-    expect(rightInset).toBeGreaterThanOrEqual(0);
-    expect(rightInset).toBeLessThanOrEqual(8);
+    expect(Math.abs(rightInset)).toBeLessThanOrEqual(10);
   }
 
   async denyEveryoneInWaitingQueues() {
-    await this.initTwoWaitingQueues();
+    await this.initTwoWaitingUsers();
     await this.modPage.waitAndClick(e.denyEveryone);
 
     await this.userPage.hasText(
@@ -62,12 +59,11 @@ export class GuestPolicy extends MultiUsers {
       ELEMENT_WAIT_LONGER_TIME,
     );
     await this.userPage2.hasText(e.guestMessage, /denied/, 'should deny the guest viewer', ELEMENT_WAIT_LONGER_TIME);
-    await expect(this.modPage.page.locator(e.authenticatedWaitingUsers)).toHaveCount(0);
-    await expect(this.modPage.page.locator(e.guestWaitingUsers)).toHaveCount(0);
+    await expect(this.modPage.page.locator(e.waitingUsers)).toHaveCount(0);
   }
 
   async allowEveryoneInWaitingQueues() {
-    await this.initTwoWaitingQueues();
+    await this.initTwoWaitingUsers();
     await this.modPage.waitAndClick(e.allowEveryone);
 
     await this.userPage.hasText(
@@ -77,22 +73,18 @@ export class GuestPolicy extends MultiUsers {
       ELEMENT_WAIT_LONGER_TIME,
     );
     await this.userPage2.hasText(e.guestMessage, /approved/, 'should allow the guest viewer', ELEMENT_WAIT_LONGER_TIME);
-    await expect(this.modPage.page.locator(e.authenticatedWaitingUsers)).toHaveCount(0);
-    await expect(this.modPage.page.locator(e.guestWaitingUsers)).toHaveCount(0);
+    await expect(this.modPage.page.locator(e.waitingUsers)).toHaveCount(0);
   }
 
-  async keepQueuesVisibleWhileSearching() {
-    await this.initTwoWaitingQueues();
-    await this.modPage.waitAndClick(e.guestWaitingUsers);
-    await expect(this.modPage.page.getByText('[1] GuestViewer', { exact: true })).toBeVisible();
+  async keepQueueTotalVisibleWhileSearching() {
+    await this.initTwoWaitingUsers();
+    await this.modPage.waitAndClick(e.waitingUsers);
+    await expect(this.modPage.page.getByText(/^\[\d+\] GuestViewer$/)).toBeVisible();
     await this.modPage.fill(e.userListSearch, 'AuthenticatedViewer');
 
-    await expect(this.modPage.page.getByText('[1] GuestViewer', { exact: true })).toHaveCount(0);
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
-    await expect(this.modPage.page.getByText('[1] AuthenticatedViewer', { exact: true })).toBeVisible();
-    await expect(this.modPage.page.locator(e.authenticatedWaitingUsers)).toBeVisible();
-    await expect(this.modPage.page.locator(e.guestWaitingUsers)).toBeVisible();
-    await expect(this.modPage.page.locator(e.guestWaitingUsers)).toHaveText(/Waiting Guests\s*1$/);
+    await expect(this.modPage.page.getByText(/^\[\d+\] GuestViewer$/)).toHaveCount(0);
+    await expect(this.modPage.page.getByText(/^\[\d+\] AuthenticatedViewer$/)).toBeVisible();
+    await expect(this.modPage.page.locator(e.waitingUsers)).toHaveText(/Waiting Users\s*2$/);
     await this.modPage.waitAndClick(e.denyEveryone);
     await this.userPage.hasText(
       e.guestMessage,
@@ -129,7 +121,7 @@ export class GuestPolicy extends MultiUsers {
     );
   }
 
-  async allowAllAuthenticated() {
+  async allowEveryone() {
     await setGuestPolicyOption(this.modPage, e.askModerator);
     await this.modPage.page.waitForTimeout(500);
     await this.initUserPage(this.context, { shouldCloseAudioModal: false, shouldCheckAllInitialSteps: false });
@@ -143,8 +135,8 @@ export class GuestPolicy extends MultiUsers {
       /first/,
       'should the position in waiting queue contain the text "first" for the attendee',
     );
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
-    await this.modPage.waitAndClick(e.allowAllAuthenticatedWaiting);
+    await expect(this.modPage.page.locator(e.allowEveryone)).toBeVisible();
+    await this.modPage.waitAndClick(e.allowEveryone);
 
     await this.userPage.hasText(
       e.guestMessage,
@@ -164,12 +156,12 @@ export class GuestPolicy extends MultiUsers {
     );
   }
 
-  async denyAllAuthenticated() {
+  async denyEveryone() {
     await setGuestPolicyOption(this.modPage, e.askModerator);
     await this.modPage.page.waitForTimeout(500);
     await this.initUserPage(this.context, { shouldCloseAudioModal: false, shouldCheckAllInitialSteps: false });
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
-    await this.modPage.waitAndClick(e.denyAllAuthenticatedWaiting);
+    await expect(this.modPage.page.locator(e.denyEveryone)).toBeVisible();
+    await this.modPage.waitAndClick(e.denyEveryone);
 
     await this.userPage.hasText(
       e.guestMessage,
@@ -183,11 +175,9 @@ export class GuestPolicy extends MultiUsers {
     await setGuestPolicyOption(this.modPage, e.askModerator);
     await this.modPage.page.waitForTimeout(500);
     await this.initUserPage(this.context, { shouldCloseAudioModal: false, shouldCheckAllInitialSteps: false });
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
-
     await this.modPage.waitAndClick(e.rememberChoice);
     await this.modPage.hasElementEnabled(e.rememberChoice, 'should display the remember checkbox as enabled');
-    await this.modPage.waitAndClick(e.denyAllAuthenticatedWaiting);
+    await this.modPage.waitAndClick(e.denyEveryone);
 
     await this.initUserPage2(this.context, { shouldCloseAudioModal: false, shouldCheckAllInitialSteps: false });
     await this.userPage2.hasElement(e.deniedMessageElement, 'should display the denied message for the attendee');
@@ -197,7 +187,7 @@ export class GuestPolicy extends MultiUsers {
     await setGuestPolicyOption(this.modPage, e.askModerator);
     await this.modPage.page.waitForTimeout(500);
     await this.initUserPage(this.context, { shouldCloseAudioModal: false, shouldCheckAllInitialSteps: false });
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
+    await this.modPage.waitAndClick(e.waitingUsers);
 
     await this.modPage.waitAndClick(e.privateMessageGuest);
     await this.modPage.fill(e.inputPrivateLobbyMessage, 'test');
@@ -224,7 +214,7 @@ export class GuestPolicy extends MultiUsers {
       /first/,
       'should the position in waiting queue contain the text "first"',
     );
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
+    await this.modPage.waitAndClick(e.waitingUsers);
     await this.modPage.waitAndClick(e.acceptGuest);
     await this.userPage.hasText(
       e.guestMessage,
@@ -241,7 +231,7 @@ export class GuestPolicy extends MultiUsers {
     await setGuestPolicyOption(this.modPage, e.askModerator);
     await this.modPage.page.waitForTimeout(500);
     await this.initUserPage(this.context, { shouldCloseAudioModal: false, shouldCheckAllInitialSteps: false });
-    await this.modPage.waitAndClick(e.authenticatedWaitingUsers);
+    await this.modPage.waitAndClick(e.waitingUsers);
 
     await this.modPage.waitAndClick(e.denyGuest);
     await this.userPage.hasText(

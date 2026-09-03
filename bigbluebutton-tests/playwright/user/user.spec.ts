@@ -12,28 +12,28 @@ const iPhone11 = devices['iPhone 11'];
 
 test.describe.parallel('User', { tag: '@ci' }, () => {
   test.describe.parallel('Waiting users', () => {
-    test('Distinguishes authenticated and guest queues', async ({ browser, context, page }, testInfo) => {
+    test('Shows authenticated and guest users in one waiting queue', async ({ browser, context, page }, testInfo) => {
       const guestPolicy = new GuestPolicy(browser, context);
       await guestPolicy.initModPage(page, { createParameter: 'guestPolicy=ASK_MODERATOR', testInfo });
-      await guestPolicy.distinguishWaitingQueues();
+      await guestPolicy.showUnifiedWaitingQueue();
     });
 
-    test('Deny everyone clears both waiting queues', async ({ browser, context, page }, testInfo) => {
+    test('Deny everyone clears the waiting queue', async ({ browser, context, page }, testInfo) => {
       const guestPolicy = new GuestPolicy(browser, context);
       await guestPolicy.initModPage(page, { createParameter: 'guestPolicy=ASK_MODERATOR', testInfo });
       await guestPolicy.denyEveryoneInWaitingQueues();
     });
 
-    test('Allow everyone clears both waiting queues', async ({ browser, context, page }, testInfo) => {
+    test('Allow everyone clears the waiting queue', async ({ browser, context, page }, testInfo) => {
       const guestPolicy = new GuestPolicy(browser, context);
       await guestPolicy.initModPage(page, { createParameter: 'guestPolicy=ASK_MODERATOR', testInfo });
       await guestPolicy.allowEveryoneInWaitingQueues();
     });
 
-    test('Keeps queue totals visible while searching', async ({ browser, context, page }, testInfo) => {
+    test('Keeps the queue total visible while searching', async ({ browser, context, page }, testInfo) => {
       const guestPolicy = new GuestPolicy(browser, context);
       await guestPolicy.initModPage(page, { createParameter: 'guestPolicy=ASK_MODERATOR', testInfo });
-      await guestPolicy.keepQueuesVisibleWhileSearching();
+      await guestPolicy.keepQueueTotalVisibleWhileSearching();
     });
   });
 
@@ -199,15 +199,15 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
           await guestPolicy.initModPage(page, { testInfo });
           await guestPolicy.messageToGuestLobby();
         });
-        test('Allow all authenticated', async ({ browser, context, page }, testInfo) => {
+        test('Allow Everyone', async ({ browser, context, page }, testInfo) => {
           const guestPolicy = new GuestPolicy(browser, context);
           await guestPolicy.initModPage(page, { testInfo });
-          await guestPolicy.allowAllAuthenticated();
+          await guestPolicy.allowEveryone();
         });
-        test('Deny all authenticated', async ({ browser, context, page }, testInfo) => {
+        test('Deny Everyone', async ({ browser, context, page }, testInfo) => {
           const guestPolicy = new GuestPolicy(browser, context);
           await guestPolicy.initModPage(page, { testInfo });
-          await guestPolicy.denyAllAuthenticated();
+          await guestPolicy.denyEveryone();
         });
 
         test('Remember choice', async ({ browser, context, page }, testInfo) => {

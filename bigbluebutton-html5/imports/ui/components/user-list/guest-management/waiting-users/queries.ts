@@ -20,7 +20,6 @@ export const GET_GUEST_WAITING_USERS_SUBSCRIPTION = gql`
       isDenied
       userId
       user {
-        authed
         userId
         name
         color
