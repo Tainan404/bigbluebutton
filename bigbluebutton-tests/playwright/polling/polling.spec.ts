@@ -91,6 +91,10 @@ test.describe.parallel('Polling', { tag: '@ci' }, () => {
       await polling.parentheticalQuestionTypedResponse();
     });
 
+    test('PowerPoint superscript preserved - issue 25320', async () => {
+      await polling.powerPointSuperscriptPreserved();
+    });
+
     test('Hiding pools - Poll anywhere in the slide', async () => {
       await polling.pollAnywhereSlide();
     });
