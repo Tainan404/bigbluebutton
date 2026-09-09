@@ -4,7 +4,7 @@ import org.apache.pekko.actor.ActorContext
 
 import org.bigbluebutton.common2.msgs.{ BbbCommonEnvCoreMsg, BbbCoreEnvelope, BbbCoreHeaderWithMeetingId, MessageTypes, Routing }
 import org.bigbluebutton.core.running.{ LiveMeeting, OutMsgRouter }
-import org.bigbluebutton.core2.{ MeetingStatus2x }
+import org.bigbluebutton.core2.{ MeetingStatus2x, Permissions }
 import org.bigbluebutton.core.apps.webcam.CameraHdlrHelpers
 import org.bigbluebutton.core.apps.voice.VoiceApp
 import org.bigbluebutton.core.models.{
@@ -167,5 +167,15 @@ object LockSettingsUtil {
     Users2x.findLockedViewers(liveMeeting.users2x).foreach { user =>
       enforceCamLockSettingsForUser(user, liveMeeting, outGW)
     }
+  }
+
+  // Only these lock settings are provided to bbb-graphql-server (Hasura) as session
+  // variables of locked viewers (see GetUserApiMsgHdlr/UserInfoService). A change on
+  // any other lock setting reaches the clients through the database and does not
+  // require re-establishing their GraphQL sessions.
+  def requiresGraphqlSessionRefresh(oldPermissions: Permissions, newPermissions: Permissions): Boolean = {
+    oldPermissions.hideUserList != newPermissions.hideUserList ||
+      oldPermissions.hideViewersCursor != newPermissions.hideViewersCursor ||
+      oldPermissions.hideViewersAnnotation != newPermissions.hideViewersAnnotation
   }
 }
