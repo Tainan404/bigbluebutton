@@ -45,14 +45,18 @@ trait ChangeLockSettingsInMeetingCmdMsgHdlr extends RightsManagementTrait {
 
         MeetingStatus2x.setPermissions(liveMeeting.status, settings)
 
-        //Refresh graphql session for all locked viewers
-        for {
-          user <- Users2x.findAll(liveMeeting.users2x)
-          if user.locked
-          if user.role == Roles.VIEWER_ROLE
-          regUser <- RegisteredUsers.findWithUserId(user.intId, liveMeeting.registeredUsers)
-        } yield {
-          GraphqlMiddleware.requestGraphqlReconnection(regUser.sessionToken, "lockSettings_changed")
+        //Refresh graphql session for all locked viewers, but only when a lock setting
+        //provided to Hasura as a session variable has changed, to avoid forcing all
+        //viewers to reconnect simultaneously when it is not necessary
+        if (LockSettingsUtil.requiresGraphqlSessionRefresh(oldPermissions, settings)) {
+          for {
+            user <- Users2x.findAll(liveMeeting.users2x)
+            if user.locked
+            if user.role == Roles.VIEWER_ROLE
+            regUser <- RegisteredUsers.findWithUserId(user.intId, liveMeeting.registeredUsers)
+          } yield {
+            GraphqlMiddleware.requestGraphqlReconnection(regUser.sessionToken, "lockSettings_changed")
+          }
         }
 
         //Update database

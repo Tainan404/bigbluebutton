@@ -57,6 +57,7 @@ type BrowserConnection struct {
 	HasuraConnection                   *HasuraConnection              // associated hasura connection
 	Disconnected                       bool                           // indicate if the connection is gone
 	ConnAckSentToBrowser               bool                           // indicate if `connection_ack` msg was already sent to the browser
+	HasuraInitTransientFailures        int                            // consecutive hasura connections closed by a transient init error (e.g. 4408), reset on `connection_ack`
 	GraphqlActionsContext              context.Context                // graphql actions context
 	GraphqlActionsContextCancel        context.CancelFunc             // function to cancel the graphql actions context
 	FromBrowserToHasuraChannel         *SafeChannelByte               // channel to transmit messages from Browser to Hasura

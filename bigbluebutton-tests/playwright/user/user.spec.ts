@@ -323,6 +323,15 @@ test.describe.parallel('User', { tag: '@ci' }, () => {
         await lockViewers.lockSeeOtherViewersCursor();
       });
 
+      // Regression guard for issue #25734: applying a lock setting that is not
+      // provided to Hasura as a session variable must not force locked viewers
+      // to re-establish their GraphQL connection.
+      test('Lock microphone applies without forcing viewers to reconnect', async ({ browser, context, page }, testInfo) => {
+        const lockViewers = new LockViewers(browser, context);
+        await lockViewers.initPages(page, testInfo);
+        await lockViewers.micLockAppliesWithoutViewerReconnection();
+      });
+
       // Regression tests for issue #24888:
       // usernames must not leak through join/leave notifications when hideUserList is active.
       test('Hide user list suppresses join notification for locked viewer', async ({ browser, context, page }, testInfo) => {

@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { ConsoleMessage, expect } from '@playwright/test';
 
 import { hoverLastMessage } from '../chat/util';
 import { ELEMENT_WAIT_LONGER_TIME, ELEMENT_WAIT_TIME, USER_LEFT_NOTIFICATION_WAIT_TIME } from '../core/constants';
@@ -1005,5 +1005,66 @@ export class LockViewers extends MultiUsers {
       'Locked viewer must receive leave notification when a MODERATOR leaves (hideUserList active)',
       USER_LEFT_NOTIFICATION_WAIT_TIME,
     );
+  }
+
+  /**
+   * Regression guard for issue #25734: a meeting-wide lock settings change used
+   * to force every locked viewer to re-establish its GraphQL session even when
+   * the changed setting is not one of the lock settings provided to Hasura as
+   * session variables (only hideUserList, hideViewersCursor and
+   * hideViewersAnnotation are). With hundreds of locked viewers that forced
+   * reconnection becomes a thundering herd that drops clients; the herd itself
+   * is only reproducible with a load harness. This spec asserts the
+   * client-visible contract at small scale: locking the microphone still
+   * reaches the viewers (through the database) and produces no websocket
+   * close/reconnection activity on their side.
+   */
+  async micLockAppliesWithoutViewerReconnection() {
+    linkIssue(25734);
+    await this.initUserPage2();
+
+    const reconnectionMarkers = ['graphql_websocket_closed', 'connection_error', 'graphql_server_closed_connection'];
+    const reconnectionLogs: string[] = [];
+    for (const viewerPage of [this.userPage, this.userPage2]) {
+      viewerPage.page.on('console', (msg: ConsoleMessage) => {
+        const text = msg.text();
+        if (reconnectionMarkers.some((marker) => text.includes(marker))) {
+          reconnectionLogs.push(`${viewerPage.username}: ${text}`);
+        }
+      });
+    }
+
+    await openLockViewers(this.modPage);
+    await this.modPage.waitAndClick(e.participantPermissionsTab);
+    await this.modPage.waitAndClickElement(e.lockShareMicrophone);
+    await this.modPage.waitAndClick(e.applyLockSettings);
+
+    // the change must still reach both locked viewers
+    const micLockToastText = "Viewers' microphones are disabled";
+    await this.userPage.hasText(
+      e.smallToastMsg,
+      micLockToastText,
+      'should notify the first attendee that the microphone was locked',
+    );
+    await this.userPage2.hasText(
+      e.smallToastMsg,
+      micLockToastText,
+      'should notify the second attendee that the microphone was locked',
+    );
+
+    // give any forced reconnection time to surface before asserting silence
+    await this.modPage.page.waitForTimeout(3000);
+    await this.userPage.wasRemoved(
+      e.reconnectingBar,
+      'should not display the reconnection banner for the first attendee',
+    );
+    await this.userPage2.wasRemoved(
+      e.reconnectingBar,
+      'should not display the reconnection banner for the second attendee',
+    );
+    expect(
+      reconnectionLogs,
+      'locked viewers must not log any websocket close/reconnection activity after a microphone lock',
+    ).toStrictEqual([]);
   }
 }

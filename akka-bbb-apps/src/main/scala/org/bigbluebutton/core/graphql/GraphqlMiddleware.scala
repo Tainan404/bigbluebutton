@@ -12,6 +12,12 @@ object GraphqlMiddleware extends SystemConfiguration {
 
   val logger = LoggerFactory.getLogger(this.getClass)
 
+  // Reuse a single HttpClient (it is thread-safe): creating a new instance per request
+  // spawns an extra selector thread each time and makes every call slower, which matters
+  // because these requests run inside the meeting actor (e.g. one request per locked
+  // viewer when lock settings change)
+  private val client = HttpClient.newHttpClient()
+
   def requestGraphqlReconnection(sessionTokens: Vector[String], reason: String): Unit = {
     for {
       sessionToken <- sessionTokens
@@ -19,7 +25,6 @@ object GraphqlMiddleware extends SystemConfiguration {
       val encodedReason = URLEncoder.encode(reason, StandardCharsets.UTF_8.toString)
       val url = s"${graphqlMiddlewareAPI}/graphql-reconnection?sessionToken=$sessionToken&reason=$encodedReason"
 
-      val client = HttpClient.newHttpClient()
       val request = HttpRequest.newBuilder()
         .timeout(Duration.ofSeconds(5))
         .uri(URI.create(url))
