@@ -532,6 +532,34 @@ export class Polling extends MultiUsers {
     ).not.toHaveValue(/longfor/, { timeout: ELEMENT_WAIT_TIME });
   }
 
+  async slideTitleExcludedFromQuestion() {
+    await this.modPage.waitForSelector(e.whiteboard, ELEMENT_WAIT_LONGER_TIME);
+    await util.uploadSPresentationForTestingPolls(this.modPage, e.smartSlidesBugRepro1);
+    await this.userPage.hasElement(e.userListItem, 'should display the user list item for the attendee');
+    await this.modPage.closeAllToastNotifications();
+    await this.modPage.page.waitForTimeout(5000);
+
+    await this.modPage.selectSlide('Slide 3');
+    await this.modPage.hasElement(
+      e.quickPoll,
+      'should display the quick poll button once the smart slides deck is converted',
+      ELEMENT_WAIT_EXTRA_LONG_TIME,
+    );
+    // Let the current slide propagate to the quick-poll dropdown before triggering it, otherwise
+    // the click can capture the previous slide's (stale) parsed question.
+    await this.modPage.page.waitForTimeout(3000);
+    await this.modPage.waitAndClick(e.quickPoll, ELEMENT_WAIT_LONGER_TIME);
+    const pollQuestion = this.modPage.page.locator(e.pollQuestionArea);
+    await expect(pollQuestion, 'the quick poll question should start with the slide body question').toHaveValue(
+      /^What is the asbestos concentration\?/,
+      { timeout: ELEMENT_WAIT_TIME },
+    );
+    await expect(pollQuestion, 'the quick poll question should not include the slide title').not.toHaveValue(
+      /title prepended/,
+      { timeout: ELEMENT_WAIT_TIME },
+    );
+  }
+
   async pollResultsOnChat() {
     const { pollChatMessage } = this.modPage.settings || {};
 
