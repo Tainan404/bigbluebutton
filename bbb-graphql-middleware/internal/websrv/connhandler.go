@@ -192,8 +192,12 @@ func ConnectionHandler(w http.ResponseWriter, r *http.Request) {
 					if thisBrowserConnection != nil {
 						thisConnection.Logger.Infof("created hasura client")
 						hasura.HasuraClient(thisBrowserConnection)
+						// Randomized backoff after transient Hasura init failures (e.g. 4408),
+						// so invalidated connections do not retry in lockstep
+						time.Sleep(thisBrowserConnection.NextHasuraReconnectDelay())
+					} else {
+						time.Sleep(common.HasuraReconnectBaseDelay)
 					}
-					time.Sleep(100 * time.Millisecond)
 				}
 			}
 		}
