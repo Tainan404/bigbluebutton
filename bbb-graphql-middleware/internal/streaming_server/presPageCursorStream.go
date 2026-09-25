@@ -14,10 +14,24 @@ var (
 	QueryIdPlaceholderInBytes = []byte(QueryIdPlaceholder)
 )
 
+// cursorIsHiddenForLockedViewers reports whether this cursor event must be withheld
+// from locked viewers. The lock state travels with the event (instead of being frozen
+// into each receiver's session), so a hideViewersCursor change applies to the very
+// next event without refreshing any session. When the field is absent (event produced
+// by an older akka-apps) it falls back to hiding every viewer cursor from locked
+// viewers, which is the privacy-safe direction.
+func cursorIsHiddenForLockedViewers(eventBody map[string]interface{}, cursorIsFromViewer bool) bool {
+	if hiddenForLockedViewers, hasLockStateInEvent := eventBody["hiddenForLockedViewers"].(bool); hasLockStateInEvent {
+		return hiddenForLockedViewers
+	}
+	return cursorIsFromViewer
+}
+
 func HandleSendCursorPositionEvtMsg(receivedMessage common.RedisMessage, browserConnectionsMutex *sync.RWMutex, browserConnections map[string]*common.BrowserConnection) {
 	receivedCursorIsFromViewer := receivedMessage.Core.Body["userIsViewer"].(bool)
 	xPercent := receivedMessage.Core.Body["xPercent"].(float64)
 	yPercent := receivedMessage.Core.Body["yPercent"].(float64)
+	cursorHiddenForLockedViewers := cursorIsHiddenForLockedViewers(receivedMessage.Core.Body, receivedCursorIsFromViewer)
 
 	item := map[string]any{
 		"xPercent":   xPercent,
@@ -44,9 +58,9 @@ func HandleSendCursorPositionEvtMsg(receivedMessage common.RedisMessage, browser
 	for _, bc := range browserConnections {
 		bc.RLock()
 		matchesMeeting := bc.MeetingId == receivedMessage.Core.Header.MeetingId
-		userHasViewersCursorLocked := matchesMeeting && bc.BBBWebSessionVariables["x-hasura-cursorlockeduserid"] == bc.UserId
+		userIsLockedViewer := matchesMeeting && bc.BBBWebSessionVariables["x-hasura-lockeduserid"] == bc.UserId
 		bc.RUnlock()
-		if matchesMeeting && (!receivedCursorIsFromViewer || !userHasViewersCursorLocked) { // check for lock settings "See other viewers cursors"
+		if matchesMeeting && (!cursorHiddenForLockedViewers || !userIsLockedViewer) { // check for lock settings "See other viewers cursors"
 			browserConnectionsToSendData = append(browserConnectionsToSendData, bc)
 		}
 	}
