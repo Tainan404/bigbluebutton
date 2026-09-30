@@ -68,7 +68,7 @@ public class Meeting {
 	private boolean record;
 	private boolean autoStartRecording = false;
 	private boolean allowStartStopRecording = false;
-	private String sharedNotesEditor = "etherpad";
+	private String sharedNotesEditor = "blockNote";
 	private String sharedNotesInitialContentJsonUrl = "";
 	private ArrayList<Object> sharedNotesInitialContentJson;
 	private String sharedNotesInitialContentMarkdownUrl = "";
