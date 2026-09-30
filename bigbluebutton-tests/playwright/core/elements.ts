@@ -829,6 +829,7 @@ export const elements = {
   learningDashboardSidebarButton: 'div[data-test="learningDashboardSidebarButton"]',
   panels: 'div[role="tablist"]',
   messageLearningDashboard: 'td[data-test="userTotalMessagesDashboard"]',
+  sharedNotesLearningDashboard: 'td[data-test="userTotalOfSharedNotesDashboard"]',
   userOnlineTime: 'td[data-test="userOnlineTimeDashboard"]',
   pollTrueFalse: 'button[data-test="pollTrueFalse"]',
   pollPanel: 'button[data-test="pollsPanelDashboard"]',
