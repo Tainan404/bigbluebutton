@@ -242,7 +242,6 @@
     "app.preFlight.enableCameraLabel": "Enable camera",
     "app.preFlight.disableCameraLabel": "Disable camera",
     "app.preFlight.cameraDisabledLabel": "Camera is off",
-    "app.pads.hint": "Press Esc to focus the pad's toolbar",
     "app.user.activityCheck": "User activity check",
     "app.user.activityCheck.label": "Check if user is still in session ({responseDelay})",
     "app.user.activityCheck.check": "Check",
