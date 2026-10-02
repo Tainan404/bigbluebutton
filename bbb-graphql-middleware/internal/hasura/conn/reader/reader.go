@@ -37,12 +37,18 @@ func HasuraConnectionReader(hc *common.HasuraConnection, wg *sync.WaitGroup) {
 			if errors.Is(err, context.Canceled) {
 				hc.BrowserConn.Logger.Debugf("Closing Hasura ws connection as Context was cancelled!")
 			} else if errors.As(err, &closeError) {
-				hc.WebsocketCloseError = closeError
-				hc.BrowserConn.Logger.Debug("Hasura WebSocket connection closed: status = %v, reason = %s", closeError.Code, closeError.Reason)
-				// TODO check if it should send {"type":"connection_error","payload":"Authentication hook unauthorized this request"}
+				if handleTransientHasuraCloseError(hc, closeError.Code, string(closeError.Reason)) {
+					// It will reconnect to Hasura (with backoff) instead of forwarding the error to the browser
+				} else {
+					hc.WebsocketCloseError = closeError
+					hc.BrowserConn.Logger.Debugf("Hasura WebSocket connection closed: status = %v, reason = %s", closeError.Code, closeError.Reason)
+					// TODO check if it should send {"type":"connection_error","payload":"Authentication hook unauthorized this request"}
+				}
 			} else {
 				if websocket.CloseStatus(err) == -1 {
 					// It doesn't have a CloseError, it will reconnect do Hasura
+				} else if handleTransientHasuraCloseError(hc, websocket.CloseStatus(err), err.Error()) {
+					// It will reconnect to Hasura (with backoff) instead of forwarding the error to the browser
 				} else {
 					// In case Hasura sent an CloseError, it will forward it to browser and disconnect
 					hc.WebsocketCloseError = &websocket.CloseError{
@@ -65,6 +71,25 @@ func HasuraConnectionReader(hc *common.HasuraConnection, wg *sync.WaitGroup) {
 
 		handleMessageReceivedFromHasura(hc, message)
 	}
+}
+
+// handleTransientHasuraCloseError decides whether a close received from Hasura should
+// be retried by the middleware (keeping the browser connection untouched) instead of
+// being forwarded to the browser. Transient init errors such as 4408 ("Connection
+// initialisation timed out") happen when many Hasura connections initialise at once
+// (e.g. after a meeting-wide lock settings change invalidates all locked viewers);
+// forwarding them would disconnect the whole client because of a reconnection that
+// was meant to be transparent.
+func handleTransientHasuraCloseError(hc *common.HasuraConnection, code websocket.StatusCode, reason string) bool {
+	if !common.IsTransientHasuraInitCloseCode(code) {
+		return false
+	}
+	if !hc.BrowserConn.RegisterHasuraInitTransientFailure() {
+		hc.BrowserConn.Logger.Infof("Hasura connection closed with transient error (status = %v, reason = %s) but retries are exhausted, forwarding the error to the browser", code, reason)
+		return false
+	}
+	hc.BrowserConn.Logger.Infof("Hasura connection closed with transient error (status = %v, reason = %s), retrying connection to Hasura", code, reason)
+	return true
 }
 
 var QueryIdPlaceholderInBytes = []byte("--------------QUERY-ID--------------") // 36 chars
@@ -233,6 +258,7 @@ func handleCompleteMessage(hc *common.HasuraConnection, queryId string) {
 func handleConnectionAckMessage(hc *common.HasuraConnection, message []byte) {
 	hc.BrowserConn.Logger.Debugf("Received connection_ack")
 	// Hasura connection was initialized, now it's able to send new messages to Hasura
+	hc.BrowserConn.ResetHasuraInitTransientFailures()
 	hc.BrowserConn.FromBrowserToHasuraChannel.UnfreezeChannel()
 
 	// Avoid to send `connection_ack` to the browser when it's a reconnection
