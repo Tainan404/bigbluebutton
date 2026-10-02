@@ -31,6 +31,28 @@
                 alias    /var/bigbluebutton/$meeting_id_2/$meeting_id_2/$pres_id/svgs/slide$page_num.svg;
                 add_header 'Access-Control-Allow-Origin' $bbb_cors_origin always;
                 add_header 'Access-Control-Allow-Credentials' 'true' always;
+                # A converted slide SVG is immutable for its (meeting, presentation, page)
+                # URL, so let the browser cache it and skip revalidation. Without this the
+                # response carries only ETag/Last-Modified (heuristic freshness ~0 on a
+                # just-converted file), so every consumer of the same URL - the decode-gate
+                # Image prime, tldraw's background-image, the forward prefetch - triggers a
+                # full transfer plus an auth_request subrequest instead of a cache hit.
+                # private: the asset is auth-gated, never shared-cacheable.
+                #
+                # No `always`: this header must stay off non-2xx responses. A slide can 404
+                # while BBB is still converting pages, and checkAuthorization can 401/403 on
+                # a token race; caching those for a day (404 is heuristically cacheable, and
+                # an explicit max-age makes an otherwise-uncacheable status storable per
+                # RFC 9111) would pin a transient failure in the browser for the rest of the
+                # meeting. The neighbouring CORS `always` modifiers are required (the browser
+                # must read CORS headers on error responses); this one is not.
+                #
+                # max-age is deliberately short. The URL is stable for the whole meeting
+                # (Auth.authenticateURL is idempotent), so a long-lived immutable entry would
+                # let a browser re-render slides with no auth_request long after the user was
+                # ejected or the meeting ended. A short lifetime keeps revocation meaningful
+                # while still serving the repeat loads of a single slide navigation from cache.
+                add_header 'Cache-Control' 'private, max-age=600, immutable';
         }
 
         location ~^\/bigbluebutton\/presentation\/(?<meeting_id_1>[A-Za-z0-9\-]+)\/(?<meeting_id_2>[A-Za-z0-9\-]+)\/(?<pres_id>[A-Za-z0-9\-]+)\/pdf\/(?<job_id>[A-Za-z0-9]+)\/annotated_slides.pdf$ {
