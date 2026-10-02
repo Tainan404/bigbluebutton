@@ -155,6 +155,7 @@ Updated in 4.1:
 
 - **create**
   - **Added parameters:** `allowModsToRequestCameraShare` (when `true`, moderators may ask a participant to share their webcam and the participant accepts or declines).
+  - **Removed parameter:** `sharedNotesEditor` (Etherpad support was removed; the parameter is now ignored and meetings always use BlockNote for shared notes).
 
 ## API Data Types
 
@@ -410,7 +411,7 @@ One other think to pay attention is to not include any of the parameters in both
 
 #### Shared Notes Initial Content
 
-If `sharedNotesEditor` is set to `blockNote`, you can send initial content. It can be done with the create parameter `sharedNotesInitialContentJsonUrl` containing the URL from which the content will be fetched, or send the content directly via the `create` payload.
+You can send initial content for the shared notes. It can be done with the create parameter `sharedNotesInitialContentJsonUrl` containing the URL from which the content will be fetched, or send the content directly via the `create` payload.
 
 If you choose the second option (sending content directly), the POST request payload must be as follows:
 
