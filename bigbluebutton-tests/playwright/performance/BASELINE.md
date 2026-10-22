@@ -1,6 +1,6 @@
 # Camera effects performance baseline
 
-This report records the unchanged camera-effects pipeline at commit `16b4b9ad9f982b866ff75271bbb5cee4ee179cac`. The benchmark uses the static production HTML5 bundle and instruments the browser only through `addInitScript`.
+This report records the unchanged camera-effects pipeline at commit `09c1e34b9f37b09cfcc131cfe1e8ee6f5d2f4ea5`. The benchmark uses the static production HTML5 bundle and instruments the browser only through `addInitScript`.
 
 ## Results
 
@@ -8,24 +8,24 @@ Results are populated from the attached run as median [minimum-maximum]. `Unfini
 
 <!-- RESULTS_START -->
 
-| Browser/profile             | Effect         |    Presented fps |       Effect fps | Main-thread ms/frame |        Inference ms |   Gaps >50 ms |       Sender fps |         CPU cores |
-| --------------------------- | -------------- | ---------------: | ---------------: | -------------------: | ------------------: | ------------: | ---------------: | ----------------: |
-| Chromium SwiftShader medium | none           | 29.9 [29.9-30.0] |              n/a |                  n/a |                 n/a |       0 [0-0] | 19.6 [19.3-19.7] |  1.25 [1.24-1.28] |
-| Chromium SwiftShader medium | blur           |   9.5 [9.3-10.0] |   9.5 [9.4-10.0] |     75.0 [69.3-75.7] |    11.9 [11.2-12.0] | 141 [139-148] |    6.4 [6.3-6.9] |  8.29 [8.06-8.46] |
-| Chromium SwiftShader medium | Home           |    8.0 [7.6-8.1] |    8.0 [7.7-8.1] |     94.2 [93.0-97.8] |    10.5 [10.2-11.5] | 119 [113-120] |    4.5 [4.1-5.0] |  9.29 [8.71-9.36] |
-| Chromium SwiftShader medium | brightness +50 | 13.6 [13.5-13.9] | 13.7 [13.6-13.9] |     41.9 [39.7-43.1] |    11.4 [11.2-11.9] | 162 [161-166] |    8.6 [8.3-9.1] |  7.89 [7.53-7.99] |
-| Chromium SwiftShader HD     | none           | 15.0 [15.0-15.0] |              n/a |                  n/a |                 n/a | 223 [215-224] | 14.0 [14.0-15.1] |  0.81 [0.78-0.82] |
-| Chromium SwiftShader HD     | blur           |    4.7 [4.5-5.0] |    4.7 [4.5-5.0] |  185.1 [168.8-194.2] |    11.8 [11.2-12.2] |    69 [66-74] |    4.1 [3.9-4.5] |  9.17 [9.17-9.21] |
-| Chromium SwiftShader HD     | Home           |    3.3 [3.2-3.3] |    3.3 [3.2-3.3] |  287.2 [279.8-291.0] |    11.0 [10.8-11.1] |    47 [46-48] |    2.4 [2.1-2.7] | 9.74 [9.12-10.01] |
-| Chromium SwiftShader HD     | brightness +50 |    7.5 [7.1-7.5] |    7.5 [7.2-7.5] |  102.9 [102.1-109.7] |    10.7 [10.4-10.9] | 111 [106-111] |    7.1 [6.9-7.2] |  8.94 [8.88-8.95] |
-| Firefox medium              | none           | 29.9 [29.8-30.0] |              n/a |                  n/a |                 n/a |      1 [0-38] | 19.9 [18.4-19.9] |               n/a |
-| Firefox medium              | blur           |    4.5 [4.3-4.5] |    4.6 [4.4-4.6] |                  n/a | 109.6 [109.3-115.2] |    67 [64-67] |    2.8 [2.7-2.9] |               n/a |
-| Firefox medium              | Home           |    5.7 [5.5-6.1] |    5.8 [5.6-6.1] |                  n/a |  101.3 [93.3-106.3] |    85 [82-91] |    4.0 [3.5-4.1] |               n/a |
-| Firefox medium              | brightness +50 |    5.7 [5.7-5.9] |    5.8 [5.8-6.0] |                  n/a |  101.5 [96.5-101.6] |    85 [85-88] |    3.6 [3.6-4.0] |               n/a |
-| Firefox HD                  | none           | 15.0 [15.0-15.0] |              n/a |                  n/a |                 n/a | 223 [196-224] | 14.9 [14.8-14.9] |               n/a |
-| Firefox HD                  | blur           |    3.0 [2.9-3.1] |    3.1 [2.9-3.2] |                  n/a | 110.0 [104.2-112.5] |    44 [42-46] |    2.8 [2.0-3.0] |               n/a |
-| Firefox HD                  | Home           |    4.1 [3.9-4.3] |    4.1 [3.9-4.3] |                  n/a | 111.9 [100.4-113.4] |    60 [57-63] |    3.9 [3.5-4.2] |               n/a |
-| Firefox HD                  | brightness +50 |    3.9 [3.9-4.3] |    4.0 [4.0-4.4] |                  n/a |  114.7 [98.5-115.2] |    58 [58-64] |    4.0 [2.4-4.2] |               n/a |
+| Browser/profile             | Effect         |    Presented fps |     Effect fps | Main-thread ms/frame |        Inference ms |   Gaps >50 ms |       Sender fps |     CPU cores |
+| --------------------------- | -------------- | ---------------: | -------------: | -------------------: | ------------------: | ------------: | ---------------: | ------------: |
+| Chromium SwiftShader medium | none           | 29.9 [29.7-29.9] |            n/a |                  n/a |                 n/a |       2 [1-3] | 18.3 [17.9-19.9] | 1.2 [1.2-1.3] |
+| Chromium SwiftShader medium | blur           |    8.4 [7.1-9.4] |  8.3 [7.2-9.4] |    90.5 [76.5-111.6] |    12.5 [11.9-13.7] | 125 [106-140] |    4.4 [4.2-5.1] | 7.9 [7.4-8.3] |
+| Chromium SwiftShader medium | Home           |    6.3 [5.9-6.5] |  6.3 [5.9-6.5] |  129.2 [124.9-144.9] |    12.2 [12.1-12.4] |    94 [87-96] |    3.9 [3.5-4.1] | 8.4 [8.3-8.6] |
+| Chromium SwiftShader medium | brightness +50 |   9.5 [8.9-10.9] | 9.7 [8.9-11.0] |     72.6 [60.8-82.2] |    13.5 [13.4-14.8] | 135 [132-154] |    7.2 [4.9-7.7] | 6.7 [6.6-7.2] |
+| Chromium SwiftShader HD     | none           | 29.7 [29.7-29.9] |            n/a |                  n/a |                 n/a |      7 [3-10] | 25.1 [22.3-25.1] | 1.5 [1.4-1.6] |
+| Chromium SwiftShader HD     | blur           |    4.3 [4.0-4.7] |  4.4 [4.1-4.8] |  200.0 [179.6-220.4] |    11.5 [11.5-11.9] |    64 [58-70] |    4.4 [3.9-4.4] | 9.0 [8.8-9.3] |
+| Chromium SwiftShader HD     | Home           |    2.7 [2.5-2.8] |  2.8 [2.6-2.8] |  341.4 [334.1-359.1] |    11.9 [11.6-12.1] |    40 [37-41] |    2.7 [2.0-2.8] | 9.5 [9.2-9.5] |
+| Chromium SwiftShader HD     | brightness +50 |    6.0 [5.3-6.1] |  6.1 [5.4-6.1] |  136.2 [134.2-156.4] |    12.2 [11.4-12.2] |    89 [79-91] |    5.3 [4.1-5.8] | 8.6 [8.3-8.7] |
+| Firefox medium              | none           | 30.0 [29.9-30.0] |            n/a |                  n/a |                 n/a |       6 [3-9] | 19.9 [19.8-19.9] |           n/a |
+| Firefox medium              | blur           |    4.4 [3.7-4.6] |  4.5 [3.7-4.6] |                  n/a | 116.0 [107.8-142.6] |    65 [54-68] |    2.8 [2.1-3.1] |           n/a |
+| Firefox medium              | Home           |    4.7 [4.7-5.3] |  4.7 [4.7-5.3] |                  n/a | 130.7 [115.4-131.8] |    70 [69-78] |    2.8 [2.8-3.2] |           n/a |
+| Firefox medium              | brightness +50 |    5.3 [5.1-5.5] |  5.3 [5.2-5.6] |                  n/a | 113.1 [106.5-119.0] |    79 [76-82] |    3.6 [3.5-3.8] |           n/a |
+| Firefox HD                  | none           | 29.9 [29.5-30.0] |            n/a |                  n/a |                 n/a |     11 [1-60] | 23.5 [23.0-25.5] |           n/a |
+| Firefox HD                  | blur           |    2.7 [2.5-2.9] |  2.7 [2.5-2.9] |                  n/a | 118.4 [117.1-124.6] |    38 [35-42] |    2.4 [2.3-2.8] |           n/a |
+| Firefox HD                  | Home           |    3.5 [3.5-3.7] |  3.5 [3.5-3.7] |                  n/a | 129.2 [119.9-134.3] |    51 [50-54] |    2.7 [2.7-3.4] |           n/a |
+| Firefox HD                  | brightness +50 |    3.7 [3.3-3.7] |  3.7 [3.3-3.7] |                  n/a | 119.7 [119.2-135.6] |    54 [48-55] |    3.2 [2.8-3.8] |           n/a |
 
 Chromium CPU is the sum of renderer, GPU, and browser process CPU time over wall time. Values above one mean multiple cores were busy. Firefox CPU and CDP `TaskDuration` are unavailable, so those fields are not inferred from neighboring metrics.
 
@@ -40,11 +40,15 @@ Chromium CPU is the sum of renderer, GPU, and browser process CPU time over wall
 - Firefox: Playwright Firefox 1511, synthetic camera source.
 - Timing: 5-second warm-up, 15-second sample, three repetitions per cell.
 
+## Snapshots
+
+Local snapshots are in `/tmp/ephemeral/camera-effects-baseline-v4/`, with one PNG and JSON sidecar per run. Chromium snapshots show the unchanged portrait, a sharp foreground over the blurred background, the foreground composited over the Home room, and visibly increased whole-image brightness at both profiles. Firefox uses its synthetic solid-color source; it produces an empty segmentation mask, so the image-effect snapshots show only the replacement background.
+
 ## Analysis
 
 The effect loop schedules its next 30 Hz timer only after the synchronous render completes. The expected ceiling is therefore approximately `1000 / (33 + render milliseconds)` rather than 30 fps. Blur, image replacement, and whole-image brightness all enter the segmentation pipeline; brightness is not a cheap post-process-only path. A new TFLite module and model fetch occur whenever an effect starts.
 
-The data confirms the serial timer hypothesis: effect-loop fps tracks presented fps and collapses as synchronous work grows. Chromium SwiftShader spends about 7.9-9.7 CPU cores with effects, compared with 0.8-1.3 without them. Firefox inference alone is about 93-115 ms per frame, while Chromium is about 10-12 ms; this explains Firefox's 3-6 fps effect output. Whole-image brightness still invokes inference and consumes 7.9-8.9 CPU cores in Chromium, confirming that it is not a cheap filter-only path.
+The data confirms the serial timer hypothesis: effect-loop fps tracks presented fps and collapses as synchronous work grows. Chromium SwiftShader spends about 6.7-9.5 CPU cores with effects, compared with 1.2-1.6 without them. Firefox inference is about 108-143 ms per frame, while Chromium is about 11-15 ms; this explains Firefox's 3-5 fps effect output. Whole-image brightness still invokes inference and consumes 6.7-8.6 CPU cores in Chromium, confirming that it is not a cheap filter-only path.
 
 The current output uses Canvas 2D and `captureStream(parseInt(frameRate, 15))`. The radix of 15 turns the nominal string `30` into 45; this is a product bug observed during source review and intentionally not fixed by this benchmark-only change.
 

@@ -16,7 +16,7 @@ async function selectEffect(page: import('@playwright/test').Page, effect: (type
   const audioModal = page.locator('div[data-testid="audioModal"]');
   if (await audioModal.isVisible()) await audioModal.getByRole('button', { name: /Close/ }).click();
   await page.locator('button[data-test="joinVideo"]').click();
-  await page.locator('select#setQuality').selectOption(profile === 'hd' ? 'high' : 'medium');
+  await page.locator('select#setQuality').selectOption(profile === 'hd' ? 'hd' : 'medium');
   await page.locator('span#backgrounds-title').click();
   if (effect === 'none' || effect === 'brightness')
     await page.locator('button[data-test="noneBackgroundButton"]').click();
