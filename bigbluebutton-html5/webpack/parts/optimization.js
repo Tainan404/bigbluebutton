@@ -1,6 +1,5 @@
 /* eslint-disable max-len, import/no-extraneous-dependencies */
-// Preserve production minification, chunk policy, and size budgets.
-const webpack = require('webpack');
+// Configure production minification and size budgets; async splitting stays enabled.
 const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = (options) => ({
@@ -21,8 +20,5 @@ module.exports = (options) => ({
       performance: { hints: 'warning', maxAssetSize: options.isSafari ? 16000000 : 8000000, maxEntrypointSize: options.isSafari ? 16000000 : 8000000 },
     }),
   },
-  plugins: [
-  // why: Safari post-build renaming cannot preserve lazy chunk URLs (commit 1719fd30e66).
-    new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
-  ],
+  plugins: [],
 });

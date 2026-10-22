@@ -6,8 +6,12 @@ module.exports = (options, paths) => ({
     cache: {
       type: 'filesystem',
       allowCollectingMemory: true,
-      // why: yalc never bumps tldraw's version, so its external build id invalidates stale cache entries (PR #25090).
-      ...(options.tldrawBuildIdExists && { buildDependencies: { tldraw: [paths.tldrawBuildId] } }),
+      name: `${options.mode}-${options.target}`,
+      buildDependencies: {
+        config: [paths.config, paths.babelConfig],
+        // why: yalc never bumps tldraw's version, so its external build id invalidates stale cache entries (PR #25090).
+        ...(options.tldrawBuildIdExists && { tldraw: [paths.tldrawBuildId] }),
+      },
     },
     snapshot: {
     // why: hash tldraw contents because yalc keeps its package version unchanged (PR #25090).

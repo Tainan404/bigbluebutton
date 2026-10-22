@@ -15,8 +15,11 @@ const options = Object.freeze({
   isDev: mode === 'development',
   isSafari: target === 'safari',
   hot: String(process.env.HOT_RELOAD).toLowerCase() === 'true',
-  detailedLogs: process.env.DETAILED_LOGS || false,
+  detailedLogs: String(process.env.DETAILED_LOGS).toLowerCase() === 'true',
   tldrawBuildIdExists: fs.existsSync(paths.tldrawBuildId),
+  safariEntry: fs.existsSync(paths.safariManifest)
+    ? JSON.parse(fs.readFileSync(paths.safariManifest, 'utf8'))[0]
+    : null,
 });
 process.stdout.write(`[html5 build] mode=${mode} target=${target} hot=${options.hot}\n`);
 module.exports = options;
