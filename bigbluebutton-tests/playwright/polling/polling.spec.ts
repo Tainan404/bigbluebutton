@@ -91,6 +91,10 @@ test.describe.parallel('Polling', { tag: '@ci' }, () => {
       await polling.parentheticalQuestionTypedResponse();
     });
 
+    test('Slide title excluded from question - issue 25320', async () => {
+      await polling.slideTitleExcludedFromQuestion();
+    });
+
     test('Hiding pools - Poll anywhere in the slide', async () => {
       await polling.pollAnywhereSlide();
     });
