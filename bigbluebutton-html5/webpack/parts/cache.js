@@ -8,7 +8,7 @@ module.exports = (options, paths) => ({
       allowCollectingMemory: true,
       name: `${options.mode}-${options.target}`,
       buildDependencies: {
-        config: [paths.config, paths.babelConfig],
+        config: [paths.config, paths.babelConfig, paths.browserslist],
         // why: yalc never bumps tldraw's version, so its external build id invalidates stale cache entries (PR #25090).
         ...(options.tldrawBuildIdExists && { tldraw: [paths.tldrawBuildId] }),
       },

@@ -1,0 +1,7 @@
+# Supported floor. Mirrors the gate in client/main.html (WeakRef means Safari 14.1 / iOS 14.5).
+# This is equivalent to the 2020 baseline, but explicit versions make the contract reviewable.
+chrome >= 87
+edge >= 87
+firefox >= 80
+safari >= 14.1
+ios_saf >= 14.5

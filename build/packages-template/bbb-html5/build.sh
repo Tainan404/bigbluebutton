@@ -45,6 +45,7 @@ node -v
 
 CI=true npm ci
 DISABLE_ESLINT_PLUGIN=true npm run build:all
+BBB_HTML5_VERIFY_STRICT=${BBB_HTML5_VERIFY_STRICT:-0} npm run verify:build
 
 # replace v=VERSION with build identifier in head and css files
 if [ -f dist/index.html ] || [ -f dist/stylesheets/fonts.css ]; then
