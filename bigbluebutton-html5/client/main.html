@@ -271,15 +271,27 @@ with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
               });
             }
 
-            var bundleHash = '<%= bundleHash %>';
-            var isProduction = '<%= isProduction %>' === 'true';
+            var ENTRIES = <%= JSON.stringify(entries) %>;
             var script = document.createElement('script');
 
-            if (isProduction && isSafari && safariVersion && safariVersion < 16 && safariVersion >= MIN_VERSIONS.safari) {
+            function hasJSC236843() {
+              try {
+                return !new Function('var a = [1]; class C { c = a[(0)] } return new C().c === 1;')();
+              } catch (e) {
+                return true;
+              }
+            }
+
+            var useSafari = ENTRIES.safari && (
+              (isSafari && safariVersion && safariVersion < 16 && safariVersion >= MIN_VERSIONS.safari)
+              || hasJSC236843()
+            );
+
+            if (useSafari) {
               document.documentElement.classList.add('legacy');
-              script.src = 'bundle.' + bundleHash + '.safari.js';
+              script.src = ENTRIES.safari;
             } else {
-              script.src = 'bundle.' + bundleHash + '.js';
+              script.src = ENTRIES.default;
             }
 
             document.head.appendChild(script);

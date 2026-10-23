@@ -4,7 +4,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = (options) => ({
   name: 'html',
-  plugins: [new HtmlWebpackPlugin({
+  plugins: options.isSafari ? [] : [new HtmlWebpackPlugin({
     template: './client/main.html',
     filename: 'index.html',
     inject: false,
@@ -12,8 +12,7 @@ module.exports = (options) => ({
       compilation,
       webpackConfig: compilation.options,
       htmlWebpackPlugin: { tags: assetTags, files: assets, options: pluginOptions },
-      bundleHash: compilation.hash,
-      isProduction: options.mode === 'production',
+      entries: { default: assets.js[0], safari: options.safariEntry },
     }),
   })],
 });
