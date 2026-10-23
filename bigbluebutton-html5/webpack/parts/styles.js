@@ -7,7 +7,7 @@ module.exports = () => ({
       loader: 'postcss-loader',
       options: {
         postcssOptions: {
-          plugins: [['autoprefixer', { overrideBrowserslist: ['last 2 versions', '>1%'] }]],
+          plugins: ['autoprefixer'],
         },
       },
     }],

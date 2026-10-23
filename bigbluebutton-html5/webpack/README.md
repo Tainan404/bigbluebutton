@@ -14,3 +14,7 @@
 Local tldraw development writes `.tldraw-build-id`; webpack uses it to invalidate cache and hashes yalc package contents because yalc does not change its version. Special compatibility settings and their provenance are documented beside the relevant fragments.
 
 If output appears stale, remove `node_modules/.cache/webpack` and rebuild.
+
+`.browserslistrc` is the supported browser contract used by Babel, autoprefixer, webpack, and
+`npm run verify:build`. Babel stays on version 7 with `bugfixes` enabled; the explicit contract also
+prevents a future Babel 8 upgrade from silently adopting a newer default browser floor.
