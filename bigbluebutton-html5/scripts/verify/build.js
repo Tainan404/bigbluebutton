@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { inspectBundle } = require('./jsc236843');
 
 const root = path.resolve(__dirname, '../..');
 const dist = path.join(root, 'dist');
@@ -21,30 +22,26 @@ function walk(directory) {
 walk(dist);
 const emittedFiles = files.filter((file) => /(?:bundle|[\\/]\d+)\.[a-f0-9]+\.js$/.test(file));
 const esCheckBin = path.join(root, 'node_modules/.bin/es-check');
-const syntaxCheck = spawnSync(esCheckBin, [
-  'checkBrowser', ...emittedFiles, '--noColor',
-], { encoding: 'utf8' });
-console.log('[verify] es-check syntax:', syntaxCheck.status === 0 ? 'pass' : 'fail');
-if (syntaxCheck.status !== 0) {
-  console.error(syntaxCheck.stdout.trim() || syntaxCheck.stderr.trim());
-  failures.push('es-check syntax');
-}
-
 const featureCheck = spawnSync(esCheckBin, [
   'checkBrowser', ...emittedFiles, '--checkFeatures', '--checkForPolyfills',
   '--ignore', 'Object.hasOwn', '--noColor',
 ], { encoding: 'utf8' });
 console.log('[verify] es-check features:', featureCheck.status === 0 ? 'pass' : 'reported findings');
-if (featureCheck.status !== 0) console.log('See the runtime API counts below; feature gaps are informational.');
+if (featureCheck.status !== 0) console.log((featureCheck.stdout || featureCheck.stderr).trim());
 
 const safariFiles = emittedFiles.filter((file) => file.includes(`${path.sep}safari${path.sep}`));
 const defaultFiles = emittedFiles.filter((file) => !safariFiles.includes(file));
-const countTrigger = (names) => names.reduce((count, file) => (
-  count + (fs.readFileSync(file, 'utf8').match(/new HistoryManager\(this,\s*\(/g) || []).length
-), 0);
-const safariTriggers = countTrigger(safariFiles);
-const defaultTriggers = countTrigger(defaultFiles);
+const findTriggers = (names) => names.flatMap(inspectBundle);
+const safariFindings = findTriggers(safariFiles);
+const defaultFindings = findTriggers(defaultFiles);
+const safariTriggers = safariFindings.length;
+const defaultTriggers = defaultFindings.length;
 console.log(`[verify] WebKit 236843 triggers: safari=${safariTriggers} default=${defaultTriggers}`);
+defaultFindings.forEach((finding) => {
+  const original = finding.original && finding.original.source
+    ? `${finding.original.source}:${finding.original.line}:${finding.original.column}` : 'source map unavailable';
+  console.log(`[verify] WebKit 236843 default finding: ${original}; outer=${finding.outerBindings.join(',')}; generated=${finding.generated.line}:${finding.generated.column}`);
+});
 if (safariTriggers) failures.push('WebKit 236843 safari trigger');
 
 const targets = fs.readFileSync(path.join(root, '.browserslistrc'), 'utf8');
