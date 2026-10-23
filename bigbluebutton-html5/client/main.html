@@ -274,8 +274,17 @@ with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
             var ENTRIES = <%= JSON.stringify(entries) %>;
             var script = document.createElement('script');
 
+            function hasJSC236843() {
+              try {
+                return !new Function('var a = [1]; class C { c = a[(0)] } return new C().c === 1;')();
+              } catch (e) {
+                return true;
+              }
+            }
+
             var useSafari = ENTRIES.safari && (
-              isSafari && safariVersion && safariVersion < 16 && safariVersion >= MIN_VERSIONS.safari
+              (isSafari && safariVersion && safariVersion < 16 && safariVersion >= MIN_VERSIONS.safari)
+              || hasJSC236843()
             );
 
             if (useSafari) {
