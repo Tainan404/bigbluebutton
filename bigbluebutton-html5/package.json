@@ -10,7 +10,7 @@
     "start": "NODE_ENV=development DETAILED_LOGS=true HOT_RELOAD=true webpack serve --open --config webpack.config.js",
     "build": "NODE_ENV=production TARGET=default webpack --config webpack.config.js --mode production",
     "build-safari": "NODE_ENV=production TARGET=safari webpack --config webpack.config.js --mode production",
-    "build:all": "rm -rf dist && time npm run build-safari && time npm run build",
+    "build:all": "node scripts/build-all.js",
     "tscheck": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
