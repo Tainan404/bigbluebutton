@@ -542,7 +542,7 @@ curl -s -X POST "$URL/$CONTROLLER?$PARAMS&checksum=$CHECKSUM" --header "Content-
                   "wsUrl": "wss://test.bigbluebutton.org/bbb-webrtc-sfu"
                },
                "app": {
-                    "appName": "Test",
+                    "clientTitle": "Test",
                     "helpLink": "https://www.bigbluebutton.org",
                     "autoJoin": false,
                     "askForConfirmationOnLeave": false,
