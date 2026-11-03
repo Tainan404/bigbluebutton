@@ -50,19 +50,13 @@ const NavigationSidebar = styled.div<{animations: boolean, isMobile: boolean, is
   flex-direction: column;
   height: 100%;
 
-  ${({ isMobile, isExpanded, animations }) => (isMobile ? `
+  ${({ isMobile, isExpanded, animations }) => isMobile && `
     gap: 1rem;
     padding-bottom: ${navigationSidebarPaddingY};
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
     ${!isExpanded && 'background-color: transparent;'}
     ${animations && 'transition: background-color 0.2s ease-out;'}
-  ` : `
-    padding: ${navigationSidebarPaddingY} 0;
-
-    @media ${smallHeight} {
-      padding: ${navigationSidebarPaddingYSmallHeight} 0;
-    }
-  `)}
+  `}
 `;
 
 // @ts-ignore - js component
@@ -103,6 +97,10 @@ const NavigationToggleButton = styled(Button)`
   `}
 `;
 
+// On desktop the space before the first icon and after the last one is elastic: the
+// ::before/::after spacers are flex 0 1 at the padding size with min-height 0, so they
+// shrink to 0 before the scroll kicks in. A negative margin of one container gap toward
+// the content keeps the flex gap from adding to that end spacing.
 const NavigationSidebarListItemsContainer = styled(ScrollboxVertical)<{
   animations: boolean,
   isMobile: boolean,
@@ -122,6 +120,36 @@ const NavigationSidebarListItemsContainer = styled(ScrollboxVertical)<{
 
   ${({ isMobile }) => !isMobile && `
     scrollbar-gutter: stable both-edges;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 0 1 ${navigationSidebarPaddingY};
+      min-height: 0;
+    }
+
+    &::before {
+      margin-bottom: calc(-1 * ${navigationSidebarListItemsContainerGap});
+    }
+
+    &::after {
+      margin-top: calc(-1 * ${navigationSidebarListItemsContainerGap});
+    }
+
+    @media ${smallHeight} {
+      &::before,
+      &::after {
+        flex-basis: ${navigationSidebarPaddingYSmallHeight};
+      }
+
+      &::before {
+        margin-bottom: calc(-1 * ${navigationSidebarListItemsContainerGapSmallHeight});
+      }
+
+      &::after {
+        margin-top: calc(-1 * ${navigationSidebarListItemsContainerGapSmallHeight});
+      }
+    }
 
     @supports (-moz-appearance: none) {
       scrollbar-width: thin;

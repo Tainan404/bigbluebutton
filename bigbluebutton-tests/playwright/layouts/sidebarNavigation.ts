@@ -22,7 +22,13 @@ const SPACING_OVERFLOW = { width: 1286, height: 532 };
 // The rail styles switch to compact icons and spacing at (max-height: 40em).
 const SMALL_HEIGHT_MAX = 640;
 // Shortest height (on the 4px grid of Spec C) where the moderator rail fits.
-const MIN_FIT_HEIGHT = 448;
+const MIN_FIT_HEIGHT = 428;
+// Height where the moderator rail only fits because the space before the first icon
+// and after the last one gave way (it overflowed by 10px with the fixed padding).
+const ELASTIC_SPACING = { width: 1280, height: 436 };
+// Space before the first icon and after the last one when the rail has room to spare,
+// below the small-height breakpoint (navigationSidebarPaddingYSmallHeight).
+const COMPACT_END_SPACING = 10;
 
 interface RailMetrics {
   offsetWidth: number;
@@ -32,6 +38,8 @@ interface RailMetrics {
   buttonCount: number;
   buttonWidth: number | null;
   lastButtonReachable: boolean;
+  topSpacing: number | null;
+  bottomSpacing: number | null;
 }
 
 // Reads the geometry of the rail scrollbox and of its circular icon buttons.
@@ -54,6 +62,8 @@ async function measureRail(page: Page): Promise<RailMetrics> {
       lastButtonReachable = lastRect.bottom <= boxRect.bottom + 1 && lastRect.top >= boxRect.top - 1;
     }
     scrollbox.scrollTop = 0;
+    // Space between the rail edges and the first/last icon, with the scroll at the top.
+    const railRect = (scrollbox.parentElement as HTMLElement).getBoundingClientRect();
     return {
       offsetWidth: scrollbox.offsetWidth,
       clientWidth: scrollbox.clientWidth,
@@ -62,6 +72,8 @@ async function measureRail(page: Page): Promise<RailMetrics> {
       buttonCount: buttons.length,
       buttonWidth: first ? Number(first.getBoundingClientRect().width.toFixed(2)) : null,
       lastButtonReachable,
+      topSpacing: first ? Number((first.getBoundingClientRect().top - railRect.top).toFixed(1)) : null,
+      bottomSpacing: last ? Number((railRect.bottom - last.getBoundingClientRect().bottom).toFixed(1)) : null,
     };
   }, e.sidebarNavigationScrollbox);
 }
@@ -183,6 +195,18 @@ export class SidebarNavigation extends MultiUsers {
     expect(spacing.scrollHeight, 'the rail spacing must not overflow at 1286x532').toBeLessThanOrEqual(
       spacing.clientHeight,
     );
+
+    expect(spacing.topSpacing, 'the default spacing should be kept when the rail has room').toBe(COMPACT_END_SPACING);
+    expect(spacing.bottomSpacing, 'the default spacing should be kept when the rail has room').toBe(COMPACT_END_SPACING);
+
+    const elastic = await measureAt(this.modPage, ELASTIC_SPACING);
+    expect(elastic.scrollHeight, 'the end spacing should give way before a scrollbar at 1280x436').toBeLessThanOrEqual(
+      elastic.clientHeight,
+    );
+    expect(elastic.topSpacing as number, 'the space before the first icon should shrink at 1280x436').toBeLessThan(
+      COMPACT_END_SPACING,
+    );
+    expect(elastic.bottomSpacing, 'the end spacing should shrink evenly at both ends').toBe(elastic.topSpacing);
 
     const overflow = await measureAt(this.modPage, OVERFLOW);
     expect(overflow.scrollHeight, 'the content should really overflow at a very short height').toBeGreaterThan(
