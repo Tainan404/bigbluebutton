@@ -17,17 +17,28 @@ jobs:
     steps:
       - name: Sync branches from bigbluebutton/bigbluebutton
         env:
-          GH_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN can never have the `workflows` permission, so GitHub
+          # rejects merge-upstream (HTTP 422) whenever the upstream commits touch
+          # .github/workflows/**. Use a fine-grained PAT for this repository with
+          # Contents and Workflows set to read & write, stored as the
+          # SYNC_UPSTREAM_TOKEN secret. Without it we fall back to GITHUB_TOKEN,
+          # which only works while upstream has not changed any workflow file.
+          GH_TOKEN: ${{ secrets.SYNC_UPSTREAM_TOKEN || github.token }}
+          HAS_SYNC_TOKEN: ${{ secrets.SYNC_UPSTREAM_TOKEN != '' }}
         run: |
+          if [ "$HAS_SYNC_TOKEN" != "true" ]; then
+            echo "::warning::SYNC_UPSTREAM_TOKEN is not set, so GITHUB_TOKEN is used and upstream commits that change .github/workflows/** cannot be synced"
+          fi
           failed=0
           for branch in v3.0.x-develop v3.0.x-release v4.0.x-develop v4.0.x-release; do
             echo "::group::Syncing $branch"
             # Same as the "Sync fork" button: fast-forwards, or merges upstream
             # into the branch if it has local commits; fails on conflicts.
-            if gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch="$branch"; then
+            if gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch="$branch" 2>"$RUNNER_TEMP/gh-error"; then
               echo
             else
-              echo "::error::Failed to sync $branch (merge conflict with upstream?)"
+              err=$(< "$RUNNER_TEMP/gh-error")
+              echo "::error::Failed to sync $branch: ${err//$'\n'/ }"
               failed=1
             fi
             echo "::endgroup::"
