@@ -83,6 +83,8 @@ const QuickPollDropdown = (props) => {
 
   const questionPattern = /^[a-zA-Z0-9][.)]\s+.*/;
   const basicQuestionPattern = /^.*\?\s*$/;
+  // Common pdftotext list bullets, including asterisk, middle dot, and en dash.
+  const bulletPattern = /^[•‣◦⁃∙*·–-]\s+/;
 
   const yesNoPatt = createPattern([yesValue, noValue]);
   const trueFalsePatt = createPattern([trueValue, falseValue]);
@@ -115,8 +117,12 @@ const QuickPollDropdown = (props) => {
       if (basicQuestionPattern.test(trimmedLine)) questionLines.push(trimmedLine);
     } else if (!isOptionSection) {
       if (trimmedLine.length > 0) {
+        if (bulletPattern.test(trimmedLine) && questionLines.length > 0) {
+          allParagraphs.push([...questionLines]);
+          questionLines.length = 0;
+        }
         // Any non-empty line before options is considered question text
-        questionLines.push(trimmedLine);
+        questionLines.push(trimmedLine.replace(bulletPattern, ''));
       } else if (questionLines.length > 0) {
         // Blank line ends a paragraph — save it and start fresh
         allParagraphs.push([...questionLines]);
