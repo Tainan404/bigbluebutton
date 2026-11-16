@@ -532,6 +532,46 @@ export class Polling extends MultiUsers {
     ).not.toHaveValue(/longfor/, { timeout: ELEMENT_WAIT_TIME });
   }
 
+  async powerPointSuperscriptPreserved() {
+    await this.modPage.waitForSelector(e.whiteboard, ELEMENT_WAIT_LONGER_TIME);
+    await util.uploadSPresentationForTestingPolls(this.modPage, e.smartSlidesBugRepro1Pptx);
+    await this.userPage.hasElement(e.userListItem, 'should display the user list item for the attendee');
+    await this.modPage.closeAllToastNotifications();
+    // Fixed settle so the whole deck (all slides' extracted text) is ready before navigating; a
+    // condition-based wait on the "Slide 2" option races the per-slide text extraction and the
+    // quick poll then captures the previous slide's parsed question.
+    await this.modPage.page.waitForTimeout(10000);
+
+    await this.modPage.selectSlide('Slide 2');
+    await this.modPage.hasElement(
+      e.quickPoll,
+      'should display the quick poll button once the PowerPoint deck is converted',
+      ELEMENT_WAIT_EXTRA_LONG_TIME,
+    );
+    // Let the selected page's extracted text propagate before opening the quick poll.
+    await this.modPage.page.waitForTimeout(3000);
+    await this.modPage.waitAndClick(e.quickPoll, ELEMENT_WAIT_LONGER_TIME);
+
+    const question = this.modPage.page.locator(e.pollQuestionArea);
+    await expect(question, 'the poll question should preserve the superscript in mg/m³').toHaveValue(/mg\/m³\?/, {
+      timeout: ELEMENT_WAIT_TIME,
+    });
+    await expect(question, 'the poll question should not flatten the superscript to mg/m3').not.toHaveValue(/mg\/m3/);
+
+    const expectedOptions = ['A. 6.9 mg/m³', 'B. 7.5 mg/m³', 'C. 10.1 mg/m³', 'D. 24.3 mg/m³'];
+    const optionInputs = this.modPage.page.locator(e.pollOptionItem);
+    await expect(optionInputs, 'the quick poll should contain all four PowerPoint options').toHaveCount(4);
+    for (let index = 0; index < expectedOptions.length; index += 1) {
+      await expect(optionInputs.nth(index), `option ${index + 1} should preserve the superscript in mg/m³`).toHaveValue(
+        expectedOptions[index],
+      );
+      await expect(
+        optionInputs.nth(index),
+        `option ${index + 1} should not flatten the superscript to mg/m3`,
+      ).not.toHaveValue(/mg\/m3/);
+    }
+  }
+
   async pollResultsOnChat() {
     const { pollChatMessage } = this.modPage.settings || {};
 

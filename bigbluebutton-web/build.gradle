@@ -124,7 +124,7 @@ dependencies {
   implementation "jakarta.validation:jakarta.validation-api:3.1.1"
   implementation "org.hibernate.validator:hibernate-validator:9.1.5.Final"
 
-  implementation "org.apache.xmlbeans:xmlbeans:5.0.3"
+  implementation "org.apache.xmlbeans:xmlbeans:5.3.0"
   implementation "org.apache.groovy:groovy-xml"
   implementation 'org.apache.commons:commons-compress:1.27.0'
 
