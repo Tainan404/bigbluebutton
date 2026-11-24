@@ -21,6 +21,8 @@ import GenericContentMainAreaContainer from '../generic-content/generic-main-con
 import EmojiRainContainer from '../emoji-rain/container';
 import Styled from './styles';
 import LayoutEngine from '../layout/layout-manager/layoutEngine';
+import useLayoutShell from '../layout/shell/useLayoutShell';
+import LayoutShellStyles from '../layout/shell/styles';
 import NavBarContainer from '../nav-bar/container';
 import ConnectionStatusContainer from '../connection-status/component';
 import SidebarNavigationContainer from '../sidebar-navigation/container';
@@ -112,6 +114,8 @@ const App: React.FC<AppProps> = ({
   usePollShortcut(layoutContextDispatch, isPollingEnabled);
   useUserStatusNotifications(meetingId, currentUserAway, currentUserRaiseHand, intl);
   useSystemThemeSync();
+  // the semantic state the CSS layout reads, as data attributes and custom properties on #layout
+  const shell = useLayoutShell();
 
   useEffect(() => {
     AppService.setDarkTheme(darkTheme);
@@ -143,11 +147,14 @@ const App: React.FC<AppProps> = ({
         <LayoutEngine />
         <LayoutObserver />
         <GlobalStyles />
+        <LayoutShellStyles />
         <Styled.Layout
           id="layout"
+          {...shell.attributes}
           style={{
             width: '100%',
             height: '100%',
+            ...shell.style,
           }}
         >
           <ActivityCheckContainer />
@@ -216,11 +223,14 @@ const App: React.FC<AppProps> = ({
       <LayoutEngine />
       <LayoutObserver />
       <GlobalStyles />
+      <LayoutShellStyles />
       <Styled.Layout
         id="layout"
+        {...shell.attributes}
         style={{
           width: '100%',
           height: '100%',
+          ...shell.style,
         }}
       >
         <ConnectionStatusContainer />
