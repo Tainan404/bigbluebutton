@@ -14,7 +14,7 @@ name: "Sync v4.0 into v4.1"
 # the pull requests it opens start no workflow, so the script starts the automated tests itself; a
 # SYNC_TOKEN secret (GitHub App or PAT with the workflows permission) lifts the first limit.
 on:
-  pull_request_target:
+  pull_request:
     types: [closed]
     branches: [sync-test/v4.0.x-develop]
 permissions: {}
