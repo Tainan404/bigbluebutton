@@ -294,7 +294,11 @@ title=${title:0:250}
     printf -- '- `%s`\n' "${conflicts[@]}"
   fi
   if [ -n "$note" ]; then printf '\n%s\n' "$note"; fi
-  printf '\nThis pull request is merged automatically when the automated tests pass and it is mergeable; otherwise it stays open for a maintainer.\n'
+  if [ "$draft" = true ]; then
+    printf '\nThis pull request needs a maintainer and is not merged automatically.\n'
+  else
+    printf '\nThis pull request is merged automatically when the automated tests pass and it is mergeable; otherwise it stays open for a maintainer.\n'
+  fi
 } > "$TMP/body.md"
 jq -n --arg title "$title" --rawfile body "$TMP/body.md" --arg head "$SYNC_BRANCH" --arg base "$TARGET_BRANCH" \
   --argjson draft "$draft" '{title: $title, body: $body, head: $head, base: $base, draft: $draft}' > "$TMP/pr.json"
