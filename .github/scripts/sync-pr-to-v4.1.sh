@@ -36,9 +36,11 @@ NEEDS_MAINTAINER='sync: needs maintainer'
 CONFLICT_LABEL='status: conflict'
 SKIP_LABEL='no-sync-4.1'
 # Pull requests that merge a whole line or release ("Merge v4.0.x-release (v4.0.4) into
-# v4.0.x-develop", "Merge 4.0.0 rc.2 into ...") are not ported: their content reaches 4.1 through
-# the merge-forward of the lines themselves.
-LINE_MERGE_RE='[Mm]erge.*(v?[0-9]+\.[0-9]+(\.(x|[0-9]+))?[-. ](release|develop)|[0-9]+\.[0-9]+\.[0-9]+|rc[.-]?[0-9]+)'
+# v4.0.x-develop", "Merge 4.0.0 rc.2 into ...", branch merge-v4.0.x-release-4.0.4-into-...) are not
+# ported: their content reaches 4.1 through the merge-forward of the lines themselves. "Merge" has
+# to be followed by a version, so a title like "port pull requests merged into v4.0.x-develop" is
+# not mistaken for one.
+LINE_MERGE_RE='(^|[^[:alnum:]])[Mm]erge[ -]v?[0-9]+\.[0-9]+'
 LINE_BRANCH_RE='^v[0-9]+\.[0-9]+\.x-(release|develop)$'
 
 : "${GH_TOKEN:?}" "${TOKEN_KIND:?}" "${REPO:?}" "${SOURCE_PR_NUMBER:?}" "${SOURCE_PR_TITLE?}" "${SOURCE_AUTHOR?}"
