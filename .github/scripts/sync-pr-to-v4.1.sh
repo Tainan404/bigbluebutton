@@ -205,23 +205,27 @@ pick=("$MERGE_SHA")
 if [ "$parents" -ge 2 ]; then
   mode=merge-commit
   pick=(-m 1 "$MERGE_SHA")
-elif [ "$pr_commits" -gt 1 ] &&
-     gh api "repos/$REPO/commits/$(git rev-parse "$MERGE_SHA~1")/pulls" --jq '.[].number' | grep -x "$N" > /dev/null; then
-  # Merged by rebase: the pull request's commits sit one after the other on the source branch.
-  mode=rebase
-  range=()
-  for sha in $(git rev-list --reverse "$MERGE_SHA~$pr_commits..$MERGE_SHA"); do
-    if ! gh api "repos/$REPO/commits/$sha/pulls" --jq '.[].number' | grep -x "$N" > /dev/null; then
-      mode=rebase-unverified
-      break
+elif [ "$pr_commits" -gt 1 ]; then
+  if ! prev_prs=$(gh api "repos/$REPO/commits/$(git rev-parse "$MERGE_SHA~1")/pulls" --jq '.[].number'); then
+    fail_on_source "could not tell from the GitHub API whether #$N was merged by rebase."
+  fi
+  if grep -qx "$N" <<< "$prev_prs"; then
+    # Merged by rebase: the pull request's commits sit one after the other on the source branch.
+    mode=rebase
+    range=()
+    for sha in $(git rev-list --reverse "$MERGE_SHA~$pr_commits..$MERGE_SHA"); do
+      if ! gh api "repos/$REPO/commits/$sha/pulls" --jq '.[].number' | grep -x "$N" > /dev/null; then
+        mode=rebase-unverified
+        break
+      fi
+      range+=("$sha")
+    done
+    if [ "$mode" = rebase ]; then
+      pick=("${range[@]}")
+    else
+      draft=true
+      note="#$N was merged by rebase with $pr_commits commits, but not all of the last $pr_commits commits on \`$SOURCE_BRANCH\` belong to it, so only its last commit was ported. A maintainer needs to check what is missing."
     fi
-    range+=("$sha")
-  done
-  if [ "$mode" = rebase ]; then
-    pick=("${range[@]}")
-  else
-    draft=true
-    note="#$N was merged by rebase with $pr_commits commits, but not all of the last $pr_commits commits on \`$SOURCE_BRANCH\` belong to it, so only its last commit was ported. A maintainer needs to check what is missing."
   fi
 fi
 log "Porting #$N ($mode): ${pick[*]}"
@@ -351,7 +355,7 @@ log "Waiting for $ci_url"
 # The polls below tolerate failed API calls: a run that was just started can answer 404 for a moment.
 conclusion=''
 while time_left; do
-  if info=$(gh api "repos/$REPO/actions/runs/$run_id" --jq '"\(.status) \(.conclusion // "")"' 2>/dev/null); then
+  if info=$(gh api "repos/$REPO/actions/runs/$run_id" --jq '"\(.status) \(.conclusion // "")"'); then
     read -r status conclusion <<< "$info" || true
     [ "$status" = completed ] && break
   fi
@@ -366,8 +370,8 @@ done
 # approval) have no check run and do not count.
 checks_ok=false
 while time_left; do
-  if ! gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" > "$TMP/checks.json" 2>/dev/null ||
-     ! gh api "repos/$REPO/commits/$HEAD_SHA/status" > "$TMP/status.json" 2>/dev/null; then
+  if ! gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" > "$TMP/checks.json" ||
+     ! gh api "repos/$REPO/commits/$HEAD_SHA/status" > "$TMP/status.json"; then
     sleep "$POLL_SECONDS"; continue
   fi
   total=$(jq '.check_runs | length' "$TMP/checks.json")
@@ -387,7 +391,7 @@ done
 mergeable=null
 echo '{}' > "$TMP/sync-pr.json"
 while time_left; do
-  if gh api "repos/$REPO/pulls/$SYNC_PR" > "$TMP/sync-pr.json" 2>/dev/null; then
+  if gh api "repos/$REPO/pulls/$SYNC_PR" > "$TMP/sync-pr.json"; then
     mergeable=$(jq -r '.mergeable' "$TMP/sync-pr.json")
   fi
   [ "$mergeable" != null ] && break
