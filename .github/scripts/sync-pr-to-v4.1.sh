@@ -156,7 +156,7 @@ dispatch_ci() {
   while [ -z "$run_id" ] && time_left; do
     sleep "$POLL_SECONDS"
     run_id=$(gh api "repos/$REPO/actions/workflows/$CI_WORKFLOW/runs?event=workflow_dispatch&head_sha=$HEAD_SHA" \
-      --jq '.workflow_runs[0].id // empty')
+      --jq '.workflow_runs[0].id // empty' || true)
   done
   printf '%s' "$run_id"
 }
@@ -330,10 +330,10 @@ if [ "$TOKEN_KIND" != sync ] || [ "$paths_ignored" = true ]; then
   run_id=$(dispatch_ci) || leave_open "the automated tests could not be started."
 else
   window_end=$(( $(date +%s) + PR_RUN_WINDOW_SECONDS ))
-  run_id=$(find_pull_request_run)
+  run_id=$(find_pull_request_run || true)
   while [ -z "$run_id" ] && [ "$(date +%s)" -lt "$window_end" ] && time_left; do
     sleep "$POLL_SECONDS"
-    run_id=$(find_pull_request_run)
+    run_id=$(find_pull_request_run || true)
   done
   if [ -z "$run_id" ]; then
     log "No pull_request run of $CI_WORKFLOW appeared; starting one."
@@ -344,25 +344,36 @@ fi
 ci_url="https://github.com/$REPO/actions/runs/$run_id"
 log "Waiting for $ci_url"
 
+# The polls below tolerate failed API calls: a run that was just started can answer 404 for a moment.
 conclusion=''
 while time_left; do
-  read -r status conclusion < <(gh api "repos/$REPO/actions/runs/$run_id" --jq '"\(.status) \(.conclusion // "")"')
-  [ "$status" = completed ] && break
+  if info=$(gh api "repos/$REPO/actions/runs/$run_id" --jq '"\(.status) \(.conclusion // "")"' 2>/dev/null); then
+    read -r status conclusion <<< "$info" || true
+    [ "$status" = completed ] && break
+  fi
   conclusion=''
   sleep "$POLL_SECONDS"
 done
 [ -n "$conclusion" ] || leave_open "the automated tests ($ci_url) did not finish in time."
 [ "$conclusion" = success ] || leave_open "the automated tests ended in \`$conclusion\` ($ci_url)."
 
-# Every check on the head commit, not only that run: never green with none or with some pending.
+# Every check run and commit status on the head commit, not only that run: never green with none or
+# with some pending. Check suites without runs (an app that never reported, a workflow waiting for
+# approval) have no check run and do not count.
 checks_ok=false
 while time_left; do
-  gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" > "$TMP/checks.json"
+  if ! gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" > "$TMP/checks.json" 2>/dev/null ||
+     ! gh api "repos/$REPO/commits/$HEAD_SHA/status" > "$TMP/status.json" 2>/dev/null; then
+    sleep "$POLL_SECONDS"; continue
+  fi
   total=$(jq '.check_runs | length' "$TMP/checks.json")
   pending=$(jq '[.check_runs[] | select(.status != "completed")] | length' "$TMP/checks.json")
   failed=$(jq -r '[.check_runs[] | select(.status == "completed" and (.conclusion | IN("success", "neutral", "skipped") | not)) | .name] | join(", ")' "$TMP/checks.json")
+  failed_statuses=$(jq -r '[.statuses[] | select(.state == "failure" or .state == "error") | .context] | join(", ")' "$TMP/status.json")
+  pending_statuses=$(jq '[.statuses[] | select(.state == "pending")] | length' "$TMP/status.json")
   [ -z "$failed" ] || leave_open "these checks did not pass: $failed."
-  if [ "$total" -gt 0 ] && [ "$pending" -eq 0 ]; then checks_ok=true; break; fi
+  [ -z "$failed_statuses" ] || leave_open "these commit statuses did not pass: $failed_statuses."
+  if [ "$total" -gt 0 ] && [ "$pending" -eq 0 ] && [ "$pending_statuses" -eq 0 ]; then checks_ok=true; break; fi
   sleep "$POLL_SECONDS"
 done
 [ "$checks_ok" = true ] || leave_open "the checks did not finish in time."
@@ -370,9 +381,11 @@ done
 # --- Merge check ---------------------------------------------------------------------------------
 
 mergeable=null
+echo '{}' > "$TMP/sync-pr.json"
 while time_left; do
-  gh api "repos/$REPO/pulls/$SYNC_PR" > "$TMP/sync-pr.json"
-  mergeable=$(jq -r '.mergeable' "$TMP/sync-pr.json")
+  if gh api "repos/$REPO/pulls/$SYNC_PR" > "$TMP/sync-pr.json" 2>/dev/null; then
+    mergeable=$(jq -r '.mergeable' "$TMP/sync-pr.json")
+  fi
   [ "$mergeable" != null ] && break
   sleep "$POLL_SECONDS"
 done
@@ -380,7 +393,12 @@ state=$(jq -r '.mergeable_state' "$TMP/sync-pr.json")
 if jq -e --arg l "$CONFLICT_LABEL" '[.labels[].name] | index($l) != null' "$TMP/sync-pr.json" > /dev/null; then
   leave_open "it has the '$CONFLICT_LABEL' label."
 fi
-if [ "$mergeable" != true ] || [ "$state" != clean ]; then
+# mergeable_state "unstable" only says that some check is not green, and the checks were verified
+# above; it is also what an empty check suite leaves behind (pull requests opened with GITHUB_TOKEN
+# get an "action_required" suite without runs). Conflicts, branch protection or a stale base still
+# keep the pull request open.
+case $state in clean | unstable | has_hooks) state_ok=true ;; *) state_ok=false ;; esac
+if [ "$mergeable" != true ] || [ "$state_ok" != true ]; then
   leave_open "the merge check is not green (mergeable: $mergeable, state: $state)."
 fi
 
