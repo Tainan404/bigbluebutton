@@ -1,4 +1,5 @@
 {
+  "app.syncTest": "Sync test",
     "app.home.greeting": "Your presentation will begin shortly ...",
     "app.sidebarContent.minimizePanelLabel": "Minimize {panelName}",
     "app.chat.submitLabel": "Send message",
