@@ -30,10 +30,12 @@ import { SETTINGS } from '/imports/ui/services/settings/enums';
 import {
   layoutDispatch,
   layoutSelectInput,
-  layoutSelectOutput,
 } from '../context';
+import { useShellState } from '../shell/context';
+import { cameraDockPosition as reportedCameraDockPosition } from '../shell/selectors';
 import { calculatePresentationVideoRate, equalDouble, hasCameraDockChanged } from './service';
 import { useMeetingLayoutUpdater, usePushLayoutUpdater, useLayoutUpdater } from './hooks';
+import { useRegionSize } from '../measuredRegions';
 import { setEnforcedLayout } from '/imports/ui/components/plugins-engine/ui-commands/layout/handler';
 import { useIsChatEnabled } from '/imports/ui/services/features';
 import DEFAULT_VALUES from '/imports/ui/components/layout/defaultValues';
@@ -180,8 +182,6 @@ const PushLayoutEngine = (props) => {
             value: {
               width: w,
               height: h,
-              browserWidth: window.innerWidth,
-              browserHeight: window.innerHeight,
             },
           });
         }
@@ -280,8 +280,6 @@ const PushLayoutEngine = (props) => {
           value: {
             width: w,
             height: h,
-            browserWidth: window.innerWidth,
-            browserHeight: window.innerHeight,
           },
           isLocalChange: false,
         });
@@ -383,7 +381,7 @@ const PushLayoutEngine = (props) => {
 };
 
 const PushLayoutEngineContainer = (props) => {
-  const cameraDockOutput = layoutSelectOutput((i) => i.cameraDock);
+  const shell = useShellState();
   const cameraDockInput = layoutSelectInput((i) => i.cameraDock);
   const browserInput = layoutSelectInput((i) => i.browser);
   const presentationInput = layoutSelectInput((i) => i.presentation);
@@ -395,12 +393,14 @@ const PushLayoutEngineContainer = (props) => {
     selectedLayout,
   } = layoutSettings;
 
-  const {
-    width: cameraWidth,
-    height: cameraHeight,
-    position: cameraDockPosition,
-    focusedId: focusedCamera,
-  } = cameraDockOutput;
+  // where the dock is drawn (the layout state, as the CSS layout reads it)
+  const cameraDockPosition = shell && reportedCameraDockPosition(shell);
+  const { focusedId: focusedCamera } = cameraDockInput;
+  // The dock's rendered box (0 x 0 while it is not rendered), at its committed size during a drag
+  const measuredCameraDock = useRegionSize('cameraDock');
+  const cameraWidth = measuredCameraDock?.width ?? 0;
+  const cameraHeight = measuredCameraDock?.height ?? 0;
+  const cameraDock = { position: cameraDockPosition, width: cameraWidth, height: cameraHeight };
 
   const getKeepPushingLayout = () => {
     // check if current layout is a hidden layout
@@ -467,15 +467,14 @@ const PushLayoutEngineContainer = (props) => {
     });
   }, [enforcedLayoutLoading]);
 
-  // The output lags a rotation by one layout pass, in both directions.
-  const isCameraDockPropagationSuppressed = cameraDockOutput.isLocalOnly
-    || isPhoneLandscape(browserInput);
-  const presentationVideoRate = calculatePresentationVideoRate(cameraDockOutput);
+  // A phone in landscape locks the dock beside the media for this user only (isLocalOnly).
+  const isCameraDockPropagationSuppressed = isPhoneLandscape(browserInput);
+  const presentationVideoRate = calculatePresentationVideoRate(cameraDock);
 
   const setLocalSettings = useUserChangedLocalSettings();
   const setPushLayout = usePushLayoutUpdater(pushLayout);
   const setMeetingLayout = useMeetingLayoutUpdater({
-    cameraDockOutput,
+    cameraDock,
     cameraDockInput,
     presentationInput,
     layoutSettings,
